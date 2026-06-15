@@ -1888,22 +1888,27 @@ function abrirNuevoPrograma(){
   _actsTemp=[];_locsTemp=[];
   document.getElementById('editId').value='';
   document.getElementById('mpTit').textContent='Nuevo Programa Semanal';
-  // Precargar área del login
-  if(_AREA_LOGIN&&_AREA_LOGIN!=='TODOS'){
-    const paEl=document.getElementById('pArea');
-    if(paEl){paEl.value=_AREA_LOGIN;poblarMandosM(_AREA_LOGIN);actualizarLocProgramador();}
-  }
+  // Limpiar primero
   document.getElementById('pServ').value='';
-  document.getElementById('pArea').value='';
   document.getElementById('pAnio').value=AÑO;poblarSemanasM(AÑO);
   setTimeout(()=>{document.getElementById('pSemana').value=SEM;actualizarLocProgramador();},80);
   document.getElementById('pObs').value='';
   document.getElementById('lbCabo').innerHTML='Cabo <span class="req">*</span>';
-  poblarCabosM('');poblarMandosM('');
   document.getElementById('pCabo').value='';document.getElementById('pMando').value='';
   document.getElementById('pvCabo').style.display='none';document.getElementById('pvMando').style.display='none';
   document.getElementById('warnLocs').style.display='block';
   document.getElementById('locProgramadorWrap').style.display='none';
+  // Precargar y bloquear area AL FINAL para que no se sobreescriba
+  const pAreaEl=document.getElementById('pArea');
+  if(_AREA_LOGIN&&_AREA_LOGIN!=='TODOS'){
+    pAreaEl.value=_AREA_LOGIN;
+    pAreaEl.disabled=true;
+    poblarCabosM('');poblarMandosM(_AREA_LOGIN);
+  } else {
+    pAreaEl.value='';
+    pAreaEl.disabled=false;
+    poblarCabosM('');poblarMandosM('');
+  }
   renderLocTabla();renderActEdit();refrescarDatalistObs();
   document.getElementById('movPrograma').classList.add('active');
 }
