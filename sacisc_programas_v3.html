@@ -2053,8 +2053,20 @@ function onServChange(){
 }
 function onAreaChange(){
   const ar=document.getElementById('pArea').value;
-  poblarMandosM(ar);actualizarLocProgramador();
-  document.getElementById('warnLocs').style.display=ar?'none':'block';
+  poblarMandosM(ar);
+  // Poblar pSubarea con TODAS las subáreas del área — sin filtrar por servicio
+  const pSubarea=document.getElementById('pSubarea');
+  if(pSubarea){
+    const prev=pSubarea.value;
+    pSubarea.innerHTML='<option value="">— Sin subárea específica —</option>';
+    SA.filter(s=>!ar||s.area===ar).forEach(s=>{
+      const o=document.createElement('option');
+      o.value=s.id;o.textContent=s.nombre;
+      pSubarea.appendChild(o);
+    });
+    if(prev)pSubarea.value=prev;
+  }
+  actualizarLocProgramador();
 }
 function poblarCabosM(sv){
   const s=document.getElementById('pCabo');s.innerHTML='<option value="">— Seleccionar —</option>';
