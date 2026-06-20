@@ -2011,6 +2011,10 @@ function abrirNuevoPrograma(){
   onAreaChange();
   renderLocTabla();renderActEdit();refrescarDatalistObs();
   document.getElementById('movPrograma').classList.add('active');
+  // Si SA aún no tiene datos (carga diferida de Supabase), reintentar tras delay
+  if(!SA.length&&_sbListo){
+    setTimeout(()=>onAreaChange(),800);
+  }
 }
 function editarPrograma(id){
   const p=PROG.find(x=>x.id===id);if(!p)return;
@@ -2054,17 +2058,26 @@ function onServChange(){
 function onAreaChange(){
   const ar=document.getElementById('pArea').value;
   poblarMandosM(ar);
-  // Poblar pSubarea con TODAS las subáreas del área — sin filtrar por servicio
+  // Si SA está vacío, intentar recargar desde localStorage
+  if(!SA.length){SA=loadLocal(LS.SA)||[];}
+  // Poblar pSubarea con TODAS las subáreas del área
   const pSubarea=document.getElementById('pSubarea');
   if(pSubarea){
     const prev=pSubarea.value;
     pSubarea.innerHTML='<option value="">— Sin subárea específica —</option>';
-    SA.filter(s=>!ar||s.area===ar).forEach(s=>{
+    const subsFilt=SA.filter(s=>!ar||s.area===ar);
+    subsFilt.forEach(s=>{
       const o=document.createElement('option');
       o.value=s.id;o.textContent=s.nombre;
       pSubarea.appendChild(o);
     });
     if(prev)pSubarea.value=prev;
+    // Indicar si no hay subáreas
+    if(!subsFilt.length&&ar){
+      const o=document.createElement('option');
+      o.value='';o.textContent='— Sin subáreas registradas para '+ar+' —';o.disabled=true;
+      pSubarea.appendChild(o);
+    }
   }
   actualizarLocProgramador();
 }
