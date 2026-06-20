@@ -2357,9 +2357,10 @@ function cargarProgramasEjec(){
   poblarSemanasE(anio,semActual);
   const sem=document.getElementById('eSemana').value?parseInt(document.getElementById('eSemana').value):0;
   const sv=document.getElementById('eServicio').value;
-  let d=PROG.filter(p=>p.anio===anio);
+  let d=PROG.filter(p=>p.anio===anio&&!p.eliminado);
   if(sem)d=d.filter(p=>p.semana===sem);
   if(sv)d=d.filter(p=>p.serv===sv);
+  if(_AREA_LOGIN&&_AREA_LOGIN!=='TODOS')d=d.filter(p=>p.area===_AREA_LOGIN);
   const c=document.getElementById('listaProgEjec');
   if(!d.length){c.innerHTML=`<div class="ibox">No hay programas con los filtros seleccionados. Cree uno con <strong>Nuevo Programa</strong>.</div>`;return;}
   c.innerHTML=d.map(p=>{
@@ -2368,8 +2369,8 @@ function cargarProgramasEjec(){
     const cab=getPer(p.caboId),mnd=getPer(p.mandoId);
     return `<div style="border:1.5px solid var(--bd);border-radius:9px;padding:13px 18px;background:#fff;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--gm)'" onmouseleave="this.style.borderColor='var(--bd)'">
       <div>
-        <div style="font-family:Barlow Condensed,sans-serif;font-size:.98rem;font-weight:700;color:var(--gd);">${SVCL[p.serv]} — <strong>${p.area}</strong></div>
-        <div style="font-size:.76rem;color:var(--gray);margin-top:2px;">${fe.label} &nbsp;·&nbsp; ${cab?'Cabo: '+cab.nombre:'Sin cabo'} &nbsp;·&nbsp; ${mnd?'Mando: '+mnd.nombre:'Sin mando'}</div>
+        <div style="font-family:Barlow Condensed,sans-serif;font-size:.98rem;font-weight:700;color:var(--gd);">${SVCL[p.serv]} — <strong>${p.area}</strong>${p.subareaNom?` <span style="font-size:.72rem;font-weight:600;color:var(--gm);background:#e8f3ef;padding:2px 7px;border-radius:10px;margin-left:6px;">📁 ${p.subareaNom}</span>`:''}</div>
+        <div style="font-size:.76rem;color:var(--gray);margin-top:2px;">${fe.label} &nbsp;·&nbsp; ${cab?'Responsable: '+cab.nombre:'Sin responsable'} &nbsp;·&nbsp; ${mnd?'Jefe: '+mnd.nombre:'Sin jefe'}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <span class="sbadge ${EST_CLS[p.estado]||'cg'}">${EST_LABEL[p.estado]||p.estado}</span>
@@ -2597,9 +2598,10 @@ function editarPersonaModal(id){
   document.getElementById('pNombre').value=p.nombre||'';
   document.getElementById('pCargo').value=p.cargo||'';
   document.getElementById('pRol').value=p.rol||'';
-  document.getElementById('pArea2').value=p.area||'';
   document.getElementById('pFicha').value=p.ficha||'';
-  // Store edit id
+  const pArea2=document.getElementById('pArea2');
+  pArea2.value=p.area||'';
+  pArea2.disabled=(_AREA_LOGIN&&_AREA_LOGIN!=='TODOS');
   document.getElementById('movPersona').dataset.editId=id;
   document.getElementById('movPersona').querySelector('h2').textContent='Editar Persona';
   document.getElementById('movPersona').classList.add('active');
@@ -2662,12 +2664,31 @@ function renderCatalogos(){
   }).join('');
 }
 
-function abrirModalPersona(){document.getElementById('movPersona').classList.add('active');}
+function abrirModalPersona(){
+  const modal=document.getElementById('movPersona');
+  delete modal.dataset.editId;
+  modal.querySelector('h2').textContent='Nueva Persona';
+  // Limpiar campos
+  ['pNombre','pCargo','pFicha'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('pRol').value='';
+  // Precargar y bloquear área del login
+  const pArea2=document.getElementById('pArea2');
+  if(_AREA_LOGIN&&_AREA_LOGIN!=='TODOS'){
+    pArea2.disabled=false;
+    pArea2.value=_AREA_LOGIN;
+    pArea2.disabled=true;
+  } else {
+    pArea2.value='';
+    pArea2.disabled=false;
+  }
+  modal.classList.add('active');
+}
 function cerrarMovPersona(){
   const modal=document.getElementById('movPersona');
   modal.classList.remove('active');
   delete modal.dataset.editId;
   modal.querySelector('h2').textContent='Nueva Persona';
+  document.getElementById('pArea2').disabled=false;
 }
 function guardarPersona(){
   const n=document.getElementById('pNombre').value.trim(),c=document.getElementById('pCargo').value.trim(),r=document.getElementById('pRol').value;
