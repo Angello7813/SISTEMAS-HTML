@@ -1490,6 +1490,19 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
 
 <script>
 // ══════════════════════════════════════════════════════════════
+// TOAST — notificación de acciones
+// ══════════════════════════════════════════════════════════════
+let _toastTimer=null;
+function toast(msg,dur=3200){
+  const el=document.getElementById('toast');
+  if(!el)return;
+  el.textContent=msg;
+  el.classList.add('show');
+  if(_toastTimer)clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>{el.classList.remove('show');},dur);
+}
+
+// ══════════════════════════════════════════════════════════════
 // SUPABASE CONFIG
 // ══════════════════════════════════════════════════════════════
 const SB_URL='https://epqyabsdgsthbtuluarq.supabase.co';
@@ -1540,11 +1553,10 @@ function ab2sb(a){return{id:a.id,nombre:a.nombre,serv:a.serv,descripcion:a.desc|
 function sb2ab(r){return{id:r.id,nombre:r.nombre,serv:r.serv,desc:r.descripcion||''};}
 
 // ── save() reemplaza localStorage + sincroniza Supabase ──
-function save(key,arr){
+async function save(key,arr){
   saveLocal(key,arr);
   if(!_sbListo)return;
   const tabla=LS_TBL[key];if(!tabla)return;
-  // Upsert todos los registros del arreglo
   if(!arr||!arr.length)return;
   let mapped=arr;
   if(key===LS.P)mapped=arr.map(prog2sb);
@@ -1552,7 +1564,7 @@ function save(key,arr){
   else if(key===LS.SA)mapped=arr.map(sub2sb);
   else if(key===LS.LC)mapped=arr.map(loc2sb);
   else if(key===LS.AB)mapped=arr.map(ab2sb);
-  sbUpsert(tabla,mapped).catch(()=>{});
+  try{await sbUpsert(tabla,mapped);}catch(e){console.warn('save error',e);}
 }
 
 // ── Carga inicial desde Supabase ──
@@ -1562,16 +1574,57 @@ async function cargarDesdeSB(){
     const [progs,pers,subs,locs,acts]=await Promise.all([
       sbGet('programas'),sbGet('personas'),sbGet('subareas'),sbGet('localizaciones'),sbGet('actividades_base')
     ]);
-    PROG=progs.map(sb2prog);
-    PE=pers.map(r=>({id:r.id,nombre:r.nombre,cargo:r.cargo,rol:r.rol,area:r.area||'',ficha:r.ficha||''}));
-    SA=subs.map(r=>({id:r.id,area:r.area,nombre:r.nombre,desc:r.descripcion||''}));
-    LC=locs.map(sb2loc);
-    AB=acts.map(sb2ab);
+
+    // IDs que ya están en Supabase
+    const sbIds={
+      prog:new Set(progs.map(r=>r.id)),
+      per:new Set(pers.map(r=>r.id)),
+      sa:new Set(subs.map(r=>r.id)),
+      lc:new Set(locs.map(r=>r.id)),
+      ab:new Set(acts.map(r=>r.id))
+    };
+
+    // Registros locales que AÚN NO llegaron a Supabase — reenviarlos
+    const pendProg=PROG.filter(r=>!sbIds.prog.has(r.id));
+    const pendPer=PE.filter(r=>!sbIds.per.has(r.id));
+    const pendSA=SA.filter(r=>!sbIds.sa.has(r.id));
+    const pendLC=LC.filter(r=>!sbIds.lc.has(r.id));
+    const pendAB=AB.filter(r=>!sbIds.ab.has(r.id));
+
+    // Reenviar pendientes a Supabase
+    if(pendProg.length)await sbUpsert('programas',pendProg.map(prog2sb));
+    if(pendPer.length)await sbUpsert('personas',pendPer.map(per2sb));
+    if(pendSA.length)await sbUpsert('subareas',pendSA.map(sub2sb));
+    if(pendLC.length)await sbUpsert('localizaciones',pendLC.map(loc2sb));
+    if(pendAB.length)await sbUpsert('actividades_base',pendAB.map(ab2sb));
+
+    // Ahora sí cargar desde Supabase (ya tiene todo)
+    const [progs2,pers2,subs2,locs2,acts2]=await Promise.all([
+      sbGet('programas'),sbGet('personas'),sbGet('subareas'),sbGet('localizaciones'),sbGet('actividades_base')
+    ]);
+
+    PROG=progs2.map(sb2prog);
+    PE=pers2.map(r=>({id:r.id,nombre:r.nombre,cargo:r.cargo,rol:r.rol,area:r.area||'',ficha:r.ficha||''}));
+    SA=subs2.map(r=>({id:r.id,area:r.area,nombre:r.nombre,desc:r.descripcion||''}));
+    LC=locs2.map(sb2loc);
+    AB=acts2.map(sb2ab);
+
     saveLocal(LS.P,PROG);saveLocal(LS.PE,PE);saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);saveLocal(LS.AB,AB);
     _sbListo=true;
-    mostrarSyncBanner('✅ Conectado — datos sincronizados',false);
+
+    const total=pendProg.length+pendPer.length+pendSA.length+pendLC.length+pendAB.length;
+    if(total>0){
+      mostrarSyncBanner(`✅ Sincronizado — ${total} registro(s) pendiente(s) enviado(s)`,false);
+    } else {
+      mostrarSyncBanner('✅ Conectado — datos sincronizados',false);
+    }
     setTimeout(()=>ocultarSyncBanner(),3000);
+
+    // Refrescar UI
+    aplicarFiltros();renderProgramasTab();renderCatalogos();renderOrgTree();renderPersonas();renderTendencia();cargarProgramasEjec();
+
   }catch(e){
+    console.error('cargarDesdeSB',e);
     mostrarSyncBanner('⚠️ Sin conexión — modo local',false);
     _sbListo=false;
   }
