@@ -1694,11 +1694,7 @@ function ocultarSyncBanner(){
   if(b){b.style.opacity='0';setTimeout(()=>b.style.display='none',400);}
 }
 
-// ── Eliminar de Supabase cuando se borra un registro ──
-async function sbDelete(tabla,id){
-  if(!_sbListo)return;
-  try{await sbDelete(tabla,id);}catch(e){}
-}
+// sbDelete definida arriba en SUPABASE CONFIG
 
 // ══════════════════════════════════════════════════════════════
 // SEMANAS ISO
