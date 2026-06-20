@@ -1518,10 +1518,19 @@ async function sbGet(tabla){
 }
 async function sbUpsert(tabla,obj){
   try{
-    const r=await fetch(SB_URL+'/rest/v1/'+tabla,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(obj)});
-    if(!r.ok)throw new Error(await r.text());
+    const body=Array.isArray(obj)?obj:[obj];
+    if(!body.length)return [];
+    const r=await fetch(SB_URL+'/rest/v1/'+tabla,{method:'POST',headers:{...SB_HDR,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(body)});
+    if(!r.ok){
+      const err=await r.text();
+      console.error('sbUpsert ERROR en '+tabla+':',err);
+      return null;
+    }
     return await r.json();
-  }catch(e){return null;}
+  }catch(e){
+    console.error('sbUpsert EXCEPCION en '+tabla+':',e.message);
+    return null;
+  }
 }
 async function sbDelete(tabla,id){
   try{
@@ -1543,7 +1552,7 @@ let PROG=loadLocal(LS.P), AB=loadLocal(LS.AB), SA=loadLocal(LS.SA), LC=loadLocal
 let _sbListo=false;
 
 // ── Convertir snake_case (Supabase) ↔ camelCase (app) ──
-function prog2sb(p){return{id:p.id,serv:p.serv,area:p.area,anio:p.anio,semana:p.semana,cabo_id:p.caboId,mando_id:p.mandoId,obs:p.obs||'',localizaciones:p.localizaciones||[],actividades:p.actividades||[],ejecucion:p.ejecucion||{},estado:p.estado||'PROGRAMADO',cierre_data:p.cierreData||null};}
+function prog2sb(p){return{id:p.id,serv:p.serv,area:p.area,anio:p.anio,semana:p.semana,cabo_id:p.caboId,mando_id:p.mandoId,obs:p.obs||'',localizaciones:p.localizaciones||[],actividades:p.actividades||[],ejecucion:p.ejecucion||{},estado:p.estado||'PROGRAMADO',cierre_data:p.cierreData||null,actualizado_en:new Date().toISOString()};}
 function sb2prog(r){return{id:r.id,serv:r.serv,area:r.area,anio:r.anio,semana:r.semana,caboId:r.cabo_id,mandoId:r.mando_id,obs:r.obs||'',localizaciones:r.localizaciones||[],actividades:r.actividades||[],ejecucion:r.ejecucion||{},estado:r.estado||'PROGRAMADO',cierreData:r.cierre_data||null,updatedAt:r.updated_at||null};}
 function per2sb(p){return{id:p.id,nombre:p.nombre,cargo:p.cargo,rol:p.rol,area:p.area||'',ficha:p.ficha||''};}
 function sub2sb(s){return{id:s.id,area:s.area,nombre:s.nombre,descripcion:s.desc||''};}
@@ -1558,8 +1567,17 @@ function getPendientes(){try{return JSON.parse(localStorage.getItem(LS_PEND)||'{
 function addPendiente(tabla,id){const p=getPendientes();if(!p[tabla])p[tabla]=[];if(!p[tabla].includes(id))p[tabla].push(id);localStorage.setItem(LS_PEND,JSON.stringify(p));}
 function clearPendientes(tabla){const p=getPendientes();delete p[tabla];localStorage.setItem(LS_PEND,JSON.stringify(p));}
 
+// ── Lista negra de IDs eliminados — persiste entre sesiones ──
+const LS_DELETED='s3_deleted';
+function getDeleted(){try{return JSON.parse(localStorage.getItem(LS_DELETED)||'{}');}catch{return {};}}
+function addDeleted(tabla,id){const d=getDeleted();if(!d[tabla])d[tabla]=[];if(!d[tabla].includes(id))d[tabla].push(id);localStorage.setItem(LS_DELETED,JSON.stringify(d));}
+function clearDeleted(){localStorage.removeItem(LS_DELETED);}
+function isDeleted(tabla,id){const d=getDeleted();return (d[tabla]||[]).includes(id);}
+
 // ── save() — localStorage primero, luego Supabase ──
 async function save(key,arr){
+  const _now=new Date().toISOString();
+  arr.forEach(r=>{if(typeof r==='object'&&r!==null)r.updatedAt=_now;});
   saveLocal(key,arr);
   if(!_sbListo)return;
   const tabla=LS_TBL[key];if(!tabla||!arr||!arr.length)return;
@@ -1582,56 +1600,88 @@ async function save(key,arr){
 async function cargarDesdeSB(){
   mostrarSyncBanner('⏳ Conectando a la base de datos...',true);
   try{
-    // PASO 1: Subir TODO lo que está en localStorage a Supabase
-    // localStorage es la fuente de verdad — lo que el usuario capturó siempre prevalece
-    const uploads=[];
-    if(PROG.length)uploads.push(sbUpsert('programas',PROG.map(prog2sb)));
-    if(PE.length)uploads.push(sbUpsert('personas',PE.map(per2sb)));
-    if(SA.length)uploads.push(sbUpsert('subareas',SA.map(sub2sb)));
-    if(LC.length)uploads.push(sbUpsert('localizaciones',LC.map(loc2sb)));
-    if(AB.length)uploads.push(sbUpsert('actividades_base',AB.map(ab2sb)));
-    if(uploads.length)await Promise.all(uploads);
-
-    // PASO 2: Descargar desde Supabase para traer datos de otros usuarios
+    // PASO 1: Descargar todo desde Supabase
     const [progs,pers,subs,locs,acts]=await Promise.all([
       sbGet('programas'),sbGet('personas'),sbGet('subareas'),sbGet('localizaciones'),sbGet('actividades_base')
     ]);
 
-    // PASO 3: Merge — IDs locales tienen prioridad, agregar solo los que vienen de SB y no existen local
-    const localIds={
-      prog:new Set(PROG.map(r=>r.id)),
-      per:new Set(PE.map(r=>r.id)),
-      sa:new Set(SA.map(r=>r.id)),
-      lc:new Set(LC.map(r=>r.id)),
-      ab:new Set(AB.map(r=>r.id))
+    // PASO 2: Construir índice de IDs que ya están en Supabase
+    const sbIds={
+      prog:new Set(progs.map(r=>r.id)),
+      per:new Set(pers.map(r=>r.id)),
+      sa:new Set(subs.map(r=>r.id)),
+      lc:new Set(locs.map(r=>r.id)),
+      ab:new Set(acts.map(r=>r.id))
     };
 
-    // Agregar registros de Supabase que no existen en local (de otros usuarios/sesiones)
-    const nuevosProgs=progs.filter(r=>!localIds.prog.has(r.id)).map(sb2prog);
-    const nuevosPer=pers.filter(r=>!localIds.per.has(r.id)).map(r=>({id:r.id,nombre:r.nombre,cargo:r.cargo,rol:r.rol,area:r.area||'',ficha:r.ficha||''}));
-    const nuevosSA=subs.filter(r=>!localIds.sa.has(r.id)).map(r=>({id:r.id,area:r.area,nombre:r.nombre,desc:r.descripcion||''}));
-    const nuevosLC=locs.filter(r=>!localIds.lc.has(r.id)).map(sb2loc);
-    const nuevosAB=acts.filter(r=>!localIds.ab.has(r.id)).map(sb2ab);
+    // Respetar lista negra — borrar de SB los que se eliminaron localmente
+    const deleted=getDeleted();
+    const delProgs=deleted['programas']||[];
+    const delPer=deleted['personas']||[];
+    const delSA=deleted['subareas']||[];
+    const delLC=deleted['localizaciones']||[];
+    const delAB=deleted['actividades_base']||[];
+    // Re-eliminar de Supabase por si no se había completado la primera vez
+    for(const id of delProgs)if(sbIds.prog.has(id))await sbDelete('programas',id);
+    for(const id of delPer)if(sbIds.per.has(id))await sbDelete('personas',id);
+    for(const id of delSA)if(sbIds.sa.has(id))await sbDelete('subareas',id);
+    for(const id of delLC)if(sbIds.lc.has(id))await sbDelete('localizaciones',id);
+    for(const id of delAB)if(sbIds.ab.has(id))await sbDelete('actividades_base',id);
 
-    // Combinar: local primero + nuevos de SB
-    PROG=[...PROG,...nuevosProgs];
-    PE=[...PE,...nuevosPer];
-    SA=[...SA,...nuevosSA];
-    LC=[...LC,...nuevosLC];
-    AB=[...AB,...nuevosAB];
+    // PASO 3: Identificar registros locales que NO están en Supabase → subirlos
+    // EXCLUIR los que están en la lista negra (eliminados)
+    const soloProg=PROG.filter(r=>!sbIds.prog.has(r.id)&&!delProgs.includes(r.id));
+    const soloPer=PE.filter(r=>!sbIds.per.has(r.id)&&!delPer.includes(r.id));
+    const soloSA=SA.filter(r=>!sbIds.sa.has(r.id)&&!delSA.includes(r.id));
+    const soloLC=LC.filter(r=>!sbIds.lc.has(r.id)&&!delLC.includes(r.id));
+    const soloAB=AB.filter(r=>!sbIds.ab.has(r.id)&&!delAB.includes(r.id));
+
+    if(soloProg.length){const r=await sbUpsert('programas',soloProg.map(prog2sb));if(r)console.log('Subidos',soloProg.length,'programas nuevos');}
+    if(soloPer.length){const r=await sbUpsert('personas',soloPer.map(per2sb));if(r)console.log('Subidas',soloPer.length,'personas nuevas');}
+    if(soloSA.length){const r=await sbUpsert('subareas',soloSA.map(sub2sb));if(r)console.log('Subidas',soloSA.length,'subareas nuevas');}
+    if(soloLC.length){const r=await sbUpsert('localizaciones',soloLC.map(loc2sb));if(r)console.log('Subidas',soloLC.length,'locs nuevas');}
+    if(soloAB.length){const r=await sbUpsert('actividades_base',soloAB.map(ab2sb));if(r)console.log('Subidas',soloAB.length,'actividades nuevas');}
+
+    // PASO 4: Para programas existentes en ambos lados,
+    // subir los locales que tengan actualizado_en más reciente que SB
+    const sbProgMap=Object.fromEntries(progs.map(r=>[r.id,r]));
+    const progActualizar=PROG.filter(r=>{
+      const sb=sbProgMap[r.id];
+      if(!sb)return false; // ya se subió arriba
+      // Si local tiene actualizado_en, comparar con SB
+      if(!sb.actualizado_en)return true; // SB no tiene fecha → subir local
+      const tLocal=r.updatedAt?new Date(r.updatedAt).getTime():0;
+      const tSB=new Date(sb.actualizado_en).getTime();
+      return tLocal>tSB;
+    });
+    if(progActualizar.length){
+      await sbUpsert('programas',progActualizar.map(prog2sb));
+      console.log('Actualizados',progActualizar.length,'programas modificados localmente');
+    }
+
+    // PASO 5: Descargar de nuevo (ahora SB tiene todo)
+    const [progs2,pers2,subs2,locs2,acts2]=await Promise.all([
+      sbGet('programas'),sbGet('personas'),sbGet('subareas'),sbGet('localizaciones'),sbGet('actividades_base')
+    ]);
+
+    // PASO 6: Cargar en memoria y localStorage — filtrar eliminados
+    const del2=getDeleted();
+    PROG=progs2.map(sb2prog).filter(r=>!(del2['programas']||[]).includes(r.id));
+    PE=pers2.map(r=>({id:r.id,nombre:r.nombre,cargo:r.cargo,rol:r.rol,area:r.area||'',ficha:r.ficha||''})).filter(r=>!(del2['personas']||[]).includes(r.id));
+    SA=subs2.map(r=>({id:r.id,area:r.area,nombre:r.nombre,desc:r.descripcion||''})).filter(r=>!(del2['subareas']||[]).includes(r.id));
+    LC=locs2.map(sb2loc).filter(r=>!(del2['localizaciones']||[]).includes(r.id));
+    AB=acts2.map(sb2ab).filter(r=>!(del2['actividades_base']||[]).includes(r.id));
 
     saveLocal(LS.P,PROG);saveLocal(LS.PE,PE);saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);saveLocal(LS.AB,AB);
-    clearPendientes('programas');clearPendientes('personas');clearPendientes('subareas');
-    clearPendientes('localizaciones');clearPendientes('actividades_base');
     _sbListo=true;
 
-    const nuevos=nuevosProgs.length+nuevosPer.length+nuevosSA.length+nuevosLC.length+nuevosAB.length;
-    mostrarSyncBanner(nuevos>0?`✅ Sincronizado — ${nuevos} registro(s) nuevo(s) de otros usuarios`:'✅ Sincronizado — todo al día',false);
+    const pendTotal=soloProg.length+soloPer.length+soloSA.length+soloLC.length+soloAB.length+progActualizar.length;
+    mostrarSyncBanner(pendTotal>0?`✅ Sincronizado — ${pendTotal} registro(s) enviado(s) al servidor`:'✅ Sincronizado correctamente',false);
     setTimeout(()=>ocultarSyncBanner(),3000);
     aplicarFiltros();renderProgramasTab();renderCatalogos();renderOrgTree();renderPersonas();renderTendencia();cargarProgramasEjec();
 
   }catch(e){
-    console.error('cargarDesdeSB',e);
+    console.error('cargarDesdeSB ERROR:',e);
     mostrarSyncBanner('⚠️ Sin conexión — trabajando en modo local',false);
     _sbListo=false;
   }
@@ -2568,7 +2618,7 @@ function guardarPersona(){
 }
 function eliminarPersona(id){
   document.getElementById('confirmMsg').textContent='¿Eliminar esta persona del catálogo?';
-  document.getElementById('btnConfirmOk').onclick=()=>{PE=PE.filter(x=>x.id!==id);saveLocal(LS.PE,PE);sbDelete('personas',id);renderPersonas();cerrarConfirm();toast('Persona eliminada.');};
+  document.getElementById('btnConfirmOk').onclick=()=>{PE=PE.filter(x=>x.id!==id);saveLocal(LS.PE,PE);addDeleted('personas',id);sbDelete('personas',id);renderPersonas();cerrarConfirm();toast('Persona eliminada.');};
   document.getElementById('movConfirm').classList.add('active');
 }
 
@@ -2636,7 +2686,7 @@ function guardarSubarea(){
 function eliminarSubarea(id){
   SA=SA.filter(x=>x.id!==id);
   LC.filter(l=>l.subarea===id).forEach(l=>{l.subarea='';});
-  saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);sbDelete('subareas',id);renderOrgTree();toast('Subárea eliminada.');
+  saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);addDeleted('subareas',id);sbDelete('subareas',id);renderOrgTree();toast('Subárea eliminada.');
 }
 
 function abrirModalLocalizacion(){
@@ -2724,7 +2774,7 @@ function guardarLocalizacion(){
 function eliminarLoc(id){
   document.getElementById('confirmMsg').textContent='¿Eliminar esta localización? Se quitará de los programas que la usen.';
   document.getElementById('btnConfirmOk').onclick=()=>{
-    LC=LC.filter(x=>x.id!==id);saveLocal(LS.LC,LC);sbDelete('localizaciones',id);
+    LC=LC.filter(x=>x.id!==id);saveLocal(LS.LC,LC);addDeleted('localizaciones',id);sbDelete('localizaciones',id);
     PROG.forEach(p=>{p.localizaciones=(p.localizaciones||[]).filter(l=>l.locId!==id);});
     saveLocal(LS.P,PROG);renderOrgTree();cerrarConfirm();toast('Localización eliminada.');
   };
@@ -2769,7 +2819,7 @@ function guardarActividadBase(){
   }
   saveLocal(LS.AB,AB);cerrarMovActividad();renderCatalogos();
 }
-function eliminarActBase(id){AB=AB.filter(x=>x.id!==id);saveLocal(LS.AB,AB);sbDelete('actividades_base',id);renderCatalogos();toast('Actividad eliminada.');}
+function eliminarActBase(id){AB=AB.filter(x=>x.id!==id);saveLocal(LS.AB,AB);addDeleted('actividades_base',id);sbDelete('actividades_base',id);renderCatalogos();toast('Actividad eliminada.');}
 
 // ══════════════════════════════════════════════════════════════
 // TENDENCIA
@@ -3238,7 +3288,7 @@ function confirmarElim(id){
   const p=PROG.find(x=>x.id===id);if(!p)return;
   const fe=semDates(p.anio,p.semana);
   document.getElementById('confirmMsg').textContent=`¿Eliminar el programa "${SVCL[p.serv]}" — ${p.area} — ${fe.label}? Esta acción no se puede deshacer.`;
-  document.getElementById('btnConfirmOk').onclick=()=>{PROG=PROG.filter(x=>x.id!==id);saveLocal(LS.P,PROG);sbDelete('programas',id);aplicarFiltros();renderProgramasTab();cerrarConfirm();toast('Programa eliminado.');};
+  document.getElementById('btnConfirmOk').onclick=()=>{PROG=PROG.filter(x=>x.id!==id);saveLocal(LS.P,PROG);addDeleted('programas',id);sbDelete('programas',id);aplicarFiltros();renderProgramasTab();cerrarConfirm();toast('Programa eliminado.');};
   document.getElementById('movConfirm').classList.add('active');
 }
 function cerrarConfirm(){document.getElementById('movConfirm').classList.remove('active');}
