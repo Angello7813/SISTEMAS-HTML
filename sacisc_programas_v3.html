@@ -2000,14 +2000,15 @@ function abrirNuevoPrograma(){
   // Precargar y bloquear area AL FINAL para que no se sobreescriba
   const pAreaEl=document.getElementById('pArea');
   if(_AREA_LOGIN&&_AREA_LOGIN!=='TODOS'){
+    pAreaEl.disabled=false;
     pAreaEl.value=_AREA_LOGIN;
     pAreaEl.disabled=true;
-    poblarCabosM('');poblarMandosM(_AREA_LOGIN);
   } else {
     pAreaEl.value='';
     pAreaEl.disabled=false;
-    poblarCabosM('');poblarMandosM('');
   }
+  // Poblar subáreas, cabos y mandos según el área precargada
+  onAreaChange();
   renderLocTabla();renderActEdit();refrescarDatalistObs();
   document.getElementById('movPrograma').classList.add('active');
 }
