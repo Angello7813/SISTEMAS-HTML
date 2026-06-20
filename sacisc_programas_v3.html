@@ -1144,6 +1144,7 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
     <div class="fg g4" style="margin-bottom:16px;">
       <div class="field"><label>Servicio <span class="req">*</span></label><select id="pServ" onchange="onServChange()"><option value="">— Seleccionar —</option><option value="AV">🌿 Áreas Verdes</option><option value="DOM">🏢 Domésticos</option><option value="RB">🗑️ Recolección de Basura</option></select></div>
       <div class="field"><label>Área Usuaria <span class="req">*</span></label><select id="pArea" onchange="onAreaChange()"><option value="">— Seleccionar —</option><option value="SCAD">SCAD</option><option value="SCEP">SCEP</option><option value="SCUI">SCUI</option><option value="SCCO">SCCO</option></select></div>
+      <div class="field"><label>Subárea <span style="font-size:.72rem;color:var(--gray);">(opcional — para múltiples cabos por servicio)</span></label><select id="pSubarea" onchange="actualizarLocProgramador()"><option value="">— Sin subárea específica —</option></select></div>
       <div class="field"><label>Año <span class="req">*</span></label><select id="pAnio" onchange="poblarSemanasM(this.value)"><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option></select></div>
       <div class="field"><label>Semana <span class="req">*</span></label><select id="pSemana"><option value="">— Seleccionar —</option><option value="1">Sem. 1 — 29/12/2025 al 02/01/2026</option><option value="2">Sem. 2 — 05/01/2026 al 09/01/2026</option><option value="3">Sem. 3 — 12/01/2026 al 16/01/2026</option><option value="4">Sem. 4 — 19/01/2026 al 23/01/2026</option><option value="5">Sem. 5 — 26/01/2026 al 30/01/2026</option><option value="6">Sem. 6 — 02/02/2026 al 06/02/2026</option><option value="7">Sem. 7 — 09/02/2026 al 13/02/2026</option><option value="8">Sem. 8 — 16/02/2026 al 20/02/2026</option><option value="9">Sem. 9 — 23/02/2026 al 27/02/2026</option><option value="10">Sem. 10 — 02/03/2026 al 06/03/2026</option><option value="11">Sem. 11 — 09/03/2026 al 13/03/2026</option><option value="12">Sem. 12 — 16/03/2026 al 20/03/2026</option><option value="13">Sem. 13 — 23/03/2026 al 27/03/2026</option><option value="14">Sem. 14 — 30/03/2026 al 03/04/2026</option><option value="15">Sem. 15 — 06/04/2026 al 10/04/2026</option><option value="16">Sem. 16 — 13/04/2026 al 17/04/2026</option><option value="17">Sem. 17 — 20/04/2026 al 24/04/2026</option><option value="18">Sem. 18 — 27/04/2026 al 01/05/2026</option><option value="19">Sem. 19 — 04/05/2026 al 08/05/2026</option><option value="20">Sem. 20 — 11/05/2026 al 15/05/2026</option><option value="21">Sem. 21 — 18/05/2026 al 22/05/2026</option><option value="22">Sem. 22 — 25/05/2026 al 29/05/2026</option><option value="23">Sem. 23 — 01/06/2026 al 05/06/2026</option><option value="24">Sem. 24 — 08/06/2026 al 12/06/2026</option><option value="25">Sem. 25 — 15/06/2026 al 19/06/2026</option><option value="26">Sem. 26 — 22/06/2026 al 26/06/2026</option><option value="27">Sem. 27 — 29/06/2026 al 03/07/2026</option><option value="28">Sem. 28 — 06/07/2026 al 10/07/2026</option><option value="29">Sem. 29 — 13/07/2026 al 17/07/2026</option><option value="30">Sem. 30 — 20/07/2026 al 24/07/2026</option><option value="31">Sem. 31 — 27/07/2026 al 31/07/2026</option><option value="32">Sem. 32 — 03/08/2026 al 07/08/2026</option><option value="33">Sem. 33 — 10/08/2026 al 14/08/2026</option><option value="34">Sem. 34 — 17/08/2026 al 21/08/2026</option><option value="35">Sem. 35 — 24/08/2026 al 28/08/2026</option><option value="36">Sem. 36 — 31/08/2026 al 04/09/2026</option><option value="37">Sem. 37 — 07/09/2026 al 11/09/2026</option><option value="38">Sem. 38 — 14/09/2026 al 18/09/2026</option><option value="39">Sem. 39 — 21/09/2026 al 25/09/2026</option><option value="40">Sem. 40 — 28/09/2026 al 02/10/2026</option><option value="41">Sem. 41 — 05/10/2026 al 09/10/2026</option><option value="42">Sem. 42 — 12/10/2026 al 16/10/2026</option><option value="43">Sem. 43 — 19/10/2026 al 23/10/2026</option><option value="44">Sem. 44 — 26/10/2026 al 30/10/2026</option><option value="45">Sem. 45 — 02/11/2026 al 06/11/2026</option><option value="46">Sem. 46 — 09/11/2026 al 13/11/2026</option><option value="47">Sem. 47 — 16/11/2026 al 20/11/2026</option><option value="48">Sem. 48 — 23/11/2026 al 27/11/2026</option><option value="49">Sem. 49 — 30/11/2026 al 04/12/2026</option><option value="50">Sem. 50 — 07/12/2026 al 11/12/2026</option><option value="51">Sem. 51 — 14/12/2026 al 18/12/2026</option><option value="52">Sem. 52 — 21/12/2026 al 25/12/2026</option><option value="53">Sem. 53 — 28/12/2026 al 01/01/2027</option></select></div>
       <div class="field s4"><label>Observaciones generales</label><input type="text" id="pObs" list="dlObs" placeholder="Observaciones del programa..." autocomplete="off"><datalist id="dlObs"><option value="LIMPIEZA GENERAL DE OFICINAS"></option><option value="RECOLECCION SEMANAL DE RESIDUOS"></option></datalist></div>
@@ -1172,8 +1173,12 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gm);margin-bottom:10px;">+ Agregar localización al programa</div>
         <div class="fg g4">
           <div class="field">
+            <label>Subárea <span style="font-size:.72rem;color:var(--gray);">— filtra las localizaciones</span></label>
+            <select id="lpSubarea" onchange="filtrarLocsPorSubarea()"><option value="">— Todas las subáreas —</option></select>
+          </div>
+          <div class="field">
             <label>Localización <span class="req">*</span></label>
-            <select id="lpLoc"><option value="">— Seleccionar localización —</option><option value="mqbyffpctvd97">Administración del Activo (FACTORIA AECP)</option><option value="mqbyltsqn1wei">Recursos Humanos (FACTORIA AECP)</option><option value="mqbyn8cob55oh">TOVENBU (FACTORIA AECP)</option></select>
+            <select id="lpLoc"><option value="">— Seleccionar localización —</option></select>
           </div>
           <div class="field">
             <label>Día programado <span class="req">*</span></label>
@@ -1983,6 +1988,7 @@ function abrirNuevoPrograma(){
   document.getElementById('mpTit').textContent='Nuevo Programa Semanal';
   // Limpiar primero
   document.getElementById('pServ').value='';
+  if(document.getElementById('pSubarea'))document.getElementById('pSubarea').value='';
   document.getElementById('pAnio').value=AÑO;poblarSemanasM(AÑO);
   setTimeout(()=>{document.getElementById('pSemana').value=SEM;actualizarLocProgramador();},80);
   document.getElementById('pObs').value='';
@@ -2016,6 +2022,11 @@ function editarPrograma(id){
   document.getElementById('mpTit').textContent='Editar Programa Semanal';
   document.getElementById('pServ').value=p.serv;
   document.getElementById('pArea').value=p.area;
+  onAreaChange();
+  setTimeout(()=>{
+    const pSubarea=document.getElementById('pSubarea');
+    if(pSubarea&&p.subareaId)pSubarea.value=p.subareaId;
+  },50);
   document.getElementById('pAnio').value=p.anio;poblarSemanasM(p.anio);
   setTimeout(()=>{document.getElementById('pSemana').value=p.semana;actualizarLocProgramador();},120);
   document.getElementById('pObs').value=p.obs||'';
@@ -2070,12 +2081,20 @@ function actualizarLocProgramador(){
   wrap.style.display='block';
   // Show/hide doméstico field
   document.getElementById('lpDomWrap').style.display=sv==='DOM'?'block':'none';
-  // Populate loc selector
-  const lFilt=LC.filter(l=>l.area===ar&&(l.servs||[]).includes(sv));
-  const sel=document.getElementById('lpLoc');
-  sel.innerHTML='<option value="">— Seleccionar localización —</option>';
-  lFilt.forEach(l=>{const sub=SA.find(s=>s.id===l.subarea);const o=document.createElement('option');o.value=l.id;o.textContent=l.nombre+(sub?' ('+sub.nombre+')':'');sel.appendChild(o);});
-  if(!lFilt.length) sel.innerHTML='<option value="">Sin localizaciones para este servicio/área</option>';
+  // Poblar selector de subáreas para filtrar
+  const lpSubarea=document.getElementById('lpSubarea');
+  if(lpSubarea){
+    const prevSub=lpSubarea.value;
+    lpSubarea.innerHTML='<option value="">— Todas las subáreas —</option>';
+    SA.filter(s=>!ar||s.area===ar).forEach(s=>{
+      // Solo mostrar subáreas que tienen localizaciones para este servicio
+      const tieneL=LC.some(l=>l.subarea===s.id&&l.area===ar&&(l.servs||[]).includes(sv));
+      if(tieneL){const o=document.createElement('option');o.value=s.id;o.textContent=s.nombre;lpSubarea.appendChild(o);}
+    });
+    if(prevSub)lpSubarea.value=prevSub;
+  }
+  // Populate loc selector — filtrar por subárea seleccionada si existe
+  filtrarLocsPorSubarea();
   // Populate days with actual dates
   const dias=document.getElementById('lpDia');
   dias.innerHTML='<option value="">— Seleccionar día —</option>';
@@ -2087,6 +2106,35 @@ function actualizarLocProgramador(){
   renderLocTabla();
   refrescarDatalistDom();
 }
+function filtrarLocsPorSubarea(){
+  const sv=document.getElementById('pServ').value;
+  const ar=document.getElementById('pArea').value;
+  const lpSubarea=document.getElementById('lpSubarea');
+  const subFilt=lpSubarea?lpSubarea.value:'';
+  const sel=document.getElementById('lpLoc');
+  if(!sel)return;
+  // Filtrar localizaciones por área + servicio + subárea (si hay)
+  const lFilt=LC.filter(l=>{
+    if(l.area!==ar)return false;
+    if(!(l.servs||[]).includes(sv))return false;
+    if(subFilt&&l.subarea!==subFilt)return false;
+    return true;
+  });
+  sel.innerHTML='<option value="">— Seleccionar localización —</option>';
+  if(!lFilt.length){
+    sel.innerHTML='<option value="">Sin localizaciones para este filtro</option>';
+    return;
+  }
+  lFilt.forEach(l=>{
+    const sub=SA.find(s=>s.id===l.subarea);
+    const o=document.createElement('option');
+    o.value=l.id;
+    // Si no hay subárea filtrada, mostrar la subárea entre paréntesis para contexto
+    o.textContent=l.nombre+((!subFilt&&sub)?' ('+sub.nombre+')':'');
+    sel.appendChild(o);
+  });
+}
+
 function refrescarDatalistDom(){
   const nombres=new Set();
   _locsTemp.forEach(l=>{if(l.domestico&&l.domestico.trim())nombres.add(l.domestico.trim());});
@@ -2241,13 +2289,26 @@ function guardarPrograma(){
   const serv=document.getElementById('pServ').value,area=document.getElementById('pArea').value;
   const anio=parseInt(document.getElementById('pAnio').value),semana=parseInt(document.getElementById('pSemana').value);
   const caboId=document.getElementById('pCabo').value,mandoId=document.getElementById('pMando').value;
+  const subareaId=document.getElementById('pSubarea')?document.getElementById('pSubarea').value:'';
+  const subareaNom=subareaId?(SA.find(s=>s.id===subareaId)||{}).nombre||'':'';
   if(!serv||!area||!anio||!semana){toast('⚠️ Complete Servicio, Área, Año y Semana.');return;}
-  if(!caboId||!mandoId){toast('⚠️ Asigne Cabo y Mando Medio (ambos obligatorios).');return;}
+  if(!caboId||!mandoId){toast('⚠️ Asigne Responsable y Jefe de Área (ambos obligatorios).');return;}
   if(_locsTemp.length===0){toast('⚠️ Agregue al menos una localización al programa.');return;}
-  const locsList=_locsTemp;
   const ei=document.getElementById('editId').value;
+  // Validar duplicado considerando subárea — permitir múltiples cabos si tienen subáreas distintas
+  if(!ei){
+    const dup=PROG.find(p=>p.serv===serv&&p.area===area&&p.anio===anio&&p.semana===semana
+      &&(p.subareaId||'')===(subareaId||'')&&!p.eliminado);
+    if(dup){
+      const nomSub=subareaId?(' en subárea '+subareaNom):'';
+      toast('⚠️ Ya existe un programa de '+SVCL[serv]+nomSub+' para esta semana. Use una subárea diferente para el segundo cabo.');
+      return;
+    }
+  }
+  const locsList=_locsTemp;
   const obj={
     id:ei||uid(),serv,area,anio,semana,caboId,mandoId,
+    subareaId:subareaId||'',subareaNom:subareaNom||'',
     obs:document.getElementById('pObs').value.trim(),
     localizaciones:locsList,actividades:_actsTemp,
     ejecucion:ei?((PROG.find(p=>p.id===ei)||{}).ejecucion||{}):{},
@@ -2257,7 +2318,7 @@ function guardarPrograma(){
   };
   if(ei){const idx=PROG.findIndex(p=>p.id===ei);if(idx>=0)PROG[idx]=obj;else PROG.push(obj);}
   else PROG.push(obj);
-  saveLocal(LS.P,PROG);cerrarMovPrograma();aplicarFiltros();renderProgramasTab();renderTendencia();
+  save(LS.P,PROG);cerrarMovPrograma();aplicarFiltros();renderProgramasTab();renderTendencia();
   toast('✅ Programa guardado correctamente.');
 }
 
@@ -3012,7 +3073,7 @@ function generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs,locRows,actRows){
     +'</div></div>'
     +'<div class="sec"><div class="sect">Datos del Programa</div>'
     +'<table><tbody>'
-    +'<tr><td style="width:50%;"><strong>Area Usuaria:</strong> '+p.area+'</td><td><strong>Servicio:</strong> '+servLabel+'</td></tr>'
+    +'<tr><td style="width:50%;"><strong>Area Usuaria:</strong> '+p.area+(p.subareaNom?' &mdash; Subárea: <strong>'+p.subareaNom+'</strong>':'')+'</td><td><strong>Servicio:</strong> '+servLabel+'</td></tr>'
     +'<tr><td><strong>'+caboLabel+':</strong> '+cabNom+'</td><td><strong>Jefe de Area:</strong> '+mndNom+'</td></tr>'
     +'<tr><td colspan="2"><strong>Observaciones:</strong> '+(p.obs||'Ninguna')+'</td></tr>'
     +'</tbody></table></div>'
