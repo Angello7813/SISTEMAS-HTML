@@ -1543,93 +1543,96 @@ let PROG=loadLocal(LS.P), AB=loadLocal(LS.AB), SA=loadLocal(LS.SA), LC=loadLocal
 let _sbListo=false;
 
 // ── Convertir snake_case (Supabase) ↔ camelCase (app) ──
-function prog2sb(p){return{id:p.id,serv:p.serv,area:p.area,anio:p.anio,semana:p.semana,cabo_id:p.caboId,mando_id:p.mandoId,obs:p.obs||'',localizaciones:p.localizaciones||[],actividades:p.actividades||[],ejecucion:p.ejecucion||{},estado:p.estado||'PROGRAMADO',cierre_data:p.cierreData||null,updated_at:p.updatedAt||new Date().toISOString()};}
+function prog2sb(p){return{id:p.id,serv:p.serv,area:p.area,anio:p.anio,semana:p.semana,cabo_id:p.caboId,mando_id:p.mandoId,obs:p.obs||'',localizaciones:p.localizaciones||[],actividades:p.actividades||[],ejecucion:p.ejecucion||{},estado:p.estado||'PROGRAMADO',cierre_data:p.cierreData||null};}
 function sb2prog(r){return{id:r.id,serv:r.serv,area:r.area,anio:r.anio,semana:r.semana,caboId:r.cabo_id,mandoId:r.mando_id,obs:r.obs||'',localizaciones:r.localizaciones||[],actividades:r.actividades||[],ejecucion:r.ejecucion||{},estado:r.estado||'PROGRAMADO',cierreData:r.cierre_data||null,updatedAt:r.updated_at||null};}
-function per2sb(p){return{id:p.id,nombre:p.nombre,cargo:p.cargo,rol:p.rol,area:p.area||'',ficha:p.ficha||'',updated_at:p.updatedAt||new Date().toISOString()};}
-function sub2sb(s){return{id:s.id,area:s.area,nombre:s.nombre,descripcion:s.desc||'',updated_at:s.updatedAt||new Date().toISOString()};}
-function loc2sb(l){return{id:l.id,area:l.area,subarea:l.subarea||'',nombre:l.nombre,tipo:l.tipo,servs:l.servs||[],descripcion:l.desc||'',updated_at:l.updatedAt||new Date().toISOString()};}
+function per2sb(p){return{id:p.id,nombre:p.nombre,cargo:p.cargo,rol:p.rol,area:p.area||'',ficha:p.ficha||''};}
+function sub2sb(s){return{id:s.id,area:s.area,nombre:s.nombre,descripcion:s.desc||''};}
+function loc2sb(l){return{id:l.id,area:l.area,subarea:l.subarea||'',nombre:l.nombre,tipo:l.tipo,servs:l.servs||[],descripcion:l.desc||''};}
 function sb2loc(r){return{id:r.id,area:r.area,subarea:r.subarea||'',nombre:r.nombre,tipo:r.tipo,servs:r.servs||[],desc:r.descripcion||''};}
-function ab2sb(a){return{id:a.id,nombre:a.nombre,serv:a.serv,descripcion:a.desc||'',updated_at:a.updatedAt||new Date().toISOString()};}
+function ab2sb(a){return{id:a.id,nombre:a.nombre,serv:a.serv,descripcion:a.desc||''};}
 function sb2ab(r){return{id:r.id,nombre:r.nombre,serv:r.serv,desc:r.descripcion||''};}
 
-// ── save() reemplaza localStorage + sincroniza Supabase ──
+// ── Cola de pendientes — IDs que no se pudieron subir a Supabase ──
+const LS_PEND='s3_pendientes';
+function getPendientes(){try{return JSON.parse(localStorage.getItem(LS_PEND)||'{}');}catch{return {};}}
+function addPendiente(tabla,id){const p=getPendientes();if(!p[tabla])p[tabla]=[];if(!p[tabla].includes(id))p[tabla].push(id);localStorage.setItem(LS_PEND,JSON.stringify(p));}
+function clearPendientes(tabla){const p=getPendientes();delete p[tabla];localStorage.setItem(LS_PEND,JSON.stringify(p));}
+
+// ── save() — localStorage primero, luego Supabase ──
 async function save(key,arr){
-  // Marcar timestamp de modificación en cada registro
-  const now=new Date().toISOString();
-  arr.forEach(r=>{r.updatedAt=now;});
   saveLocal(key,arr);
   if(!_sbListo)return;
-  const tabla=LS_TBL[key];if(!tabla)return;
-  if(!arr||!arr.length)return;
+  const tabla=LS_TBL[key];if(!tabla||!arr||!arr.length)return;
   let mapped=arr;
   if(key===LS.P)mapped=arr.map(prog2sb);
   else if(key===LS.PE)mapped=arr.map(per2sb);
   else if(key===LS.SA)mapped=arr.map(sub2sb);
   else if(key===LS.LC)mapped=arr.map(loc2sb);
   else if(key===LS.AB)mapped=arr.map(ab2sb);
-  try{await sbUpsert(tabla,mapped);}catch(e){console.warn('save error',e);}
+  const result=await sbUpsert(tabla,mapped);
+  if(!result){
+    // Supabase falló — agregar todos a la cola de pendientes
+    arr.forEach(r=>addPendiente(tabla,r.id));
+    mostrarSyncBanner('⚠️ Error guardando en servidor — se reintentará al sincronizar',false);
+    setTimeout(()=>ocultarSyncBanner(),4000);
+  }
 }
 
 // ── Carga inicial desde Supabase ──
 async function cargarDesdeSB(){
-  mostrarSyncBanner('Conectando a la base de datos...',true);
+  mostrarSyncBanner('⏳ Conectando a la base de datos...',true);
   try{
+    // PASO 1: Subir TODO lo que está en localStorage a Supabase
+    // localStorage es la fuente de verdad — lo que el usuario capturó siempre prevalece
+    const uploads=[];
+    if(PROG.length)uploads.push(sbUpsert('programas',PROG.map(prog2sb)));
+    if(PE.length)uploads.push(sbUpsert('personas',PE.map(per2sb)));
+    if(SA.length)uploads.push(sbUpsert('subareas',SA.map(sub2sb)));
+    if(LC.length)uploads.push(sbUpsert('localizaciones',LC.map(loc2sb)));
+    if(AB.length)uploads.push(sbUpsert('actividades_base',AB.map(ab2sb)));
+    if(uploads.length)await Promise.all(uploads);
+
+    // PASO 2: Descargar desde Supabase para traer datos de otros usuarios
     const [progs,pers,subs,locs,acts]=await Promise.all([
       sbGet('programas'),sbGet('personas'),sbGet('subareas'),sbGet('localizaciones'),sbGet('actividades_base')
     ]);
 
-    // Índice de Supabase por ID
-    const sbMap={
-      prog:Object.fromEntries(progs.map(r=>[r.id,r])),
-      per:Object.fromEntries(pers.map(r=>[r.id,r])),
-      sa:Object.fromEntries(subs.map(r=>[r.id,r])),
-      lc:Object.fromEntries(locs.map(r=>[r.id,r])),
-      ab:Object.fromEntries(acts.map(r=>[r.id,r]))
+    // PASO 3: Merge — IDs locales tienen prioridad, agregar solo los que vienen de SB y no existen local
+    const localIds={
+      prog:new Set(PROG.map(r=>r.id)),
+      per:new Set(PE.map(r=>r.id)),
+      sa:new Set(SA.map(r=>r.id)),
+      lc:new Set(LC.map(r=>r.id)),
+      ab:new Set(AB.map(r=>r.id))
     };
 
-    // Para cada registro local: si no existe en SB o local es más nuevo → reenviar
-    function masNuevo(local,sbRec){
-      if(!sbRec)return true; // No existe en SB → enviar
-      const tLocal=local.updatedAt?new Date(local.updatedAt).getTime():0;
-      const tSB=sbRec.updated_at?new Date(sbRec.updated_at).getTime():0;
-      return tLocal>tSB;
-    }
+    // Agregar registros de Supabase que no existen en local (de otros usuarios/sesiones)
+    const nuevosProgs=progs.filter(r=>!localIds.prog.has(r.id)).map(sb2prog);
+    const nuevosPer=pers.filter(r=>!localIds.per.has(r.id)).map(r=>({id:r.id,nombre:r.nombre,cargo:r.cargo,rol:r.rol,area:r.area||'',ficha:r.ficha||''}));
+    const nuevosSA=subs.filter(r=>!localIds.sa.has(r.id)).map(r=>({id:r.id,area:r.area,nombre:r.nombre,desc:r.descripcion||''}));
+    const nuevosLC=locs.filter(r=>!localIds.lc.has(r.id)).map(sb2loc);
+    const nuevosAB=acts.filter(r=>!localIds.ab.has(r.id)).map(sb2ab);
 
-    const upProg=PROG.filter(r=>masNuevo(r,sbMap.prog[r.id]));
-    const upPer=PE.filter(r=>masNuevo(r,sbMap.per[r.id]));
-    const upSA=SA.filter(r=>masNuevo(r,sbMap.sa[r.id]));
-    const upLC=LC.filter(r=>masNuevo(r,sbMap.lc[r.id]));
-    const upAB=AB.filter(r=>masNuevo(r,sbMap.ab[r.id]));
-
-    // Reenviar los más nuevos locales a Supabase
-    if(upProg.length)await sbUpsert('programas',upProg.map(prog2sb));
-    if(upPer.length)await sbUpsert('personas',upPer.map(per2sb));
-    if(upSA.length)await sbUpsert('subareas',upSA.map(sub2sb));
-    if(upLC.length)await sbUpsert('localizaciones',upLC.map(loc2sb));
-    if(upAB.length)await sbUpsert('actividades_base',upAB.map(ab2sb));
-
-    // Descargar desde Supabase (ya tiene la versión más reciente de todo)
-    const [progs2,pers2,subs2,locs2,acts2]=await Promise.all([
-      sbGet('programas'),sbGet('personas'),sbGet('subareas'),sbGet('localizaciones'),sbGet('actividades_base')
-    ]);
-
-    PROG=progs2.map(sb2prog);
-    PE=pers2.map(r=>({id:r.id,nombre:r.nombre,cargo:r.cargo,rol:r.rol,area:r.area||'',ficha:r.ficha||'',updatedAt:r.updated_at||null}));
-    SA=subs2.map(r=>({id:r.id,area:r.area,nombre:r.nombre,desc:r.descripcion||'',updatedAt:r.updated_at||null}));
-    LC=locs2.map(sb2loc);
-    AB=acts2.map(sb2ab);
+    // Combinar: local primero + nuevos de SB
+    PROG=[...PROG,...nuevosProgs];
+    PE=[...PE,...nuevosPer];
+    SA=[...SA,...nuevosSA];
+    LC=[...LC,...nuevosLC];
+    AB=[...AB,...nuevosAB];
 
     saveLocal(LS.P,PROG);saveLocal(LS.PE,PE);saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);saveLocal(LS.AB,AB);
+    clearPendientes('programas');clearPendientes('personas');clearPendientes('subareas');
+    clearPendientes('localizaciones');clearPendientes('actividades_base');
     _sbListo=true;
 
-    const total=upProg.length+upPer.length+upSA.length+upLC.length+upAB.length;
-    mostrarSyncBanner(total>0?`✅ Sincronizado — ${total} cambio(s) local(es) enviado(s)`:'✅ Conectado — todo sincronizado',false);
+    const nuevos=nuevosProgs.length+nuevosPer.length+nuevosSA.length+nuevosLC.length+nuevosAB.length;
+    mostrarSyncBanner(nuevos>0?`✅ Sincronizado — ${nuevos} registro(s) nuevo(s) de otros usuarios`:'✅ Sincronizado — todo al día',false);
     setTimeout(()=>ocultarSyncBanner(),3000);
     aplicarFiltros();renderProgramasTab();renderCatalogos();renderOrgTree();renderPersonas();renderTendencia();cargarProgramasEjec();
 
   }catch(e){
     console.error('cargarDesdeSB',e);
-    mostrarSyncBanner('⚠️ Sin conexión — modo local',false);
+    mostrarSyncBanner('⚠️ Sin conexión — trabajando en modo local',false);
     _sbListo=false;
   }
 }
