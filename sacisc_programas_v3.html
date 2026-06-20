@@ -1543,17 +1543,20 @@ let PROG=loadLocal(LS.P), AB=loadLocal(LS.AB), SA=loadLocal(LS.SA), LC=loadLocal
 let _sbListo=false;
 
 // ── Convertir snake_case (Supabase) ↔ camelCase (app) ──
-function prog2sb(p){return{id:p.id,serv:p.serv,area:p.area,anio:p.anio,semana:p.semana,cabo_id:p.caboId,mando_id:p.mandoId,obs:p.obs||'',localizaciones:p.localizaciones||[],actividades:p.actividades||[],ejecucion:p.ejecucion||{},estado:p.estado||'PROGRAMADO',cierre_data:p.cierreData||null};}
-function sb2prog(r){return{id:r.id,serv:r.serv,area:r.area,anio:r.anio,semana:r.semana,caboId:r.cabo_id,mandoId:r.mando_id,obs:r.obs||'',localizaciones:r.localizaciones||[],actividades:r.actividades||[],ejecucion:r.ejecucion||{},estado:r.estado||'PROGRAMADO',cierreData:r.cierre_data||null};}
-function per2sb(p){return{id:p.id,nombre:p.nombre,cargo:p.cargo,rol:p.rol,area:p.area||'',ficha:p.ficha||''};}
-function sub2sb(s){return{id:s.id,area:s.area,nombre:s.nombre,descripcion:s.desc||''};}
-function loc2sb(l){return{id:l.id,area:l.area,subarea:l.subarea||'',nombre:l.nombre,tipo:l.tipo,servs:l.servs||[],descripcion:l.desc||''};}
+function prog2sb(p){return{id:p.id,serv:p.serv,area:p.area,anio:p.anio,semana:p.semana,cabo_id:p.caboId,mando_id:p.mandoId,obs:p.obs||'',localizaciones:p.localizaciones||[],actividades:p.actividades||[],ejecucion:p.ejecucion||{},estado:p.estado||'PROGRAMADO',cierre_data:p.cierreData||null,updated_at:p.updatedAt||new Date().toISOString()};}
+function sb2prog(r){return{id:r.id,serv:r.serv,area:r.area,anio:r.anio,semana:r.semana,caboId:r.cabo_id,mandoId:r.mando_id,obs:r.obs||'',localizaciones:r.localizaciones||[],actividades:r.actividades||[],ejecucion:r.ejecucion||{},estado:r.estado||'PROGRAMADO',cierreData:r.cierre_data||null,updatedAt:r.updated_at||null};}
+function per2sb(p){return{id:p.id,nombre:p.nombre,cargo:p.cargo,rol:p.rol,area:p.area||'',ficha:p.ficha||'',updated_at:p.updatedAt||new Date().toISOString()};}
+function sub2sb(s){return{id:s.id,area:s.area,nombre:s.nombre,descripcion:s.desc||'',updated_at:s.updatedAt||new Date().toISOString()};}
+function loc2sb(l){return{id:l.id,area:l.area,subarea:l.subarea||'',nombre:l.nombre,tipo:l.tipo,servs:l.servs||[],descripcion:l.desc||'',updated_at:l.updatedAt||new Date().toISOString()};}
 function sb2loc(r){return{id:r.id,area:r.area,subarea:r.subarea||'',nombre:r.nombre,tipo:r.tipo,servs:r.servs||[],desc:r.descripcion||''};}
-function ab2sb(a){return{id:a.id,nombre:a.nombre,serv:a.serv,descripcion:a.desc||''};}
+function ab2sb(a){return{id:a.id,nombre:a.nombre,serv:a.serv,descripcion:a.desc||'',updated_at:a.updatedAt||new Date().toISOString()};}
 function sb2ab(r){return{id:r.id,nombre:r.nombre,serv:r.serv,desc:r.descripcion||''};}
 
 // ── save() reemplaza localStorage + sincroniza Supabase ──
 async function save(key,arr){
+  // Marcar timestamp de modificación en cada registro
+  const now=new Date().toISOString();
+  arr.forEach(r=>{r.updatedAt=now;});
   saveLocal(key,arr);
   if(!_sbListo)return;
   const tabla=LS_TBL[key];if(!tabla)return;
@@ -1575,52 +1578,53 @@ async function cargarDesdeSB(){
       sbGet('programas'),sbGet('personas'),sbGet('subareas'),sbGet('localizaciones'),sbGet('actividades_base')
     ]);
 
-    // IDs que ya están en Supabase
-    const sbIds={
-      prog:new Set(progs.map(r=>r.id)),
-      per:new Set(pers.map(r=>r.id)),
-      sa:new Set(subs.map(r=>r.id)),
-      lc:new Set(locs.map(r=>r.id)),
-      ab:new Set(acts.map(r=>r.id))
+    // Índice de Supabase por ID
+    const sbMap={
+      prog:Object.fromEntries(progs.map(r=>[r.id,r])),
+      per:Object.fromEntries(pers.map(r=>[r.id,r])),
+      sa:Object.fromEntries(subs.map(r=>[r.id,r])),
+      lc:Object.fromEntries(locs.map(r=>[r.id,r])),
+      ab:Object.fromEntries(acts.map(r=>[r.id,r]))
     };
 
-    // Registros locales que AÚN NO llegaron a Supabase — reenviarlos
-    const pendProg=PROG.filter(r=>!sbIds.prog.has(r.id));
-    const pendPer=PE.filter(r=>!sbIds.per.has(r.id));
-    const pendSA=SA.filter(r=>!sbIds.sa.has(r.id));
-    const pendLC=LC.filter(r=>!sbIds.lc.has(r.id));
-    const pendAB=AB.filter(r=>!sbIds.ab.has(r.id));
+    // Para cada registro local: si no existe en SB o local es más nuevo → reenviar
+    function masNuevo(local,sbRec){
+      if(!sbRec)return true; // No existe en SB → enviar
+      const tLocal=local.updatedAt?new Date(local.updatedAt).getTime():0;
+      const tSB=sbRec.updated_at?new Date(sbRec.updated_at).getTime():0;
+      return tLocal>tSB;
+    }
 
-    // Reenviar pendientes a Supabase
-    if(pendProg.length)await sbUpsert('programas',pendProg.map(prog2sb));
-    if(pendPer.length)await sbUpsert('personas',pendPer.map(per2sb));
-    if(pendSA.length)await sbUpsert('subareas',pendSA.map(sub2sb));
-    if(pendLC.length)await sbUpsert('localizaciones',pendLC.map(loc2sb));
-    if(pendAB.length)await sbUpsert('actividades_base',pendAB.map(ab2sb));
+    const upProg=PROG.filter(r=>masNuevo(r,sbMap.prog[r.id]));
+    const upPer=PE.filter(r=>masNuevo(r,sbMap.per[r.id]));
+    const upSA=SA.filter(r=>masNuevo(r,sbMap.sa[r.id]));
+    const upLC=LC.filter(r=>masNuevo(r,sbMap.lc[r.id]));
+    const upAB=AB.filter(r=>masNuevo(r,sbMap.ab[r.id]));
 
-    // Ahora sí cargar desde Supabase (ya tiene todo)
+    // Reenviar los más nuevos locales a Supabase
+    if(upProg.length)await sbUpsert('programas',upProg.map(prog2sb));
+    if(upPer.length)await sbUpsert('personas',upPer.map(per2sb));
+    if(upSA.length)await sbUpsert('subareas',upSA.map(sub2sb));
+    if(upLC.length)await sbUpsert('localizaciones',upLC.map(loc2sb));
+    if(upAB.length)await sbUpsert('actividades_base',upAB.map(ab2sb));
+
+    // Descargar desde Supabase (ya tiene la versión más reciente de todo)
     const [progs2,pers2,subs2,locs2,acts2]=await Promise.all([
       sbGet('programas'),sbGet('personas'),sbGet('subareas'),sbGet('localizaciones'),sbGet('actividades_base')
     ]);
 
     PROG=progs2.map(sb2prog);
-    PE=pers2.map(r=>({id:r.id,nombre:r.nombre,cargo:r.cargo,rol:r.rol,area:r.area||'',ficha:r.ficha||''}));
-    SA=subs2.map(r=>({id:r.id,area:r.area,nombre:r.nombre,desc:r.descripcion||''}));
+    PE=pers2.map(r=>({id:r.id,nombre:r.nombre,cargo:r.cargo,rol:r.rol,area:r.area||'',ficha:r.ficha||'',updatedAt:r.updated_at||null}));
+    SA=subs2.map(r=>({id:r.id,area:r.area,nombre:r.nombre,desc:r.descripcion||'',updatedAt:r.updated_at||null}));
     LC=locs2.map(sb2loc);
     AB=acts2.map(sb2ab);
 
     saveLocal(LS.P,PROG);saveLocal(LS.PE,PE);saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);saveLocal(LS.AB,AB);
     _sbListo=true;
 
-    const total=pendProg.length+pendPer.length+pendSA.length+pendLC.length+pendAB.length;
-    if(total>0){
-      mostrarSyncBanner(`✅ Sincronizado — ${total} registro(s) pendiente(s) enviado(s)`,false);
-    } else {
-      mostrarSyncBanner('✅ Conectado — datos sincronizados',false);
-    }
+    const total=upProg.length+upPer.length+upSA.length+upLC.length+upAB.length;
+    mostrarSyncBanner(total>0?`✅ Sincronizado — ${total} cambio(s) local(es) enviado(s)`:'✅ Conectado — todo sincronizado',false);
     setTimeout(()=>ocultarSyncBanner(),3000);
-
-    // Refrescar UI
     aplicarFiltros();renderProgramasTab();renderCatalogos();renderOrgTree();renderPersonas();renderTendencia();cargarProgramasEjec();
 
   }catch(e){
