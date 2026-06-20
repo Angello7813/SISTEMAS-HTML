@@ -391,8 +391,6 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
           <div class="pck"><div class="pkv">24</div><div class="pkl">Semana</div></div>
         </div>
         <div class="pc-resp">
-          <div class="pc-rrow"><div class="av av-av" style="width:24px;height:24px;font-size:.68rem;">AW</div><div class="pc-rname">ARTURO WONG RODRIGUEZ</div><div class="pc-rrole">Cabo AV</div></div>
-          <div class="pc-rrow"><div class="av av-m" style="width:24px;height:24px;font-size:.68rem;">JE</div><div class="pc-rname">JONATAN ERIC REYES GOMEZ</div><div class="pc-rrole">Mando Medio</div></div>
         </div>
       </div>
       <div class="pc-ft">
@@ -425,8 +423,6 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
           <div class="pck"><div class="pkv">24</div><div class="pkl">Semana</div></div>
         </div>
         <div class="pc-resp">
-          <div class="pc-rrow"><div class="av av-dom" style="width:24px;height:24px;font-size:.68rem;">YB</div><div class="pc-rname">YESENIA BONILLA PINEDA</div><div class="pc-rrole">Cabo DOM</div></div>
-          <div class="pc-rrow"><div class="av av-m" style="width:24px;height:24px;font-size:.68rem;">JE</div><div class="pc-rname">JONATAN ERIC REYES GOMEZ</div><div class="pc-rrole">Mando Medio</div></div>
         </div>
       </div>
       <div class="pc-ft">
@@ -459,8 +455,6 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
           <div class="pck"><div class="pkv">24</div><div class="pkl">Semana</div></div>
         </div>
         <div class="pc-resp">
-          <div class="pc-rrow"><div class="av av-dom" style="width:24px;height:24px;font-size:.68rem;">AW</div><div class="pc-rname">ARTURO WONG RODRIGUEZ</div><div class="pc-rrole">Cabo DOM</div></div>
-          <div class="pc-rrow"><div class="av av-m" style="width:24px;height:24px;font-size:.68rem;">JE</div><div class="pc-rname">JONATAN ERIC REYES GOMEZ</div><div class="pc-rrole">Mando Medio</div></div>
         </div>
       </div>
       <div class="pc-ft">
@@ -1598,7 +1592,7 @@ function ocultarSyncBanner(){
 }
 
 // ── Eliminar de Supabase cuando se borra un registro ──
-async function sbEliminar(tabla,id){
+async function sbDelete(tabla,id){
   if(!_sbListo)return;
   try{await sbDelete(tabla,id);}catch(e){}
 }
@@ -1669,14 +1663,14 @@ function initDefaults(){
       {id:uid(),nombre:'Recolección de residuos sólidos',serv:'RB',desc:'Recolección y traslado de basura'},
       {id:uid(),nombre:'Limpieza de contenedores',serv:'RB',desc:'Limpieza y desinfección de contenedores'},
       {id:uid(),nombre:'Retiro de desechos peligrosos',serv:'RB',desc:'Manejo de residuos especiales'},
-    ];save(LS.AB,AB);
+    ];saveLocal(LS.AB,AB);
   }
   if(!PE.length){
     PE=[
       {id:uid(),nombre:'Cabo AV (Ejemplo)',cargo:'Cabo de Áreas Verdes',rol:'CABO_AV',area:'',ficha:''},
       {id:uid(),nombre:'Cabo DOM (Ejemplo)',cargo:'Cabo de Servicios Domésticos',rol:'CABO_DOM',area:'',ficha:''},
       {id:uid(),nombre:'Jefe GSG (Ejemplo)',cargo:'Jefe de Servicios Generales',rol:'MANDO',area:'',ficha:''},
-    ];save(LS.PE,PE);
+    ];saveLocal(LS.PE,PE);
   }
 }
 
@@ -2164,7 +2158,7 @@ function guardarPrograma(){
   };
   if(ei){const idx=PROG.findIndex(p=>p.id===ei);if(idx>=0)PROG[idx]=obj;else PROG.push(obj);}
   else PROG.push(obj);
-  save(LS.P,PROG);cerrarMovPrograma();aplicarFiltros();renderProgramasTab();renderTendencia();
+  saveLocal(LS.P,PROG);cerrarMovPrograma();aplicarFiltros();renderProgramasTab();renderTendencia();
   toast('✅ Programa guardado correctamente.');
 }
 
@@ -2250,7 +2244,7 @@ function abrirEjecucion(id){
     html+=`</div>`;
   });
   document.getElementById('mejContent').innerHTML=html;
-  if(p.estado==='PROGRAMADO'){p.estado='EN_CURSO';save(LS.P,PROG);}
+  if(p.estado==='PROGRAMADO'){p.estado='EN_CURSO';saveLocal(LS.P,PROG);}
   document.getElementById('movEjecucion').classList.add('active');
 }
 function cerrarMovEjec(){document.getElementById('movEjecucion').classList.remove('active');aplicarFiltros();renderProgramasTab();}
@@ -2304,7 +2298,7 @@ function guardarRegDia(progId,locId,dia){
   if(!p.ejecucion)p.ejecucion={};
   const domEjec=document.getElementById('rdDomEjec')?.value?.trim()||'';
   p.ejecucion[`${locId}_${dia}`]={status,tipo,motivo:motivo.trim(),obs:obs.trim(),domEjec,registradoEn:new Date().toISOString()};
-  save(LS.P,PROG);
+  saveLocal(LS.P,PROG);
   refrescarDatalistDom();
   document.getElementById('movRegDia')?.remove();
   document.getElementById('dlDomesticosEjec')?.remove();
@@ -2363,7 +2357,7 @@ function guardarCierre(){
   if(!confirm(msg))return;
   p.estado='CERRADO';
   p.cierreData={firmaCabo:fc,firmaMando:fm,fecha:document.getElementById('fechaCierre').value,obs:document.getElementById('obsCierre').value.trim(),cerradoEn:new Date().toISOString()};
-  save(LS.P,PROG);cerrarMovCierre();aplicarFiltros();renderProgramasTab();
+  saveLocal(LS.P,PROG);cerrarMovCierre();aplicarFiltros();renderProgramasTab();
   toast('✅ Programa cerrado y validado.');
 }
 
@@ -2492,7 +2486,7 @@ function guardarPersona(){
 }
 function eliminarPersona(id){
   document.getElementById('confirmMsg').textContent='¿Eliminar esta persona del catálogo?';
-  document.getElementById('btnConfirmOk').onclick=()=>{PE=PE.filter(x=>x.id!==id);save(LS.PE,PE);sbEliminar('personas',id);renderPersonas();cerrarConfirm();toast('Persona eliminada.');};
+  document.getElementById('btnConfirmOk').onclick=()=>{PE=PE.filter(x=>x.id!==id);saveLocal(LS.PE,PE);sbDelete('personas',id);renderPersonas();cerrarConfirm();toast('Persona eliminada.');};
   document.getElementById('movConfirm').classList.add('active');
 }
 
@@ -2500,7 +2494,23 @@ function abrirModalSubarea(){
   const modal=document.getElementById('movSubarea');
   delete modal.dataset.editId;
   modal.querySelector('h2').textContent='Nueva Subárea';
-  ['saArea','saNombre','saDesc'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('saNombre').value='';
+  document.getElementById('saDesc').value='';
+  const saAreaEl=document.getElementById('saArea');
+  // Asegurar que el select tenga todas las opciones disponibles
+  if(!saAreaEl.querySelector('option[value="SCAD"]')){
+    ['SCAD','SCEP','SCUI','SCCO'].forEach(a=>{
+      const o=document.createElement('option');o.value=a;o.textContent=a;saAreaEl.appendChild(o);
+    });
+  }
+  if(_AREA_LOGIN&&_AREA_LOGIN!=='TODOS'){
+    saAreaEl.disabled=false; // Quitar disabled primero para poder asignar value
+    saAreaEl.value=_AREA_LOGIN;
+    saAreaEl.disabled=true;
+  } else {
+    saAreaEl.disabled=false;
+    saAreaEl.value='';
+  }
   modal.classList.add('active');
 }
 function editarSubareaModal(id){
@@ -2508,7 +2518,9 @@ function editarSubareaModal(id){
   const modal=document.getElementById('movSubarea');
   modal.dataset.editId=id;
   modal.querySelector('h2').textContent='Editar Subárea';
-  document.getElementById('saArea').value=s.area||'';
+  const saAreaEl=document.getElementById('saArea');
+  saAreaEl.value=s.area||'';
+  saAreaEl.disabled=(_AREA_LOGIN&&_AREA_LOGIN!=='TODOS');
   document.getElementById('saNombre').value=s.nombre||'';
   document.getElementById('saDesc').value=s.desc||'';
   modal.classList.add('active');
@@ -2526,25 +2538,46 @@ function guardarSubarea(){
   const editId=modal.dataset.editId||'';
   if(editId){
     const idx=SA.findIndex(x=>x.id===editId);
-    if(idx>=0)SA[idx]={id:editId,area,nombre,desc:document.getElementById('saDesc').value.trim()};
+    const obj={id:editId,area,nombre,desc:document.getElementById('saDesc').value.trim()};
+    if(idx>=0)SA[idx]=obj;
     toast('✅ Subárea actualizada.');
+    save(LS.SA,SA);
+    cerrarMovSubarea();renderOrgTree();
   }else{
-    SA.push({id:uid(),area,nombre,desc:document.getElementById('saDesc').value.trim()});
-    toast('✅ Subárea agregada.');
+    const obj={id:uid(),area,nombre,desc:document.getElementById('saDesc').value.trim()};
+    SA.push(obj);
+    toast('✅ Subárea guardada correctamente.');
+    save(LS.SA,SA);
+    cerrarMovSubarea();renderOrgTree();
   }
-  saveLocal(LS.SA,SA);cerrarMovSubarea();renderOrgTree();
 }
 function eliminarSubarea(id){
   SA=SA.filter(x=>x.id!==id);
   LC.filter(l=>l.subarea===id).forEach(l=>{l.subarea='';});
-  save(LS.SA,SA);save(LS.LC,LC);sbEliminar('subareas',id);renderOrgTree();toast('Subárea eliminada.');
+  saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);sbDelete('subareas',id);renderOrgTree();toast('Subárea eliminada.');
 }
 
 function abrirModalLocalizacion(){
   const modal=document.getElementById('movLoc');
   delete modal.dataset.editId;
   modal.querySelector('h2').textContent='Nueva Localización';
-  ['locArea','locSub','locNombre','locDesc'].forEach(i=>document.getElementById(i).value='');
+  ['locSub','locNombre','locDesc'].forEach(i=>document.getElementById(i).value='');
+  const locAreaEl=document.getElementById('locArea');
+  // Asegurar opciones disponibles
+  if(!locAreaEl.querySelector('option[value="SCAD"]')){
+    ['SCAD','SCEP','SCUI','SCCO'].forEach(a=>{
+      const o=document.createElement('option');o.value=a;o.textContent=a;locAreaEl.appendChild(o);
+    });
+  }
+  if(_AREA_LOGIN&&_AREA_LOGIN!=='TODOS'){
+    locAreaEl.disabled=false; // Quitar disabled primero
+    locAreaEl.value=_AREA_LOGIN;
+    locAreaEl.disabled=true;
+  } else {
+    locAreaEl.disabled=false;
+    locAreaEl.value='';
+  }
+  poblarSubsEnLoc();
   document.getElementById('locAV').checked=true;
   document.getElementById('locDOM').checked=false;
   if(document.getElementById('locRB'))document.getElementById('locRB').checked=false;
@@ -2555,7 +2588,9 @@ function editarLocModal(id){
   const modal=document.getElementById('movLoc');
   modal.dataset.editId=id;
   modal.querySelector('h2').textContent='Editar Localización';
-  document.getElementById('locArea').value=l.area||'';
+  const locAreaEl2=document.getElementById('locArea');
+  locAreaEl2.value=l.area||'';
+  locAreaEl2.disabled=(_AREA_LOGIN&&_AREA_LOGIN!=='TODOS');
   poblarSubsEnLoc();
   setTimeout(()=>document.getElementById('locSub').value=l.subarea||'',60);
   document.getElementById('locNombre').value=l.nombre||'';
@@ -2588,23 +2623,28 @@ function guardarLocalizacion(){
   if(!servs.length){toast('⚠️ Seleccione al menos un servicio aplicable.');return;}
   const modal=document.getElementById('movLoc');
   const editId=modal.dataset.editId||'';
-  const obj={area,subarea:document.getElementById('locSub').value,nombre,tipo:document.getElementById('locTipo').value,servs,desc:document.getElementById('locDesc').value.trim()};
+  const base={area,subarea:document.getElementById('locSub').value,nombre,tipo:document.getElementById('locTipo').value,servs,desc:document.getElementById('locDesc').value.trim()};
   if(editId){
+    const obj={id:editId,...base};
     const idx=LC.findIndex(x=>x.id===editId);
-    if(idx>=0)LC[idx]={id:editId,...obj};
+    if(idx>=0)LC[idx]=obj;
     toast('✅ Localización actualizada.');
+    save(LS.LC,LC);
+    cerrarMovLoc();renderOrgTree();
   }else{
-    LC.push({id:uid(),...obj});
-    toast('✅ Localización agregada.');
+    const obj={id:uid(),...base};
+    LC.push(obj);
+    toast('✅ Localización guardada correctamente.');
+    save(LS.LC,LC);
+    cerrarMovLoc();renderOrgTree();
   }
-  saveLocal(LS.LC,LC);cerrarMovLoc();renderOrgTree();
 }
 function eliminarLoc(id){
   document.getElementById('confirmMsg').textContent='¿Eliminar esta localización? Se quitará de los programas que la usen.';
   document.getElementById('btnConfirmOk').onclick=()=>{
-    LC=LC.filter(x=>x.id!==id);save(LS.LC,LC);sbEliminar('localizaciones',id);
+    LC=LC.filter(x=>x.id!==id);saveLocal(LS.LC,LC);sbDelete('localizaciones',id);
     PROG.forEach(p=>{p.localizaciones=(p.localizaciones||[]).filter(l=>l.locId!==id);});
-    save(LS.P,PROG);renderOrgTree();cerrarConfirm();toast('Localización eliminada.');
+    saveLocal(LS.P,PROG);renderOrgTree();cerrarConfirm();toast('Localización eliminada.');
   };
   document.getElementById('movConfirm').classList.add('active');
 }
@@ -2647,7 +2687,7 @@ function guardarActividadBase(){
   }
   saveLocal(LS.AB,AB);cerrarMovActividad();renderCatalogos();
 }
-function eliminarActBase(id){AB=AB.filter(x=>x.id!==id);save(LS.AB,AB);sbEliminar('actividades_base',id);renderCatalogos();toast('Actividad eliminada.');}
+function eliminarActBase(id){AB=AB.filter(x=>x.id!==id);saveLocal(LS.AB,AB);sbDelete('actividades_base',id);renderCatalogos();toast('Actividad eliminada.');}
 
 // ══════════════════════════════════════════════════════════════
 // TENDENCIA
@@ -3116,7 +3156,7 @@ function confirmarElim(id){
   const p=PROG.find(x=>x.id===id);if(!p)return;
   const fe=semDates(p.anio,p.semana);
   document.getElementById('confirmMsg').textContent=`¿Eliminar el programa "${SVCL[p.serv]}" — ${p.area} — ${fe.label}? Esta acción no se puede deshacer.`;
-  document.getElementById('btnConfirmOk').onclick=()=>{PROG=PROG.filter(x=>x.id!==id);save(LS.P,PROG);sbEliminar('programas',id);aplicarFiltros();renderProgramasTab();cerrarConfirm();toast('Programa eliminado.');};
+  document.getElementById('btnConfirmOk').onclick=()=>{PROG=PROG.filter(x=>x.id!==id);saveLocal(LS.P,PROG);sbDelete('programas',id);aplicarFiltros();renderProgramasTab();cerrarConfirm();toast('Programa eliminado.');};
   document.getElementById('movConfirm').classList.add('active');
 }
 function cerrarConfirm(){document.getElementById('movConfirm').classList.remove('active');}
