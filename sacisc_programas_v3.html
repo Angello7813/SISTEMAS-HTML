@@ -1967,7 +1967,8 @@ function renderProgramasTab(){
     const pct=calcCump(p),gc2=pct>=80?'gbv':pct>=50?'gba':'gbr';
     h+=`<div class="gt-cell"><strong style="font-size:.82rem;">${p.area}</strong></div>`;
     h+=`<div class="gt-cell"><span class="chip ${p.serv==='AV'?'cv':p.serv==='DOM'?'cb':'co'}" style="font-size:.65rem;">${p.serv}</span></div>`;
-    h+=`<div class="gt-cell" style="font-size:.72rem;color:var(--gm);font-weight:600;">${p.subareaNom||'<span style="color:var(--gray);">—</span>'}</div>`;
+    const _snGantt=p.subareaNom||(p.subareaId?(SA.find(s=>s.id===p.subareaId)||{}).nombre||'':'');
+    h+=`<div class="gt-cell" style="font-size:.72rem;color:var(--gm);font-weight:600;">${_snGantt||'<span style="color:var(--gray);">—</span>'}</div>`;
     h+=`<div class="gt-cell"><span style="font-family:Barlow Condensed,sans-serif;font-size:.92rem;font-weight:700;color:${semColor(pct)};">${pct}%</span></div>`;
     sems.forEach(s=>{
       if(s===p.semana)h+=`<div class="gt-bcell"><div style="width:100%;position:relative;padding-top:4px;"><div class="gb-prog"><div class="gb-real ${gc2}" style="width:${pct}%;"></div></div><span style="position:absolute;right:0;top:-11px;font-family:Barlow Condensed,sans-serif;font-size:.66rem;font-weight:700;color:#555;">${pct}%</span></div></div>`;
@@ -2370,7 +2371,7 @@ function cargarProgramasEjec(){
     const cab=getPer(p.caboId),mnd=getPer(p.mandoId);
     return `<div style="border:1.5px solid var(--bd);border-radius:9px;padding:13px 18px;background:#fff;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;transition:border-color .15s;" onmouseenter="this.style.borderColor='var(--gm)'" onmouseleave="this.style.borderColor='var(--bd)'">
       <div>
-        <div style="font-family:Barlow Condensed,sans-serif;font-size:.98rem;font-weight:700;color:var(--gd);">${SVCL[p.serv]} — <strong>${p.area}</strong>${p.subareaNom?` <span style="font-size:.72rem;font-weight:600;color:var(--gm);background:#e8f3ef;padding:2px 7px;border-radius:10px;margin-left:6px;">📁 ${p.subareaNom}</span>`:''}</div>
+        <div style="font-family:Barlow Condensed,sans-serif;font-size:.98rem;font-weight:700;color:var(--gd);">${SVCL[p.serv]} — <strong>${p.area}</strong>${(p.subareaNom||(p.subareaId?(SA.find(s=>s.id===p.subareaId)||{}).nombre:''))? ` <span style="font-size:.72rem;font-weight:600;color:var(--gm);background:#e8f3ef;padding:2px 7px;border-radius:10px;margin-left:6px;">📁 ${p.subareaNom||(p.subareaId?(SA.find(s=>s.id===p.subareaId)||{}).nombre:'')}</span>`:''}</div>
         <div style="font-size:.76rem;color:var(--gray);margin-top:2px;">${fe.label} &nbsp;·&nbsp; ${cab?'Responsable: '+cab.nombre:'Sin responsable'} &nbsp;·&nbsp; ${mnd?'Jefe: '+mnd.nombre:'Sin jefe'}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
