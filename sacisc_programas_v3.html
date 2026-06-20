@@ -1511,7 +1511,7 @@ const SB_HDR={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':
 
 async function sbGet(tabla){
   try{
-    const r=await fetch(SB_URL+'/rest/v1/'+tabla+'?select=*',{headers:SB_HDR});
+    const r=await fetch(SB_URL+'/rest/v1/'+tabla+'?select=*&eliminado=eq.false',{headers:SB_HDR});
     if(!r.ok)throw new Error(await r.text());
     return await r.json();
   }catch(e){return [];}
@@ -1534,9 +1534,17 @@ async function sbUpsert(tabla,obj){
 }
 async function sbDelete(tabla,id){
   try{
-    const r=await fetch(SB_URL+'/rest/v1/'+tabla+'?id=eq.'+id,{method:'DELETE',headers:SB_HDR});
-    if(!r.ok)throw new Error(await r.text());
-  }catch(e){}
+    // Soft delete — marcar eliminado=true en lugar de borrar físicamente
+    const r=await fetch(SB_URL+'/rest/v1/'+tabla+'?id=eq.'+id,{
+      method:'PATCH',
+      headers:{...SB_HDR,'Prefer':'return=representation'},
+      body:JSON.stringify({eliminado:true})
+    });
+    if(!r.ok){
+      const err=await r.text();
+      console.error('sbDelete ERROR en '+tabla+':',err);
+    }
+  }catch(e){console.error('sbDelete EXCEPCION en '+tabla+':',e.message);}
 }
 
 // ── Mapeo tabla → variable local ──
@@ -1553,13 +1561,13 @@ let _sbListo=false;
 
 // ── Convertir snake_case (Supabase) ↔ camelCase (app) ──
 function prog2sb(p){return{id:p.id,serv:p.serv,area:p.area,anio:p.anio,semana:p.semana,cabo_id:p.caboId,mando_id:p.mandoId,obs:p.obs||'',localizaciones:p.localizaciones||[],actividades:p.actividades||[],ejecucion:p.ejecucion||{},estado:p.estado||'PROGRAMADO',cierre_data:p.cierreData||null,actualizado_en:new Date().toISOString()};}
-function sb2prog(r){return{id:r.id,serv:r.serv,area:r.area,anio:r.anio,semana:r.semana,caboId:r.cabo_id,mandoId:r.mando_id,obs:r.obs||'',localizaciones:r.localizaciones||[],actividades:r.actividades||[],ejecucion:r.ejecucion||{},estado:r.estado||'PROGRAMADO',cierreData:r.cierre_data||null,updatedAt:r.updated_at||null};}
-function per2sb(p){return{id:p.id,nombre:p.nombre,cargo:p.cargo,rol:p.rol,area:p.area||'',ficha:p.ficha||''};}
-function sub2sb(s){return{id:s.id,area:s.area,nombre:s.nombre,descripcion:s.desc||''};}
-function loc2sb(l){return{id:l.id,area:l.area,subarea:l.subarea||'',nombre:l.nombre,tipo:l.tipo,servs:l.servs||[],descripcion:l.desc||''};}
-function sb2loc(r){return{id:r.id,area:r.area,subarea:r.subarea||'',nombre:r.nombre,tipo:r.tipo,servs:r.servs||[],desc:r.descripcion||''};}
-function ab2sb(a){return{id:a.id,nombre:a.nombre,serv:a.serv,descripcion:a.desc||''};}
-function sb2ab(r){return{id:r.id,nombre:r.nombre,serv:r.serv,desc:r.descripcion||''};}
+function sb2prog(r){return{id:r.id,serv:r.serv,area:r.area,anio:r.anio,semana:r.semana,caboId:r.cabo_id,mandoId:r.mando_id,obs:r.obs||'',localizaciones:r.localizaciones||[],actividades:r.actividades||[],ejecucion:r.ejecucion||{},estado:r.estado||'PROGRAMADO',cierreData:r.cierre_data||null,updatedAt:r.actualizado_en||null,eliminado:r.eliminado||false};}
+function per2sb(p){return{id:p.id,nombre:p.nombre,cargo:p.cargo,rol:p.rol,area:p.area||'',ficha:p.ficha||'',eliminado:p.eliminado||false};}
+function sub2sb(s){return{id:s.id,area:s.area,nombre:s.nombre,descripcion:s.desc||'',eliminado:s.eliminado||false};}
+function loc2sb(l){return{id:l.id,area:l.area,subarea:l.subarea||'',nombre:l.nombre,tipo:l.tipo,servs:l.servs||[],descripcion:l.desc||'',eliminado:l.eliminado||false};}
+function sb2loc(r){return{id:r.id,area:r.area,subarea:r.subarea||'',nombre:r.nombre,tipo:r.tipo,servs:r.servs||[],desc:r.descripcion||'',eliminado:r.eliminado||false};}
+function ab2sb(a){return{id:a.id,nombre:a.nombre,serv:a.serv,descripcion:a.desc||'',eliminado:a.eliminado||false};}
+function sb2ab(r){return{id:r.id,nombre:r.nombre,serv:r.serv,desc:r.descripcion||'',eliminado:r.eliminado||false};}
 
 // ── Cola de pendientes — IDs que no se pudieron subir a Supabase ──
 const LS_PEND='s3_pendientes';
@@ -1614,27 +1622,12 @@ async function cargarDesdeSB(){
       ab:new Set(acts.map(r=>r.id))
     };
 
-    // Respetar lista negra — borrar de SB los que se eliminaron localmente
-    const deleted=getDeleted();
-    const delProgs=deleted['programas']||[];
-    const delPer=deleted['personas']||[];
-    const delSA=deleted['subareas']||[];
-    const delLC=deleted['localizaciones']||[];
-    const delAB=deleted['actividades_base']||[];
-    // Re-eliminar de Supabase por si no se había completado la primera vez
-    for(const id of delProgs)if(sbIds.prog.has(id))await sbDelete('programas',id);
-    for(const id of delPer)if(sbIds.per.has(id))await sbDelete('personas',id);
-    for(const id of delSA)if(sbIds.sa.has(id))await sbDelete('subareas',id);
-    for(const id of delLC)if(sbIds.lc.has(id))await sbDelete('localizaciones',id);
-    for(const id of delAB)if(sbIds.ab.has(id))await sbDelete('actividades_base',id);
-
     // PASO 3: Identificar registros locales que NO están en Supabase → subirlos
-    // EXCLUIR los que están en la lista negra (eliminados)
-    const soloProg=PROG.filter(r=>!sbIds.prog.has(r.id)&&!delProgs.includes(r.id));
-    const soloPer=PE.filter(r=>!sbIds.per.has(r.id)&&!delPer.includes(r.id));
-    const soloSA=SA.filter(r=>!sbIds.sa.has(r.id)&&!delSA.includes(r.id));
-    const soloLC=LC.filter(r=>!sbIds.lc.has(r.id)&&!delLC.includes(r.id));
-    const soloAB=AB.filter(r=>!sbIds.ab.has(r.id)&&!delAB.includes(r.id));
+    const soloProg=PROG.filter(r=>!sbIds.prog.has(r.id));
+    const soloPer=PE.filter(r=>!sbIds.per.has(r.id));
+    const soloSA=SA.filter(r=>!sbIds.sa.has(r.id));
+    const soloLC=LC.filter(r=>!sbIds.lc.has(r.id));
+    const soloAB=AB.filter(r=>!sbIds.ab.has(r.id));
 
     if(soloProg.length){const r=await sbUpsert('programas',soloProg.map(prog2sb));if(r)console.log('Subidos',soloProg.length,'programas nuevos');}
     if(soloPer.length){const r=await sbUpsert('personas',soloPer.map(per2sb));if(r)console.log('Subidas',soloPer.length,'personas nuevas');}
@@ -1664,13 +1657,13 @@ async function cargarDesdeSB(){
       sbGet('programas'),sbGet('personas'),sbGet('subareas'),sbGet('localizaciones'),sbGet('actividades_base')
     ]);
 
-    // PASO 6: Cargar en memoria y localStorage — filtrar eliminados
-    const del2=getDeleted();
-    PROG=progs2.map(sb2prog).filter(r=>!(del2['programas']||[]).includes(r.id));
-    PE=pers2.map(r=>({id:r.id,nombre:r.nombre,cargo:r.cargo,rol:r.rol,area:r.area||'',ficha:r.ficha||''})).filter(r=>!(del2['personas']||[]).includes(r.id));
-    SA=subs2.map(r=>({id:r.id,area:r.area,nombre:r.nombre,desc:r.descripcion||''})).filter(r=>!(del2['subareas']||[]).includes(r.id));
-    LC=locs2.map(sb2loc).filter(r=>!(del2['localizaciones']||[]).includes(r.id));
-    AB=acts2.map(sb2ab).filter(r=>!(del2['actividades_base']||[]).includes(r.id));
+    // PASO 6: Cargar en memoria y localStorage
+    // sbGet ya filtra eliminado=false, así que no llegan registros eliminados
+    PROG=progs2.map(sb2prog);
+    PE=pers2.map(r=>({id:r.id,nombre:r.nombre,cargo:r.cargo,rol:r.rol,area:r.area||'',ficha:r.ficha||''}));
+    SA=subs2.map(r=>({id:r.id,area:r.area,nombre:r.nombre,desc:r.descripcion||''}));
+    LC=locs2.map(sb2loc);
+    AB=acts2.map(sb2ab);
 
     saveLocal(LS.P,PROG);saveLocal(LS.PE,PE);saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);saveLocal(LS.AB,AB);
     _sbListo=true;
@@ -2618,7 +2611,7 @@ function guardarPersona(){
 }
 function eliminarPersona(id){
   document.getElementById('confirmMsg').textContent='¿Eliminar esta persona del catálogo?';
-  document.getElementById('btnConfirmOk').onclick=()=>{PE=PE.filter(x=>x.id!==id);saveLocal(LS.PE,PE);addDeleted('personas',id);sbDelete('personas',id);renderPersonas();cerrarConfirm();toast('Persona eliminada.');};
+  document.getElementById('btnConfirmOk').onclick=()=>{PE=PE.filter(x=>x.id!==id);saveLocal(LS.PE,PE);sbDelete('personas',id);renderPersonas();cerrarConfirm();toast('Persona eliminada.');};
   document.getElementById('movConfirm').classList.add('active');
 }
 
@@ -2686,7 +2679,7 @@ function guardarSubarea(){
 function eliminarSubarea(id){
   SA=SA.filter(x=>x.id!==id);
   LC.filter(l=>l.subarea===id).forEach(l=>{l.subarea='';});
-  saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);addDeleted('subareas',id);sbDelete('subareas',id);renderOrgTree();toast('Subárea eliminada.');
+  saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);sbDelete('subareas',id);renderOrgTree();toast('Subárea eliminada.');
 }
 
 function abrirModalLocalizacion(){
@@ -2774,7 +2767,7 @@ function guardarLocalizacion(){
 function eliminarLoc(id){
   document.getElementById('confirmMsg').textContent='¿Eliminar esta localización? Se quitará de los programas que la usen.';
   document.getElementById('btnConfirmOk').onclick=()=>{
-    LC=LC.filter(x=>x.id!==id);saveLocal(LS.LC,LC);addDeleted('localizaciones',id);sbDelete('localizaciones',id);
+    LC=LC.filter(x=>x.id!==id);saveLocal(LS.LC,LC);sbDelete('localizaciones',id);
     PROG.forEach(p=>{p.localizaciones=(p.localizaciones||[]).filter(l=>l.locId!==id);});
     saveLocal(LS.P,PROG);renderOrgTree();cerrarConfirm();toast('Localización eliminada.');
   };
@@ -2819,7 +2812,7 @@ function guardarActividadBase(){
   }
   saveLocal(LS.AB,AB);cerrarMovActividad();renderCatalogos();
 }
-function eliminarActBase(id){AB=AB.filter(x=>x.id!==id);saveLocal(LS.AB,AB);addDeleted('actividades_base',id);sbDelete('actividades_base',id);renderCatalogos();toast('Actividad eliminada.');}
+function eliminarActBase(id){AB=AB.filter(x=>x.id!==id);saveLocal(LS.AB,AB);sbDelete('actividades_base',id);renderCatalogos();toast('Actividad eliminada.');}
 
 // ══════════════════════════════════════════════════════════════
 // TENDENCIA
@@ -3288,7 +3281,7 @@ function confirmarElim(id){
   const p=PROG.find(x=>x.id===id);if(!p)return;
   const fe=semDates(p.anio,p.semana);
   document.getElementById('confirmMsg').textContent=`¿Eliminar el programa "${SVCL[p.serv]}" — ${p.area} — ${fe.label}? Esta acción no se puede deshacer.`;
-  document.getElementById('btnConfirmOk').onclick=()=>{PROG=PROG.filter(x=>x.id!==id);saveLocal(LS.P,PROG);addDeleted('programas',id);sbDelete('programas',id);aplicarFiltros();renderProgramasTab();cerrarConfirm();toast('Programa eliminado.');};
+  document.getElementById('btnConfirmOk').onclick=()=>{PROG=PROG.filter(x=>x.id!==id);saveLocal(LS.P,PROG);sbDelete('programas',id);aplicarFiltros();renderProgramasTab();cerrarConfirm();toast('Programa eliminado.');};
   document.getElementById('movConfirm').classList.add('active');
 }
 function cerrarConfirm(){document.getElementById('movConfirm').classList.remove('active');}
