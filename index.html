@@ -1135,25 +1135,22 @@ function renderMonitor() {
                                         'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
                         const _fech = `${_hoy.getDate()} DE ${_MM[_hoy.getMonth()+1]} DE ${_hoy.getFullYear()}`;
                         const _volFmt = Number(v.vol).toLocaleString('es-MX',{minimumFractionDigits:3,maximumFractionDigits:3});
-                        const _body =
-`Con la finalidad de atender las necesidades de consumo de combustible del parque vehicular y equipos correspondientes al Activo de Extracción Cinco Presidentes, solicito su valioso apoyo para programar el surtimiento de producto correspondiente a los siguientes parámetros:
-
-No. Vale:              ${v.folio}
-Clave Estación:        E${vblk.est}
-Estación de Servicios: ${_nom}
-Razón Social:          ${_ei.razon}
-Producto:              ${_prod}
-Volumen:               ${_volFmt} LTS
-Ubicación:             ${_ei.dir}
-Fecha solicitud:       ${_fech}
-
-Agradeciendo el favor de su atención, quedo de usted.
-
-Saludos,
-Ing. Ángel Pérez Chávez
-F-383573  |  Ext. 27-301  |  angel.perez@pemex.com
-PEMEX URCS Sur — DAS-SSAB-GSG
-Coatzacoalcos, Veracruz`;
+                        const _nl   = '\n';
+                        const _body = 'Con la finalidad de atender las necesidades de consumo de combustible del parque vehicular y equipos correspondientes al Activo de Extracción Cinco Presidentes, solicito su valioso apoyo para programar el surtimiento de producto correspondiente a los siguientes parámetros:' + _nl + _nl +
+                          'No. Vale:              ' + v.folio + _nl +
+                          'Clave Estación:        E' + vblk.est + _nl +
+                          'Estación de Servicios: ' + _nom + _nl +
+                          'Razón Social:          ' + _ei.razon + _nl +
+                          'Producto:              ' + _prod + _nl +
+                          'Volumen:               ' + _volFmt + ' LTS' + _nl +
+                          'Ubicación:             ' + _ei.dir + _nl +
+                          'Fecha solicitud:       ' + _fech + _nl + _nl +
+                          'Agradeciendo el favor de su atención, quedo de usted.' + _nl + _nl +
+                          'Saludos,' + _nl +
+                          'Ing. Ángel Pérez Chávez' + _nl +
+                          'F-383573  |  Ext. 27-301  |  angel.perez@pemex.com' + _nl +
+                          'PEMEX URCS Sur — DAS-SSAB-GSG' + _nl +
+                          'Coatzacoalcos, Veracruz';
                         const _asunto = 'Solicitud de Surtimiento ' + v.folio;
                         const _ml = 'mailto:?subject=' + encodeURIComponent(_asunto) + '&body=' + encodeURIComponent(_body);
                         return `<span style="font-size:0.58rem;background:rgba(192,57,43,0.1);color:#c0392b;
