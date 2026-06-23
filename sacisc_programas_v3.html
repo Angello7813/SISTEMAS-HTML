@@ -1825,7 +1825,7 @@ function semISO(f){const d=new Date(Date.UTC(f.getFullYear(),f.getMonth(),f.getD
 const SEM=semISO(new Date());
 function semDates(a,s){const j4=new Date(Date.UTC(a,0,4)),dj=j4.getUTCDay()||7,l=new Date(j4);l.setUTCDate(j4.getUTCDate()-dj+1+(s-1)*7);const v=new Date(l);v.setUTCDate(l.getUTCDate()+4);const fmt=d=>`${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;return{l,v,label:`Sem. ${s} — ${fmt(l)} al ${fmt(v)}`,ini:fmt(l),fin:fmt(v)};}
 function semsAnio(a){const r=[];for(let s=1;s<=53;s++){try{const f=semDates(a,s);if(f.l.getUTCFullYear()===a||f.v.getUTCFullYear()===a)r.push(s);}catch{}}return r;}
-const DIAS=['LUN','MAR','MIÉ','JUE','VIE'];
+const DIAS=['LUN','MAR','MIÉ','JUE','VIE','SAB','DOM'];
 const SVCL={AV:'🌿 Áreas Verdes',DOM:'🏢 Domésticos',RB:'🗑️ Recolección de Basura'};
 const SVCC={AV:'#10b981',DOM:'#3b82f6',RB:'#f59e0b'};
 const TIPODEV={CAMBIO_LOC:'Cambio de localización',SUSPENSION:'Suspensión temporal',CANCELACION:'Cancelación'};
@@ -2246,7 +2246,19 @@ function actualizarLocProgramador(){
   if(sem&&anio){
     const sd=semDates(anio,sem);
     const base=new Date(sd.l);
-    DIAS.forEach((d,i)=>{
+    // Determinar cuántos días mostrar según subárea y servicio
+    const lpSubSel=document.getElementById('lpSubarea');
+    const subSelId=lpSubSel?lpSubSel.value:'';
+    const subSelNom=subSelId?(SA.find(s=>s.id===subSelId)||{}).nombre||'':'';
+    const esHospital=subSelNom.toUpperCase().includes('HOSPITAL');
+    let numDias=5; // L-V por defecto
+    if(esHospital&&sv==='DOM')numDias=7; // L-D
+    else if(esHospital&&sv==='AV')numDias=6; // L-S
+    // Si no hay subárea filtrada, revisar si TODAS las locs son de hospital
+    // para que el programador pueda elegir el día correcto
+
+    for(let i=0;i<numDias;i++){
+      const d=DIAS[i];
       const f=new Date(base);f.setUTCDate(base.getUTCDate()+i);
       const dd=String(f.getUTCDate()).padStart(2,'0');
       const mm=String(f.getUTCMonth()+1).padStart(2,'0');
@@ -2264,11 +2276,50 @@ function actualizarLocProgramador(){
         o.textContent=`${d} ${dd}/${mm}`;
       }
       dias.appendChild(o);
-    });
+    }
   }
   renderLocTabla();
   refrescarDatalistDom();
 }
+
+// Recalcular días disponibles sin repoblar todo el programador
+function actualizarDiasProgramador(){
+  const sv=document.getElementById('pServ').value;
+  const anio=parseInt(document.getElementById('pAnio').value)||AÑO;
+  const sem=parseInt(document.getElementById('pSemana').value)||0;
+  const dias=document.getElementById('lpDia');
+  if(!dias||!sem||!anio)return;
+  const sd=semDates(anio,sem);
+  const base=new Date(sd.l);
+  const prevVal=dias.value;
+  dias.innerHTML='<option value="">— Seleccionar día —</option>';
+  const lpSubSel=document.getElementById('lpSubarea');
+  const subSelId=lpSubSel?lpSubSel.value:'';
+  const subSelNom=subSelId?(SA.find(s=>s.id===subSelId)||{}).nombre||'':'';
+  const esHospital=subSelNom.toUpperCase().includes('HOSPITAL');
+  let numDias=5;
+  if(esHospital&&sv==='DOM')numDias=7;
+  else if(esHospital&&sv==='AV')numDias=6;
+  for(let i=0;i<numDias;i++){
+    const d=DIAS[i];
+    const f=new Date(base);f.setUTCDate(base.getUTCDate()+i);
+    const dd=String(f.getUTCDate()).padStart(2,'0');
+    const mm=String(f.getUTCMonth()+1).padStart(2,'0');
+    const fest=getFestivoDia(f.getUTCFullYear(),f.getUTCMonth()+1,f.getUTCDate());
+    const o=document.createElement('option');
+    o.value=d+'|'+dd+'/'+mm+'/'+f.getUTCFullYear()+(fest?'|FESTIVO':'');
+    if(fest){
+      o.textContent='🚫 '+d+' '+dd+'/'+mm+' — '+fest.label;
+      o.style.color='#b91c1c';o.style.background='#fff1f2';
+      o.dataset.festivo='true';o.dataset.festivoLabel=fest.label;o.dataset.festivoTipo=fest.tipo;
+    } else {
+      o.textContent=d+' '+dd+'/'+mm;
+    }
+    dias.appendChild(o);
+  }
+  if(prevVal)dias.value=prevVal;
+}
+
 // Mostrar checkbox emergencia si el día seleccionado es festivo
 function onDiaChange(){
   const sel=document.getElementById('lpDia');
@@ -2290,6 +2341,8 @@ function filtrarLocsPorSubarea(){
   const subFilt=lpSubarea?lpSubarea.value:'';
   const sel=document.getElementById('lpLoc');
   if(!sel)return;
+  // Al cambiar subárea, recalcular días disponibles
+  actualizarDiasProgramador();
   // Filtrar localizaciones por área + servicio + subárea (si hay)
   const lFilt=LC.filter(l=>{
     if(l.area!==ar)return false;
@@ -4339,7 +4392,7 @@ function confirmarReplica(){
   }
   // Calcular fechas del nuevo período
   const feD=semDates(anioD,semD);
-  const DIAS=['LUN','MAR','MIÉ','JUE','VIE'];
+  const DIAS=['LUN','MAR','MIÉ','JUE','VIE','SAB','DOM'];
   // Clonar localizaciones actualizando las fechas al nuevo período
   const nuevasLocs=(p.localizaciones||[]).map(loc=>{
     const diaIdx=DIAS.indexOf(loc.dia);
@@ -4400,7 +4453,7 @@ async function exportarExcelDetallado(){
 
   if(!datos.length){toast('⚠️ Sin datos para exportar con los filtros actuales.');return;}
 
-  const DIAS=['LUN','MAR','MIÉ','JUE','VIE'];
+  const DIAS=['LUN','MAR','MIÉ','JUE','VIE','SAB','DOM'];
   const wb=XLSX.utils.book_new();
 
   // ── HOJA 1: RESUMEN EJECUTIVO ──
@@ -4593,7 +4646,7 @@ function abrirActExtra(progId){
   const fe=semDates(p.anio,p.semana);
   const selDia=document.getElementById('aeDia');
   selDia.innerHTML='<option value="">— Seleccionar día —</option>';
-  const DIAS_MAP={LUN:0,MAR:1,'MIÉ':2,JUE:3,VIE:4};
+  const DIAS_MAP={LUN:0,MAR:1,'MIÉ':2,JUE:3,VIE:4,SAB:5,DOM:6};
   ['LUN','MAR','MIÉ','JUE','VIE'].forEach(d=>{
     const base=new Date(fe.l);
     const f=new Date(base);f.setUTCDate(base.getUTCDate()+DIAS_MAP[d]);
