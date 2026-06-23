@@ -1344,7 +1344,13 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
           <button class="btn sm bpri" onclick="abrirRegDia('mqch1q8lpfxj7','mqbyffpctvd97','VIE','12/06/2026','DOMESTICO 3')">Registrar</button>
         </div>
       </div></div></div></div>
-  <div class="mf"><button class="btn bsec" onclick="cerrarMovEjec()">Cerrar</button><button class="btn bpri" onclick="cerrarMovEjec()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"></polyline></svg> Guardar y Cerrar</button></div>
+  <div class="mf" style="justify-content:space-between;">
+    <button class="btn" style="background:#f0f4ff;color:#3730a3;border:1.5px solid #c7d2fe;display:inline-flex;align-items:center;gap:5px;" onclick="abrirActExtra(document.getElementById('movEjecucion').dataset.progId)">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+      + Actividad No Programada
+    </button>
+    <button class="btn bsec" onclick="cerrarMovEjec()">Cerrar</button>
+  </div>
 </div></div>
 
 <!-- MODAL CIERRE -->
