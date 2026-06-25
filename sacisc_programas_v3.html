@@ -3462,6 +3462,8 @@ function abrirDocCierre(id){
       +'</tr>';
   });
 
+  const subNomCie2=p.subareaNom||((p.subareaId?((SA.find(function(s){return s.id===p.subareaId;})||{}).nombre||''):''));
+  const esHospitalCie=p.serv==='DOM'&&subNomCie2.toUpperCase().includes('HOSPITAL');
   const domTh=(p.serv==='DOM'&&!esHospitalCie)?'<th>Domestico</th>':'';
   const obsRow=obsCierre?'<div class="sec"><div class="sect">Observaciones de Cierre</div><p style="font-size:7.5pt;padding:7px 9px;background:#f4f9f7;border-left:2px solid #1e5b4f;border-radius:3px;">'+obsCierre+'</p></div>':'';
 
@@ -3513,13 +3515,13 @@ function abrirDocCierre(id){
 +'<div class="foot"><div>SACISC Modulo 02 · v3.0 · Uso interno</div></div>';
 
   const html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+folio+'</title><style>'+css+'</style></head><body>'+body+'</body></html>';
-  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.target='_blank';a.rel='noopener';
-  document.body.appendChild(a);a.click();
-  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+   const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+   const url=URL.createObjectURL(blob);
+   const win=window.open(url,'_blank');
+   if(!win){const a=document.createElement('a');a.href=url;a.download=folio+'.html';a.click();toast('⚠️ Popup bloqueado. Se descargó el archivo.');}
+   setTimeout(function(){URL.revokeObjectURL(url);},3000);
 }
+
 
 function generarHtmlCierre(p,fe,pct,sc,cab,mnd,folio,hoy,firmaCabo,firmaMando,obsCierre,fechaC,locs,locRows,ejTotal,devTotal,pendTotal){
   return `<!DOCTYPE html>
