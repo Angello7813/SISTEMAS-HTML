@@ -3464,6 +3464,8 @@ function abrirDocCierre(id){
 
   const subNomCie2=p.subareaNom||((p.subareaId?((SA.find(function(s){return s.id===p.subareaId;})||{}).nombre||''):''));
   const esHospitalCie=p.serv==='DOM'&&subNomCie2.toUpperCase().includes('HOSPITAL');
+  const extras_rpt=p.extras||[];
+  const logoB64='';
   const domTh=(p.serv==='DOM'&&!esHospitalCie)?'<th>Domestico</th>':'';
   const obsRow=obsCierre?'<div class="sec"><div class="sect">Observaciones de Cierre</div><p style="font-size:7.5pt;padding:7px 9px;background:#f4f9f7;border-left:2px solid #1e5b4f;border-radius:3px;">'+obsCierre+'</p></div>':'';
 
@@ -3517,8 +3519,8 @@ function abrirDocCierre(id){
   const html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+folio+'</title><style>'+css+'</style></head><body>'+body+'</body></html>';
    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
    const url=URL.createObjectURL(blob);
-   const win=window.open(url,'_blank');
-   if(!win){const a=document.createElement('a');a.href=url;a.download=folio+'.html';a.click();toast('⚠️ Popup bloqueado. Se descargó el archivo.');}
+   const win=window.open(url,'_blank'); if(win){win.focus();}else{window.location.href=url;}
+   setTimeout(function(){URL.revokeObjectURL(url);},5000);
    setTimeout(function(){URL.revokeObjectURL(url);},3000);
 }
 
