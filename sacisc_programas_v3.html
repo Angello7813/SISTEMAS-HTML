@@ -3272,8 +3272,44 @@ function imprimirApertura(id){
         </div>
       </div>
     </div>
-    <div class="rfoot"><div>PEMEX · URCS Sur · DAS-SSAB-GSG · Subdirección de Servicios al Capital Humano · Zona Coatzacoalcos</div><div>SACISC Módulo 02 · v3.0 · Uso interno</div></div>`;
-  // Generate standalone HTML document and open in new tab
+    <div class="rfoot"><div>SACISC Módulo 02 · v3.0 · Uso interno</div></div>`;
+
+  // Abrir en nueva pestaña con document.write (método más confiable)
+  const _cssAper=Array.from(document.styleSheets).map(ss=>{try{return Array.from(ss.cssRules).map(r=>r.cssText).join('\n');}catch(e){return '';}}).join('\n');
+  const _htmlAper='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+folio+'</title>'
+    +'<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Barlow,Arial,sans-serif;font-size:8.5pt;color:#222;padding:14mm 15mm;background:#fff;}'
+    +'.rh{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1e5b4f;padding-bottom:10px;margin-bottom:14px;}'
+    +'.rh-logo{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#002f2a,#1e5b4f);display:flex;align-items:center;justify-content:center;flex-shrink:0;print-color-adjust:exact;-webkit-print-color-adjust:exact;}'
+    +'.rh-title{font-family:Barlow Condensed,sans-serif;font-size:14pt;font-weight:800;color:#002f2a;text-transform:uppercase;}'
+    +'.rh-sub{font-size:7pt;color:#666;margin-top:2px;}'
+    +'.rh-meta{text-align:right;font-size:7pt;color:#444;line-height:1.9;}'
+    +'.rfolio{display:inline-block;background:#1e5b4f;color:#fff;font-size:6.5pt;font-weight:700;padding:2px 9px;border-radius:9px;print-color-adjust:exact;-webkit-print-color-adjust:exact;}'
+    +'.rsec{margin-bottom:13px;}'
+    +'.rsect{background:#002f2a;color:#fff;font-size:7pt;font-weight:700;text-transform:uppercase;padding:4px 10px;border-radius:3px;margin-bottom:7px;print-color-adjust:exact;-webkit-print-color-adjust:exact;}'
+    +'.rtable{width:100%;border-collapse:collapse;}'
+    +'.rtable thead tr{background:#002f2a;print-color-adjust:exact;-webkit-print-color-adjust:exact;}'
+    +'.rtable thead th{color:#fff;padding:5px 7px;font-size:6.5pt;font-weight:700;text-transform:uppercase;text-align:left;}'
+    +'.rtable tbody tr:nth-child(even){background:#f4f9f7;}'
+    +'.rtable tbody td{padding:5px 7px;border-bottom:1px solid #e0ede9;vertical-align:top;font-size:7.5pt;}'
+    +'.rsign-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:14px;}'
+    +'.rsign-block{padding:0 8px;}'
+    +'.rsign-role{font-size:7pt;font-weight:700;color:#002f2a;text-transform:uppercase;text-align:center;margin-bottom:10px;}'
+    +'.rsign-line{width:100%;border:none;border-bottom:1.5px solid #333;display:block;height:26px;margin-bottom:3px;}'
+    +'.rsign-lbl{font-size:5.5pt;color:#555;font-weight:600;text-transform:uppercase;}'
+    +'.rfoot{border-top:2px solid #1e5b4f;padding-top:7px;margin-top:14px;display:flex;justify-content:space-between;font-size:6pt;color:#555;}'
+    +'.topbar{background:#002f2a;color:#fff;padding:8px 15mm;display:flex;justify-content:space-between;align-items:center;font-size:7pt;}'
+    +'.topbar button{background:#fff;color:#002f2a;border:none;border-radius:5px;padding:5px 14px;font-weight:700;cursor:pointer;}'
+    +'@page{margin:10mm 12mm;size:Letter portrait;}'
+    +'@media print{.topbar{display:none;}body{padding:10mm 12mm;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}'
+    +'</style></head><body>'
+    +'<div class="topbar"><span><strong>SACISC · Programa Semanal de Trabajo</strong> · Folio: '+folio+'</span><button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>'
+    +document.getElementById('rptPrint').innerHTML
+    +'</body></html>';
+
+  const _w=window.open('','_blank');
+  if(_w){_w.document.open();_w.document.write(_htmlAper);_w.document.close();}
+  else{toast('⚠️ Permita ventanas emergentes para ver el reporte.');}
 }
 
 function generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs,locRows,actRows){
