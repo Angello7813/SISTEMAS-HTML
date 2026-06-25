@@ -2042,7 +2042,7 @@ function renderProgramasTab(){
   let d=PROG.filter(p=>p.anio===anio);
   if(fsv)d=d.filter(p=>p.serv===fsv);
   if(fsem)d=d.filter(p=>p.semana===fsem);
-  d.sort((a,b)=>a.semana-b.semana||(a.area.localeCompare(b.area)));
+  d.sort((a,b)=>a.semana-b.semana||(a.serv.localeCompare(b.serv))||((a.subareaNom||'').localeCompare(b.subareaNom||'')));
   const tb=document.getElementById('tbProgramas');
   if(!d.length){
     tb.innerHTML=`<tr><td colspan="9" style="text-align:center;color:var(--gray);padding:22px;">Sin programas para los filtros seleccionados.</td></tr>`;
@@ -3274,10 +3274,6 @@ function imprimirApertura(id){
     </div>
     <div class="rfoot"><div>PEMEX · URCS Sur · DAS-SSAB-GSG · Subdirección de Servicios al Capital Humano · Zona Coatzacoalcos</div><div>SACISC Módulo 02 · v3.0 · Uso interno</div></div>`;
   // Generate standalone HTML document and open in new tab
-  const html=generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs,locRows,actRows);
-  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  window.open(url,'_blank');
 }
 
 function generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs,locRows,actRows){
@@ -3440,8 +3436,13 @@ function abrirDocCierre(id){
   const devTotal=locs.filter(function(loc){const r=(p.ejecucion||{})[loc.locId+'_'+loc.dia];return r&&r.status==='DESVIACION';}).length;
   const pendTotal=Math.max(0,locs.length-ejTotal-devTotal);
 
+  // Ordenar por fecha real
+  const _locsOrdCie=[...locs].sort(function(a,b){
+    const _fd=function(l){if(l.fecha){const p=l.fecha.split('/');return p.length===3?new Date(p[2],p[1]-1,p[0]).getTime():0;}return ['LUN','MAR','MIÉ','JUE','VIE','SAB','DOM'].indexOf(l.dia);};
+    return _fd(a)-_fd(b);
+  });
   let locRows='';
-  locs.forEach(function(loc,i){
+  _locsOrdCie.forEach(function(loc,i){
     const sub=SA.find(function(s){return s.id===loc.subarea;});
     const r=(p.ejecucion||{})[loc.locId+'_'+loc.dia];
     const st=r?r.status:'PENDIENTE';
@@ -3519,8 +3520,8 @@ function abrirDocCierre(id){
   const html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+folio+'</title><style>'+css+'</style></head><body>'+body+'</body></html>';
    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
    const url=URL.createObjectURL(blob);
-   const win=window.open(url,'_blank'); if(win){win.focus();}else{window.location.href=url;}
-   setTimeout(function(){URL.revokeObjectURL(url);},5000);
+   const win=window.open('','_blank'); if(win){win.document.open();win.document.write(html);win.document.close();}else{const a=document.createElement('a');a.href=url;a.download=folio+'.html';document.body.appendChild(a);a.click();document.body.removeChild(a);toast('Reporte descargado como archivo HTML');}
+   setTimeout(function(){URL.revokeObjectURL(url);},3000);
    setTimeout(function(){URL.revokeObjectURL(url);},3000);
 }
 
@@ -4935,6 +4936,22 @@ function confirmarReplicaCierre(){
   }
   aplicarFiltros();renderProgramasTab();renderTendencia();
   toast('✅ Ejecución replicada a Semana '+semD+' — '+Object.keys(nuevaEjec).length+' registros copiados.');
+}
+
+
+// ── Limpiar programas por semana (para datos de prueba) ──
+function limpiarProgramasSemana(semana){
+  const ids=PROG.filter(p=>p.semana===semana&&!p.eliminado).map(p=>p.id);
+  if(!ids.length){toast('No hay programas en la semana '+semana);return;}
+  if(!confirm('¿Eliminar '+ids.length+' programa(s) de la Semana '+semana+'? Esta acción no se puede deshacer.'))return;
+  ids.forEach(id=>{
+    const idx=PROG.findIndex(p=>p.id===id);
+    if(idx>=0)PROG.splice(idx,1);
+    sbDelete('programas',id);
+  });
+  save(LS.P,PROG);
+  aplicarFiltros();renderProgramasTab();renderTendencia();
+  toast('✅ '+ids.length+' programa(s) de Semana '+semana+' eliminados.');
 }
 
 </script>
