@@ -121,7 +121,7 @@ tbody td{padding:9px 13px;color:#333;}
 .mov{display:none;position:fixed;inset:0;background:rgba(0,47,42,.62);z-index:10000;align-items:center;justify-content:center;padding:16px;}
 .mov.active{display:flex;}
 .mc{background:#fff;border-radius:14px;width:100%;max-height:93vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,47,42,.3);}
-.mc.sm{max-width:500px;}.mc.md{max-width:720px;}.mc.lg{max-width:960px;}.mc.xl{max-width:1050px;width:95vw;}
+.mc.sm{max-width:500px;}.mc.md{max-width:720px;}.mc.lg{max-width:960px;}.mc.xl{max-width:1080px;}
 .mh{background:var(--gd);color:#fff;padding:18px 26px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
 .mh h2{font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:9px;}
 .mc-x{background:rgba(255,255,255,.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:background .18s;}
@@ -2136,7 +2136,7 @@ function renderProgramasTab(){
 let _actsTemp=[], _locsTemp=[];
 
 function abrirNuevoPrograma(){
-  _actsTemp=[];_locsTemp=[];
+  _actsTemp=[];_locsTemp=[];_editLocIdx=null;
   document.getElementById('editId').value='';
   document.getElementById('mpTit').textContent='Nuevo Programa Semanal';
   // Limpiar primero
@@ -2329,13 +2329,13 @@ function actualizarDiasProgramador(){
   const base=new Date(sd.l);
   const prevVal=dias.value;
   dias.innerHTML='<option value="">— Seleccionar día —</option>';
-  // Repoblar lpSubarea con todas las subáreas del área si tiene pocas opciones
+  // Poblar SIEMPRE lpSubarea con todas las subáreas del área actual
   const lpSubSel=document.getElementById('lpSubarea');
-  if(lpSubSel&&lpSubSel.options.length<=1&&SA.length>0){
+  if(lpSubSel){
     const _ar2=document.getElementById('pArea').value;
     const _prev2=lpSubSel.value;
     lpSubSel.innerHTML='<option value="">— Todas las subáreas —</option>';
-    SA.filter(s=>!_ar2||s.area===_ar2).forEach(s=>{
+    (SA.length?SA:loadLocal(LS.SA)||[]).filter(s=>!_ar2||s.area===_ar2).forEach(s=>{
       const o=document.createElement('option');o.value=s.id;o.textContent=s.nombre;lpSubSel.appendChild(o);
     });
     if(_prev2)lpSubSel.value=_prev2;
@@ -2385,10 +2385,10 @@ function filtrarLocsPorSubarea(){
   const ar=document.getElementById('pArea').value;
   const lpSubarea=document.getElementById('lpSubarea');
   // Repoblar selector de subárea si tiene pocas opciones
-  if(lpSubarea&&lpSubarea.options.length<=2&&SA.length>0){
+  if(lpSubarea){
     const prev=lpSubarea.value;
     lpSubarea.innerHTML='<option value="">— Todas las subáreas —</option>';
-    SA.filter(s=>!ar||s.area===ar).forEach(s=>{
+    (SA.length?SA:loadLocal(LS.SA)||[]).filter(s=>!ar||s.area===ar).forEach(s=>{
       const o=document.createElement('option');o.value=s.id;o.textContent=s.nombre;lpSubarea.appendChild(o);
     });
     if(prev)lpSubarea.value=prev;
@@ -2466,29 +2466,80 @@ function agregarLocPrograma(){
   if(!loc)return;
   const sub=SA.find(s=>s.id===loc.subarea);
   const dom=sv==='DOM'?document.getElementById('lpDomestico').value.trim():'';
-  _locsTemp.push({locId,nombre:loc.nombre,tipo:loc.tipo,area:loc.area,subarea:loc.subarea,subarNombre:sub?sub.nombre:'',dia,fecha,domestico:dom});
+  const _nuevaLocObj={locId,nombre:loc.nombre,tipo:loc.tipo,area:loc.area,subarea:loc.subarea,subarNombre:sub?sub.nombre:'',dia,fecha,domestico:dom};
+  if(_editLocIdx!==null&&_editLocIdx>=0&&_editLocIdx<_locsTemp.length){
+    _locsTemp[_editLocIdx]=_nuevaLocObj;
+    _editLocIdx=null;
+    const _btnAg=document.querySelector('[onclick="agregarLocPrograma()"]');
+    if(_btnAg){_btnAg.textContent='+ Agregar al Programa';_btnAg.style.background='';}
+    toast('✅ Localización actualizada.');
+  } else {
+    _locsTemp.push(_nuevaLocObj);
+    toast('✅ Localización agregada.');
+  }
   // Clear fields
   document.getElementById('lpLoc').value='';
   document.getElementById('lpDia').value='';
   if(sv==='DOM') document.getElementById('lpDomestico').value='';
   renderLocTabla();
   refrescarDatalistDom();
-  toast('✅ Localización agregada.');
 }
+
 function quitarLocProg(i){_locsTemp.splice(i,1);renderLocTabla();}
+let _editLocIdx=null; // índice de la fila en edición
+
 function editarLocProg(i){
   const l=_locsTemp[i];if(!l)return;
-  // Populate form with existing data for editing
-  document.getElementById('lpLoc').value=l.locId||'';
-  // Set day selector
+  _editLocIdx=i; // guardar índice para reemplazar al guardar
+
+  // Cargar subárea en el filtro primero (para que el select de loc se filtre)
+  const lpSubarea=document.getElementById('lpSubarea');
+  if(lpSubarea&&l.subarea){
+    // Asegurar que la subárea esté en la lista
+    if(!Array.from(lpSubarea.options).find(o=>o.value===l.subarea)){
+      const o=document.createElement('option');o.value=l.subarea;o.textContent=l.subarNombre||l.subarea;lpSubarea.appendChild(o);
+    }
+    lpSubarea.value=l.subarea;
+    filtrarLocsPorSubarea(); // filtrar locs por subárea
+  }
+
+  // Cargar localización
+  setTimeout(()=>{
+    const lpLoc=document.getElementById('lpLoc');
+    if(lpLoc)lpLoc.value=l.locId||'';
+  },80);
+
+  // Cargar día
   const dias=document.getElementById('lpDia');
-  for(let o of dias.options){if(o.value&&o.value.startsWith(l.dia+'|')){dias.value=o.value;break;}}
+  if(dias){
+    for(let o of dias.options){
+      if(o.value&&o.value.startsWith(l.dia+'|')){dias.value=o.value;break;}
+    }
+    onDiaChange();
+  }
+
+  // Cargar doméstico si aplica
   const sv=document.getElementById('pServ').value;
-  if(sv==='DOM'){document.getElementById('lpDomestico').value=l.domestico||'';}
-  // Remove the row so user can re-add with changes
-  _locsTemp.splice(i,1);
+  if(sv==='DOM'){
+    const lpDom=document.getElementById('lpDomestico');
+    if(lpDom)lpDom.value=l.domestico||'';
+  }
+
+  // Resaltar fila en edición visualmente
   renderLocTabla();
-  toast('Edite los datos y presione Agregar.');
+
+  // Cambiar botón Agregar a "Actualizar"
+  const btnAgregar=document.querySelector('[onclick="agregarLocPrograma()"]');
+  if(btnAgregar){
+    btnAgregar.textContent='✔ Actualizar';
+    btnAgregar.style.background='#f59e0b';
+  }
+
+  // Scroll al formulario
+  const wrap=document.getElementById('locProgramadorWrap');
+  if(wrap)wrap.scrollIntoView({behavior:'smooth',block:'start'});
+
+  toast('✏️ Modifica los datos y presiona Actualizar.');
 }
 function renderLocTabla(){
   const wrap=document.getElementById('locTablaWrap');if(!wrap)return;
@@ -2512,7 +2563,7 @@ function renderLocTabla(){
       <td style="padding:8px 12px;font-weight:600;">📍 ${l.nombre}</td>
       <td style="padding:8px 12px;font-size:.78rem;color:var(--gray);">${l.subarNombre||'—'}</td>
       ${sv==='DOM'?`<td style="padding:8px 12px;font-size:.82rem;">${l.domestico||'<span style="color:var(--gray);">—</span>'}</td>`:''}
-      <td style="padding:8px 12px;text-align:center;"><div style="display:flex;gap:3px;justify-content:center;"><button class="btn xs bsec" onclick="editarLocProg(${i})" title="Editar">✏️</button><button class="btn xs bdng" onclick="quitarLocProg(${i})" title="Eliminar">✕</button></div></td>
+      <td style="padding:8px 12px;text-align:center;"><div style="display:flex;gap:3px;justify-content:center;"><button class="btn xs" style="${i===_editLocIdx?'background:#fef3c7;border:1.5px solid #f59e0b;':'background:#f0f9f6;border:1.5px solid #a0cfc3;'}color:var(--gd);" onclick="editarLocProg(${i})" title="Editar">✏️</button><button class="btn xs bdng" onclick="quitarLocProg(${i})" title="Eliminar">✕</button></div></td>
     </tr>`;
   });
   h+='</tbody></table></div>';
