@@ -1427,7 +1427,7 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
       </div>
     </div>
   </div>
-  <div class="mf"><button class="btn bsec" onclick="cerrarMovCierre()">Cancelar</button><button class="btn bwarn" onclick="if(_cierreId){abrirDocCierre(_cierreId);}else{toast('⚠️ Guarda el cierre primero.');}">🖨️ Abrir Reporte de Cierre</button><button class="btn bpri" onclick="guardarCierre()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Cerrar y Validar</button></div>
+  <div class="mf" style="justify-content:space-between;"><button class="btn bsec" onclick="cerrarMovCierre()">Cancelar</button><div style="display:flex;gap:8px;"><button class="btn bwarn" id="btnVerReporteCierre" style="display:none;" onclick="abrirDocCierre(document.getElementById('movCierre').dataset.progId)">🖨️ Ver Reporte de Cierre</button><button class="btn bpri" onclick="guardarCierre()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Cerrar y Validar</button></div></div>
 </div></div>
 
 <!-- MODAL PERSONA -->
