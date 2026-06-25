@@ -2860,28 +2860,53 @@ function editarPersonaModal(id){
   document.getElementById('movPersona').querySelector('h2').textContent='Editar Persona';
   document.getElementById('movPersona').classList.add('active');
 }
+function toggleSubarea(id){
+  const el=document.getElementById('sub_'+id);
+  const ic=document.getElementById('ic_'+id);
+  if(!el)return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  if(ic)ic.textContent=open?'▶':'▼';
+}
 function renderOrgTree(){
-  let h='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">';
+  let h='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;">';
   ['SCAD','SCEP','SCUI','SCCO'].forEach(ar=>{
     const subs=SA.filter(s=>s.area===ar);
-    const locsDir=LC.filter(l=>l.area===ar&&!l.subarea);
+    const locsDir=LC.filter(l=>l.area===ar&&(!l.subarea||l.subarea===''));
+    const totalLocs=LC.filter(l=>l.area===ar).length;
     h+=`<div style="border:1.5px solid var(--bd);border-radius:10px;overflow:hidden;">
-      <div style="background:var(--gd);color:#fff;padding:9px 14px;font-family:Barlow Condensed,sans-serif;font-size:.86rem;font-weight:700;letter-spacing:.06em;">DAS · SSAB · GSG · ${ar}</div>
-      <div style="padding:10px 12px;">`;
-    locsDir.forEach(l=>{h+=locRow(l);});
+      <div style="background:var(--gd);color:#fff;padding:9px 14px;font-family:Barlow Condensed,sans-serif;font-size:.86rem;font-weight:700;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center;">
+        <span>DAS · SSAB · GSG · ${ar}</span>
+        <span style="font-size:.72rem;opacity:.75;font-weight:400;">${subs.length} subáreas · ${totalLocs} locs.</span>
+      </div>
+      <div style="padding:8px 10px;">`;
+    // Localizaciones sin subárea
+    if(locsDir.length){
+      h+=`<div style="margin-bottom:6px;">
+        <div style="font-size:.72rem;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;padding:3px 0 4px 2px;">Sin subárea</div>`;
+      locsDir.forEach(l=>{h+=locRow(l);});
+      h+=`</div>`;
+    }
+    // Subáreas como nodos colapsables
     subs.forEach(s=>{
       const slocs=LC.filter(l=>l.subarea===s.id);
-      h+=`<div style="margin-top:6px;padding:8px 10px;background:#f7faf9;border-radius:7px;border:1px solid #e0ede9;">
-        <div style="font-family:Barlow Condensed,sans-serif;font-size:.8rem;font-weight:700;color:var(--gm);margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;">
-          📂 ${s.nombre}
-          <div style="display:flex;gap:3px;">
-            <button class="btn xs bsec" onclick="editarSubareaModal('${s.id}')" title="Editar"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      const sid='sa_'+s.id.replace(/[^a-z0-9]/gi,'_');
+      h+=`<div style="margin-bottom:5px;border:1px solid #e0ede9;border-radius:7px;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f0f9f6;cursor:pointer;" onclick="toggleSubarea('${sid}')">
+          <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:0;">
+            <span id="ic_${sid}" style="font-size:.7rem;color:var(--gm);flex-shrink:0;">▼</span>
+            <span style="font-family:Barlow Condensed,sans-serif;font-size:.82rem;font-weight:700;color:var(--gd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📂 ${s.nombre}</span>
+            <span style="font-size:.65rem;color:var(--gray);flex-shrink:0;">${slocs.length} locs.</span>
+          </div>
+          <div style="display:flex;gap:3px;flex-shrink:0;" onclick="event.stopPropagation()">
+            <button class="btn xs bsec" onclick="editarSubareaModal('${s.id}')" title="Editar"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
             <button class="btn xs bdng" onclick="eliminarSubarea('${s.id}')" title="Eliminar">✕</button>
           </div>
-        </div>`;
+        </div>
+        <div id="sub_${sid}" style="padding:6px 8px;display:block;">`;
       slocs.forEach(l=>{h+=locRow(l);});
-      if(!slocs.length)h+=`<p style="font-size:.72rem;color:var(--gray);">Sin localizaciones.</p>`;
-      h+=`</div>`;
+      if(!slocs.length)h+=`<p style="font-size:.72rem;color:var(--gray);padding:4px 0;">Sin localizaciones registradas.</p>`;
+      h+=`</div></div>`;
     });
     if(!subs.length&&!locsDir.length)h+=`<p style="font-size:.76rem;color:var(--gray);text-align:center;padding:10px 0;">Sin subáreas ni localizaciones.</p>`;
     h+=`</div></div>`;
