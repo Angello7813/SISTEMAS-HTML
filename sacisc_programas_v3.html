@@ -253,7 +253,7 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
 .session-btn.cancel{background:#f4f7f6;color:#666;border:1.5px solid #d0d0d0;}.session-btn.cancel:hover{background:#e0e0e0;}
 
 /* ── MODAL RÉPLICA ── */
-#movReplica .mc{max-width:520px;}
+#movReplica .mc:not(.xl){max-width:520px;}
 .replica-info{background:#f0f9f6;border:1.5px solid #6ee7b7;border-radius:8px;padding:14px 18px;margin-bottom:16px;}
 .replica-arrow{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0;font-family:'Barlow Condensed',sans-serif;}
 .replica-sem{background:#002f2a;color:#fff;border-radius:6px;padding:5px 14px;font-size:.85rem;font-weight:700;}
@@ -1217,37 +1217,31 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
       <td style="padding:8px 12px;font-weight:600;">📍 TOVENBU</td>
       <td style="padding:8px 12px;font-size:.78rem;color:var(--gray);">OFICINA · FACTORIA AECP</td>
       <td style="padding:8px 12px;font-size:.82rem;">DOMESTICO 1</td>
-      <td style="padding:8px 12px;text-align:center;"><div style="display:flex;gap:3px;justify-content:center;"><button class="btn xs bsec" onclick="editarLocProg(0)" title="Editar">✏️</button><button class="btn xs bdng" onclick="quitarLocProg(0)" title="Eliminar">✕</button></div></td>
     </tr><tr style="border-bottom:1px solid var(--bd);background:#f7faf9;}">
       <td style="padding:8px 12px;"><span style="font-family:Barlow Condensed,sans-serif;font-weight:700;color:var(--gd);">MAR</span><br><span style="font-size:.72rem;color:var(--gray);">09/06/2026</span></td>
       <td style="padding:8px 12px;font-weight:600;">📍 Recursos Humanos</td>
       <td style="padding:8px 12px;font-size:.78rem;color:var(--gray);">OFICINA · FACTORIA AECP</td>
       <td style="padding:8px 12px;font-size:.82rem;">DOMESTICO 2</td>
-      <td style="padding:8px 12px;text-align:center;"><div style="display:flex;gap:3px;justify-content:center;"><button class="btn xs bsec" onclick="editarLocProg(1)" title="Editar">✏️</button><button class="btn xs bdng" onclick="quitarLocProg(1)" title="Eliminar">✕</button></div></td>
     </tr><tr style="border-bottom:1px solid var(--bd);">
       <td style="padding:8px 12px;"><span style="font-family:Barlow Condensed,sans-serif;font-weight:700;color:var(--gd);">MIÉ</span><br><span style="font-size:.72rem;color:var(--gray);">10/06/2026</span></td>
       <td style="padding:8px 12px;font-weight:600;">📍 Administración del Activo</td>
       <td style="padding:8px 12px;font-size:.78rem;color:var(--gray);">OFICINA · FACTORIA AECP</td>
       <td style="padding:8px 12px;font-size:.82rem;">DOMESTICO 2</td>
-      <td style="padding:8px 12px;text-align:center;"><div style="display:flex;gap:3px;justify-content:center;"><button class="btn xs bsec" onclick="editarLocProg(2)" title="Editar">✏️</button><button class="btn xs bdng" onclick="quitarLocProg(2)" title="Eliminar">✕</button></div></td>
     </tr><tr style="border-bottom:1px solid var(--bd);background:#f7faf9;}">
       <td style="padding:8px 12px;"><span style="font-family:Barlow Condensed,sans-serif;font-weight:700;color:var(--gd);">MIÉ</span><br><span style="font-size:.72rem;color:var(--gray);">10/06/2026</span></td>
       <td style="padding:8px 12px;font-weight:600;">📍 TOVENBU</td>
       <td style="padding:8px 12px;font-size:.78rem;color:var(--gray);">OFICINA · FACTORIA AECP</td>
       <td style="padding:8px 12px;font-size:.82rem;">DOMESTICO 1</td>
-      <td style="padding:8px 12px;text-align:center;"><div style="display:flex;gap:3px;justify-content:center;"><button class="btn xs bsec" onclick="editarLocProg(3)" title="Editar">✏️</button><button class="btn xs bdng" onclick="quitarLocProg(3)" title="Eliminar">✕</button></div></td>
     </tr><tr style="border-bottom:1px solid var(--bd);">
       <td style="padding:8px 12px;"><span style="font-family:Barlow Condensed,sans-serif;font-weight:700;color:var(--gd);">JUE</span><br><span style="font-size:.72rem;color:var(--gray);">11/06/2026</span></td>
       <td style="padding:8px 12px;font-weight:600;">📍 Recursos Humanos</td>
       <td style="padding:8px 12px;font-size:.78rem;color:var(--gray);">OFICINA · FACTORIA AECP</td>
       <td style="padding:8px 12px;font-size:.82rem;">DOMESTICO 3</td>
-      <td style="padding:8px 12px;text-align:center;"><div style="display:flex;gap:3px;justify-content:center;"><button class="btn xs bsec" onclick="editarLocProg(4)" title="Editar">✏️</button><button class="btn xs bdng" onclick="quitarLocProg(4)" title="Eliminar">✕</button></div></td>
     </tr><tr style="border-bottom:1px solid var(--bd);background:#f7faf9;}">
       <td style="padding:8px 12px;"><span style="font-family:Barlow Condensed,sans-serif;font-weight:700;color:var(--gd);">VIE</span><br><span style="font-size:.72rem;color:var(--gray);">12/06/2026</span></td>
       <td style="padding:8px 12px;font-weight:600;">📍 Administración del Activo</td>
       <td style="padding:8px 12px;font-size:.78rem;color:var(--gray);">OFICINA · FACTORIA AECP</td>
       <td style="padding:8px 12px;font-size:.82rem;">DOMESTICO 3</td>
-      <td style="padding:8px 12px;text-align:center;"><div style="display:flex;gap:3px;justify-content:center;"><button class="btn xs bsec" onclick="editarLocProg(5)" title="Editar">✏️</button><button class="btn xs bdng" onclick="quitarLocProg(5)" title="Eliminar">✕</button></div></td>
     </tr></tbody></table></div></div>
     </div>
     <div class="sd">Actividades del Programa</div>
@@ -2219,6 +2213,8 @@ function onAreaChange(){
   poblarMandosM(ar);
   // Si SA está vacío, intentar recargar desde localStorage
   if(!SA.length){SA=loadLocal(LS.SA)||[];}
+  // Recargar SA si está vacío
+  if(!SA.length){SA=loadLocal(LS.SA)||[];}
   // Poblar pSubarea con TODAS las subáreas del área
   const pSubarea=document.getElementById('pSubarea');
   if(pSubarea){
@@ -2333,7 +2329,17 @@ function actualizarDiasProgramador(){
   const base=new Date(sd.l);
   const prevVal=dias.value;
   dias.innerHTML='<option value="">— Seleccionar día —</option>';
+  // Repoblar lpSubarea con todas las subáreas del área si tiene pocas opciones
   const lpSubSel=document.getElementById('lpSubarea');
+  if(lpSubSel&&lpSubSel.options.length<=1&&SA.length>0){
+    const _ar2=document.getElementById('pArea').value;
+    const _prev2=lpSubSel.value;
+    lpSubSel.innerHTML='<option value="">— Todas las subáreas —</option>';
+    SA.filter(s=>!_ar2||s.area===_ar2).forEach(s=>{
+      const o=document.createElement('option');o.value=s.id;o.textContent=s.nombre;lpSubSel.appendChild(o);
+    });
+    if(_prev2)lpSubSel.value=_prev2;
+  }
   const subSelId=lpSubSel?lpSubSel.value:'';
   const subSelNom=subSelId?(SA.find(s=>s.id===subSelId)||{}).nombre||'':'';
   const esHospital=subSelNom.toUpperCase().includes('HOSPITAL');
@@ -2378,6 +2384,15 @@ function filtrarLocsPorSubarea(){
   const sv=document.getElementById('pServ').value;
   const ar=document.getElementById('pArea').value;
   const lpSubarea=document.getElementById('lpSubarea');
+  // Repoblar selector de subárea si tiene pocas opciones
+  if(lpSubarea&&lpSubarea.options.length<=2&&SA.length>0){
+    const prev=lpSubarea.value;
+    lpSubarea.innerHTML='<option value="">— Todas las subáreas —</option>';
+    SA.filter(s=>!ar||s.area===ar).forEach(s=>{
+      const o=document.createElement('option');o.value=s.id;o.textContent=s.nombre;lpSubarea.appendChild(o);
+    });
+    if(prev)lpSubarea.value=prev;
+  }
   const subFilt=lpSubarea?lpSubarea.value:'';
   const sel=document.getElementById('lpLoc');
   if(!sel)return;
