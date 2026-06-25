@@ -492,7 +492,7 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
       </div>
     </div>
     <div class="pb">
-      <div class="tw"><table><thead><tr><th>Semana</th><th>Servicio</th><th>Área</th><th>Responsable</th><th>Jefe de Área</th><th>Locs.</th><th>Cumplimiento</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tbProgramas"><tr>
+      <div class="tw"><table><thead><tr><th>Semana</th><th>Servicio</th><th>Subárea</th><th>Área</th><th>Responsable</th><th>Jefe de Área</th><th>Locs.</th><th>Cumplimiento</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tbProgramas"><tr>
         <td><strong>Sem. 24</strong><div style="font-size:.7rem;color:var(--gray);">08/06/2026</div></td>
         <td><span class="chip cv">🌿 Áreas Verdes</span></td>
         <td><strong>SCAD</strong></td>
@@ -2054,6 +2054,7 @@ function renderProgramasTab(){
       return `<tr>
         <td><strong>Sem. ${p.semana}</strong><div style="font-size:.7rem;color:var(--gray);">${fe.ini}</div></td>
         <td><span class="chip ${p.serv==='AV'?'cv':p.serv==='DOM'?'cb':'co'}">${SVCL[p.serv]}</span></td>
+        <td style="font-size:.78rem;color:var(--gm);font-weight:600;">${p.subareaNom||((p.subareaId?((SA.find(s=>s.id===p.subareaId)||{}).nombre||''):''))||'—'}</td>
         <td><strong>${p.area}</strong></td>
         <td style="font-size:.8rem;">${cab?cab.nombre:'<span style="color:var(--err);">—</span>'}</td>
         <td style="font-size:.8rem;">${mnd?mnd.nombre:'<span style="color:var(--err);">—</span>'}</td>
@@ -2750,6 +2751,9 @@ function guardarRegDia(progId,locId,dia){
 let _cierreId=null;
 function abrirCierre(id){
   _cierreId=id;const p=PROG.find(x=>x.id===id);if(!p)return;
+  // Inyectar el id directamente en el botón de reporte de cierre
+  const btnRptCierre=document.querySelector('#movCierre .mf .btn.bwarn');
+  if(btnRptCierre)btnRptCierre.onclick=function(){abrirDocCierre(id);};
   const fe=semDates(p.anio,p.semana),pct=calcCump(p),sc=semColor(pct);
   const cab=getPer(p.caboId),mnd=getPer(p.mandoId);
   document.getElementById('mciInfo').innerHTML=`<strong>${SVCL[p.serv]}</strong> · ${p.area} · ${fe.label} &nbsp;|&nbsp; Cumplimiento actual: <strong style="color:${sc};">${pct}%</strong>`;
