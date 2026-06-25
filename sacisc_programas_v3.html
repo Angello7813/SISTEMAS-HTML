@@ -1211,7 +1211,7 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
           </div>
         </div>
       </div>
-      <div id="locTablaWrap"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:.83rem;"><thead><tr style="background:var(--gd);"><th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Día / Fecha</th><th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Localización</th><th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Tipo / Subárea</th><th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Doméstico asignado</th><th style="color:#fff;padding:9px 12px;width:40px;"></th></tr></thead><tbody><tr style="border-bottom:1px solid var(--bd);">
+      <div id="locTablaWrap"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:.83rem;"><thead><tr style="background:var(--gd);"><th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Día / Fecha</th><th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Localización</th><th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Subárea</th><th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Doméstico asignado</th><th style="color:#fff;padding:9px 12px;width:40px;"></th></tr></thead><tbody><tr style="border-bottom:1px solid var(--bd);">
       <td style="padding:8px 12px;"><span style="font-family:Barlow Condensed,sans-serif;font-weight:700;color:var(--gd);">LUN</span><br><span style="font-size:.72rem;color:var(--gray);">08/06/2026</span></td>
       <td style="padding:8px 12px;font-weight:600;">📍 TOVENBU</td>
       <td style="padding:8px 12px;font-size:.78rem;color:var(--gray);">OFICINA · FACTORIA AECP</td>
@@ -1427,7 +1427,7 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
       </div>
     </div>
   </div>
-  <div class="mf"><button class="btn bsec" onclick="cerrarMovCierre()">Cancelar</button><button class="btn bwarn" onclick="abrirDocCierre(_cierreId)">🖨️ Abrir Reporte de Cierre</button><button class="btn bpri" onclick="guardarCierre()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Cerrar y Validar</button></div>
+  <div class="mf"><button class="btn bsec" onclick="cerrarMovCierre()">Cancelar</button><button class="btn bwarn" onclick="if(_cierreId){abrirDocCierre(_cierreId);}else{toast('⚠️ Guarda el cierre primero.');}">🖨️ Abrir Reporte de Cierre</button><button class="btn bpri" onclick="guardarCierre()"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Cerrar y Validar</button></div>
 </div></div>
 
 <!-- MODAL PERSONA -->
@@ -2066,7 +2066,8 @@ function renderProgramasTab(){
           ${p.estado!=='CERRADO'&&p.estado!=='CANCELADO'?`<button class="btn xs bwarn" onclick="abrirCierre('${p.id}')">Cerrar</button>`:''}
           <button class="btn xs" style="background:#f0f9f6;color:var(--gm);border:1.5px solid #c3e0d6;" onclick="imprimirApertura('${p.id}')">📄 Apertura</button>
           ${p.estado==='CERRADO'?`<button class="btn xs" style="background:#f0fdf4;color:#065f46;border:1.5px solid #a7f3d0;" onclick="abrirDocCierre('${p.id}')">🖨️ Cierre</button>`:''}
-          <button class="btn xs" style="background:#f0f4ff;color:#3730a3;border:1.5px solid #c7d2fe;" onclick="abrirReplica('${p.id}')">📋 Replicar</button>
+          <button class="btn xs" style="background:#f0f4ff;color:#3730a3;border:1.5px solid #c7d2fe;" onclick="abrirReplica('${p.id}')">📋 Replicar Apertura</button>
+          ${p.estado==='CERRADO'?`<button class="btn xs" style="background:#fdf4ff;color:#7e22ce;border:1.5px solid #d8b4fe;" onclick="abrirReplicaCierre('${p.id}')">📋 Replicar Cierre</button>`:''}
         </div></td>
       </tr>`;
     }).join('');
@@ -2447,7 +2448,7 @@ function renderLocTabla(){
   let h='<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:.83rem;"><thead><tr style="background:var(--gd);">';
   h+='<th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Día / Fecha</th>';
   h+='<th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Localización</th>';
-  h+='<th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Tipo / Subárea</th>';
+  h+='<th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Subárea</th>';
   if(sv==='DOM') h+='<th style="color:#fff;padding:9px 12px;text-align:left;font-family:Barlow Condensed,sans-serif;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;">Doméstico asignado</th>';
   h+='<th style="color:#fff;padding:9px 12px;width:40px;"></th>';
   h+='</tr></thead><tbody>';
@@ -2455,7 +2456,7 @@ function renderLocTabla(){
     h+=`<tr style="border-bottom:1px solid var(--bd);${i%2===0?'':'background:#f7faf9;}'}">
       <td style="padding:8px 12px;"><span style="font-family:Barlow Condensed,sans-serif;font-weight:700;color:var(--gd);">${l.dia}</span><br><span style="font-size:.72rem;color:var(--gray);">${l.fecha}</span></td>
       <td style="padding:8px 12px;font-weight:600;">📍 ${l.nombre}</td>
-      <td style="padding:8px 12px;font-size:.78rem;color:var(--gray);">${l.tipo}${l.subarNombre?' · '+l.subarNombre:''}</td>
+      <td style="padding:8px 12px;font-size:.78rem;color:var(--gray);">${l.subarNombre||'—'}</td>
       ${sv==='DOM'?`<td style="padding:8px 12px;font-size:.82rem;">${l.domestico||'<span style="color:var(--gray);">—</span>'}</td>`:''}
       <td style="padding:8px 12px;text-align:center;"><div style="display:flex;gap:3px;justify-content:center;"><button class="btn xs bsec" onclick="editarLocProg(${i})" title="Editar">✏️</button><button class="btn xs bdng" onclick="quitarLocProg(${i})" title="Eliminar">✕</button></div></td>
     </tr>`;
@@ -2684,7 +2685,7 @@ function abrirRegDia(progId,locId,dia,fecha,domProg){
         <div class="field s2"><label>Estado del día <span class="req">*</span></label>
           <select id="rdStatus" onchange="document.getElementById('rdDevWrap').style.display=this.value==='DESVIACION'?'block':'none';">${optsHTML}</select>
         </div>
-        ${p.serv==='DOM'?`<div class="field s2"><label>Doméstico que realizó la limpieza</label><input type="text" id="rdDomEjec" list="dlDomesticosEjec" autocomplete="off" placeholder="Nombre del doméstico que ejecutó" value="${reg.domEjec||domProg||''}"></div>`:''}
+        ${(p.serv==='DOM'&&!_esHospProg)?`<div class="field s2"><label>Doméstico que realizó la limpieza</label><input type="text" id="rdDomEjec" list="dlDomesticosEjec" autocomplete="off" placeholder="Nombre del doméstico que ejecutó" value="${reg.domEjec||domProg||''}"></div>`:''}
         <div id="rdDevWrap" class="s2" style="display:${reg.status==='DESVIACION'?'block':'none'};">
           <div class="dev-row">
             <div class="dt">⚠️ Datos de la Desviación</div>
@@ -3206,7 +3207,7 @@ function imprimirApertura(id){
     return `<tr style="border-bottom:1.5px solid #d0e8e3;${i%2?'background:#f8fcfa;':''}">
       <td style="padding:6px 8px;font-weight:700;font-size:7.5pt;text-align:center;">${loc.dia}<br><span style="font-size:6pt;font-weight:400;color:#555;">${loc.fecha||''}</span></td>
       <td style="padding:6px 8px;font-weight:700;font-size:7.5pt;">📍 ${loc.nombre}</td>
-      <td style="padding:6px 8px;font-size:7pt;color:#555;">${loc.tipo}${sub?' · '+sub.nombre:''}</td>
+      <td style="padding:6px 8px;font-size:7pt;color:#555;">${sub?sub.nombre:'—'}</td>
       ${domCell}
       <td style="padding:6px 8px;text-align:center;font-size:9pt;">${stSym}</td>
       ${signCell}
@@ -3281,27 +3282,31 @@ function generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs,locRows,actRows){
   const cabNom=cab?cab.nombre+' - '+cab.cargo:'-';
   const mndNom=mnd?mnd.nombre+' - '+mnd.cargo:'-';
   const fechaEmision=fmtF(hoy);
+  // Detectar modalidad Hospital — sin doméstico asignado ni firma de conformidad
+  const subNomProg=p.subareaNom||(p.subareaId?((SA.find(function(s){return s.id===p.subareaId;})||{}).nombre||''):'');
+  const esHospital=p.serv==='DOM'&&subNomProg.toUpperCase().includes('HOSPITAL');
 
   let locRowsAper='';
-  const _locsAperOrd=[...(locs||[])].sort(function(a,b){return ['LUN','MAR','MIÉ','JUE','VIE'].indexOf(a.dia)-['LUN','MAR','MIÉ','JUE','VIE'].indexOf(b.dia);});
+  const _locsAperOrd=[...(locs||[])].sort(function(a,b){const _DO=['LUN','MAR','MIÉ','JUE','VIE','SAB','DOM'];const _fd=function(l){if(l.fecha){var p=l.fecha.split('/');return p.length===3?new Date(p[2],p[1]-1,p[0]).getTime():0;}return _DO.indexOf(l.dia);}; return _fd(a)-_fd(b);});
   _locsAperOrd.forEach(function(loc,i){
     const sub=SA.find(function(s){return s.id===loc.subarea;});
     const sub2=sub?' &middot; '+sub.nombre:'';
     const bg=i%2?'background:#f4f9f7;':'background:#fff;';
-    const domTd=p.serv==='DOM'?('<td style="padding:5px 7px;font-size:7.5pt;">'+(loc.domestico||'-')+'</td>'):'';
-    const signTd=p.serv==='DOM'?('<td style="padding:8px 7px;vertical-align:bottom;"><div style="border-bottom:1px solid #333;height:18px;margin-bottom:1px;"></div><div style="font-size:5pt;color:#777;text-transform:uppercase;">Nombre/Firma Rep.</div></td>'):'';
+    // Hospital: sin doméstico ni firma de conformidad
+    const domTd=(p.serv==='DOM'&&!esHospital)?('<td style="padding:5px 7px;font-size:7.5pt;">'+(loc.domestico||'-')+'</td>'):'';
+    const signTd=(p.serv==='DOM'&&!esHospital)?('<td style="padding:8px 7px;vertical-align:bottom;"><div style="border-bottom:1px solid #333;height:18px;margin-bottom:1px;"></div><div style="font-size:5pt;color:#777;text-transform:uppercase;">Nombre/Firma Rep.</div></td>'):'';
     locRowsAper+='<tr style="border-bottom:1px solid #e0ede9;'+bg+'">'
       +'<td style="padding:5px 7px;text-align:center;font-weight:700;">'+loc.dia+'<br><span style="font-size:6pt;font-weight:400;color:#555;">'+(loc.fecha||'')+'</span></td>'
       +'<td style="padding:5px 7px;font-weight:700;font-size:7.5pt;">&#128205; '+loc.nombre+'</td>'
-      +'<td style="padding:5px 7px;font-size:7pt;color:#555;">'+(loc.tipo||'')+(sub2)+'</td>'
+      +'<td style="padding:5px 7px;font-size:7pt;color:#555;">'+(sub?sub.nombre:'—')+'</td>'
       +domTd
       +'<td style="padding:5px 7px;text-align:center;font-size:9pt;">&#9744;</td>'
       +signTd
       +'</tr>';
   });
 
-  const domTh=p.serv==='DOM'?'<th>Domestico Asignado</th>':'';
-  const signTh=p.serv==='DOM'?'<th>Firma Conformidad Rep.</th>':'';
+  const domTh=(p.serv==='DOM'&&!esHospital)?'<th>Domestico Asignado</th>':'';
+  const signTh=(p.serv==='DOM'&&!esHospital)?'<th>Firma Conformidad Rep.</th>':'';
   const actRowsAper2=(acts||[]).map(function(a){return '<tr><td>&#10004; '+a.nombre+'</td><td>'+(a.desc||'-')+'</td></tr>';}).join('');
 
   const css='*{box-sizing:border-box;margin:0;padding:0;}'
@@ -3356,7 +3361,7 @@ function generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs,locRows,actRows){
     +'<tr><td colspan="2"><strong>Observaciones:</strong> '+(p.obs||'Ninguna')+'</td></tr>'
     +'</tbody></table></div>'
     +(acts&&acts.length?'<div class="sec"><div class="sect">Actividades Programadas</div><table><thead><tr><th>Actividad</th><th>Descripcion</th></tr></thead><tbody>'+actRowsAper2+'</tbody></table></div>':'')
-    +'<div class="sec"><div class="sect">Programa de Localizaciones &mdash; Semana '+p.semana+(p.serv==='DOM'?' &middot; Incluye conformidad diaria del representante':'')+'</div>'
+    +'<div class="sec"><div class="sect">Programa de Localizaciones &mdash; Semana '+p.semana+(p.serv==='DOM'&&!esHospital?' &middot; Incluye conformidad diaria del representante':p.serv==='DOM'&&esHospital?' &middot; Modalidad servicio continuo 24hrs':'')+'</div>'
     +'<table><thead><tr>'
     +'<th style="text-align:center;width:70px;">Dia / Fecha</th>'
     +'<th>Localizacion</th>'
@@ -3365,7 +3370,7 @@ function generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs,locRows,actRows){
     +'<th style="text-align:center;width:40px;">Ok</th>'
     +signTh
     +'</tr></thead><tbody>'+locRowsAper+'</tbody></table>'
-    +(p.serv==='DOM'?'<p style="font-size:5.5pt;color:#888;margin-top:5px;border-left:2px solid #1e5b4f;padding-left:5px;">La columna de firma recoge la conformidad del representante de la localizacion (persona que recibe el servicio). Acredita el servicio diario de Domesticos.</p>':'')
+    +(p.serv==='DOM'&&!esHospital?'<p style="font-size:5.5pt;color:#888;margin-top:5px;border-left:2px solid #1e5b4f;padding-left:5px;">La columna de firma recoge la conformidad del representante de la localizacion (persona que recibe el servicio). Acredita el servicio diario de Domesticos.</p>':p.serv==='DOM'&&esHospital?'<p style="font-size:5.5pt;color:#1e5b4f;margin-top:5px;border-left:2px solid #1e5b4f;padding-left:5px;">&#9432; Servicio médico permanente: personal doméstico de planta en jornadas continuas de 8hrs. No requiere firma de conformidad por localización.</p>':'')
     +'</div>'
     +'<div class="sec"><div class="sect">Firmas de Apertura</div>'
     +'<div class="info-box">El presente programa ampara las actividades de <strong>'+servLabel+'</strong>, <strong>Semana '+p.semana+' ('+fe.ini+' &mdash; '+fe.fin+')</strong>, Area <strong>'+p.area+'</strong>. Al firmar, el Responsable se compromete a ejecutar. El Jefe de Area autoriza. Folio: <strong>'+folio+'</strong>.</div>'
@@ -3453,7 +3458,7 @@ function abrirDocCierre(id){
       +'</tr>';
   });
 
-  const domTh=p.serv==='DOM'?'<th>Domestico</th>':'';
+  const domTh=(p.serv==='DOM'&&!esHospitalCie)?'<th>Domestico</th>':'';
   const obsRow=obsCierre?'<div class="sec"><div class="sect">Observaciones de Cierre</div><p style="font-size:7.5pt;padding:7px 9px;background:#f4f9f7;border-left:2px solid #1e5b4f;border-radius:3px;">'+obsCierre+'</p></div>':'';
 
   const css='*{box-sizing:border-box;margin:0;padding:0;} body{font-family:Arial,sans-serif;font-size:8.5pt;color:#222;padding:14mm 15mm;} .rh{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1e5b4f;padding-bottom:10px;margin-bottom:14px;} .logo{width:42px;height:42px;border-radius:50%;background:#1e5b4f;display:inline-flex;align-items:center;justify-content:center;} .rh-t{font-size:13pt;font-weight:700;color:#002f2a;text-transform:uppercase;} .rh-s{font-size:7pt;color:#666;margin-top:2px;} .rh-meta{text-align:right;font-size:7pt;color:#444;line-height:1.9;} .folio{display:inline-block;background:#1e5b4f;color:#fff;font-size:6.5pt;font-weight:700;padding:2px 9px;border-radius:9px;} .sec{margin-bottom:13px;} .sect{background:#002f2a;color:#fff;font-size:7pt;font-weight:700;text-transform:uppercase;padding:4px 10px;border-radius:3px;margin-bottom:8px;} .kpis{display:flex;gap:6px;margin-bottom:10px;} .kbox{flex:1;border:1.5px solid #d0e8e3;border-radius:4px;padding:7px;text-align:center;} .kbox .lbl{font-size:5.5pt;font-weight:700;text-transform:uppercase;color:#777;margin-bottom:2px;} .kbox .val{font-size:13pt;font-weight:700;color:#002f2a;} table{width:100%;border-collapse:collapse;} thead tr{background:#002f2a;} thead th{color:#fff;padding:5px 7px;font-size:6.5pt;font-weight:700;text-transform:uppercase;text-align:left;} tbody tr:nth-child(even){background:#f4f9f7;} tbody td{padding:5px 7px;border-bottom:1px solid #e0ede9;vertical-align:top;} .sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:20px;} .sign-block{padding:0 8px;} .sign-role{font-size:7pt;font-weight:700;color:#002f2a;text-transform:uppercase;text-align:center;margin-bottom:12px;} .sign-line{width:100%;border:none;border-bottom:1.5px solid #333;display:block;height:28px;margin-bottom:3px;} .sign-lbl{font-size:5.5pt;color:#555;font-weight:600;text-transform:uppercase;} .foot{border-top:2px solid #1e5b4f;padding-top:8px;margin-top:16px;display:flex;justify-content:space-between;font-size:6pt;color:#555;} .info-box{background:#f0f9f6;border:1px solid #c3e0d6;border-radius:4px;padding:7px 10px;font-size:7pt;color:#1e5b4f;margin-bottom:12px;line-height:1.7;} .topbar{background:#1e5b4f;color:#fff;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;} .topbar button{background:#fff;color:#1e5b4f;border:none;border-radius:6px;padding:7px 18px;font-weight:700;font-size:9pt;cursor:pointer;} @page{margin:10mm 12mm;size:Letter portrait;} @media print{.topbar{display:none;} body{padding:10mm 12mm;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}';
@@ -3489,7 +3494,7 @@ function abrirDocCierre(id){
     +'<tbody>'+locRows+'</tbody></table></div>'
     +obsRow
     +'<div class="sec"><div class="sect">Firmas de Cierre y Validacion</div>'
-    +'<div class="info-box">El presente reporte certifica la evaluacion del Programa de Trabajo de '+servLabel+', Semana '+p.semana+' ('+fe.ini+' - '+fe.fin+'), Area '+p.area+'. Cumplimiento: '+pct+'%. Folio: '+folio+'. El Responsable ejecuto y el Jefe de Area valida.</div>'
+    +'<div class="info-box">El presente reporte certifica la evaluacion del Programa de Trabajo de '+servLabel+(esHospitalCie?' &mdash; <strong>Modalidad Servicio Continuo 24hrs / 3 Jornadas de 8hrs</strong>':'')+', Semana '+p.semana+' ('+fe.ini+' - '+fe.fin+'), Area '+p.area+'. Cumplimiento: '+pct+'%. Folio: '+folio+'.</div>'
     +'<div class="sign-grid">'
     +'<div class="sign-block"><div class="sign-role">'+caboLabel.replace('Cabo ','Responsable ').replace('Cabo','Responsable')+' - Ejecuto</div>'
     +'<div style="margin-bottom:8px;"><div class="sign-line"></div><div class="sign-lbl">Nombre: '+firmaCabo+'</div></div>'
@@ -4788,6 +4793,140 @@ function getFestivoDia(anio,mes,dia){
 
 function esFestivo(anio,mes,dia){
   return getFestivoDia(anio,mes,dia)!==null;
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// REPLICAR CIERRE — copia ejecución de semana cerrada a semana siguiente
+// ══════════════════════════════════════════════════════════════
+let _replicaCierreId=null;
+
+function abrirReplicaCierre(id){
+  const p=PROG.find(x=>x.id===id);
+  if(!p){toast('⚠️ Programa no encontrado.');return;}
+  if(p.estado!=='CERRADO'){toast('⚠️ Solo se puede replicar el cierre de programas CERRADOS.');return;}
+  _replicaCierreId=id;
+  // Reutilizar el modal de réplica pero con texto diferente
+  const fe=semDates(p.anio,p.semana);
+  const serv=SVCL[p.serv]||p.serv;
+  const subNom=p.subareaNom||((p.subareaId?(SA.find(s=>s.id===p.subareaId)||{}).nombre:'')||'');
+  const locs=p.localizaciones||[];
+  const ejec=p.ejecucion||{};
+  const ejecutadas=locs.filter(l=>(ejec[l.locId+'_'+l.dia]||{}).status==='EJECUTADO').length;
+  const desvs=locs.filter(l=>(ejec[l.locId+'_'+l.dia]||{}).status==='DESVIACION').length;
+  const extras=(p.extras||[]).length;
+  // Usar el modal existente de réplica
+  document.querySelector('#movReplica .mh span').textContent='Replicar Cierre a Semana Siguiente';
+  document.getElementById('replicaServArea').textContent=serv+' — '+p.area+(subNom?' · '+subNom:'');
+  document.getElementById('replicaSemOrig').textContent='Sem. '+p.semana+' ('+fe.ini+')';
+  document.getElementById('replicaDetalle').innerHTML=
+    '<strong>'+locs.length+' localizaciones</strong> · '
+    +'<strong style="color:#10b981;">'+ejecutadas+' ejecutadas</strong> · '
+    +'<strong style="color:#f59e0b;">'+desvs+' desviaciones</strong>'
+    +(extras?'<br>⭐ '+extras+' actividad(es) extra incluidas':'')
+    +'<br><span style="font-size:.7rem;color:#7e22ce;">La ejecución, desviaciones y observaciones se copiarán a la nueva semana</span>';
+  // Cambiar color del badge destino a morado
+  document.getElementById('replicaSemDest').style.background='#7e22ce';
+  // Poblar semanas destino
+  const sel=document.getElementById('replicaSemSelect');
+  sel.innerHTML='<option value="">— Seleccionar semana destino —</option>';
+  const semsAnioActual=semsAnio(p.anio).filter(s=>s>p.semana);
+  semsAnioActual.forEach(s=>{
+    const f=semDates(p.anio,s);
+    const progDest=PROG.find(x=>x.serv===p.serv&&x.area===p.area&&x.anio===p.anio&&x.semana===s&&(x.subareaId||'')===(p.subareaId||'')&&!x.eliminado);
+    const o=document.createElement('option');
+    o.value=p.anio+'_'+s+'_cierre';
+    o.textContent='Sem. '+s+' ('+f.ini+')'+(progDest?' ✅ Ya tiene programa':' ⚠ Sin programa aún');
+    if(s===p.semana+1)o.selected=true;
+    sel.appendChild(o);
+  });
+  // Año siguiente
+  const anioSig=p.anio+1;
+  semsAnio(anioSig).slice(0,8).forEach(s=>{
+    const f=semDates(anioSig,s);
+    const progDest=PROG.find(x=>x.serv===p.serv&&x.area===p.area&&x.anio===anioSig&&x.semana===s&&(x.subareaId||'')===(p.subareaId||'')&&!x.eliminado);
+    const o=document.createElement('option');
+    o.value=anioSig+'_'+s+'_cierre';
+    o.textContent=anioSig+' · Sem. '+s+' ('+f.ini+')'+(progDest?' ✅ Ya tiene programa':' ⚠ Sin programa aún');
+    sel.appendChild(o);
+  });
+  sel.onchange=function(){
+    const val=sel.value;
+    if(!val){document.getElementById('replicaSemDest').textContent='Sem. —';return;}
+    const parts=val.split('_');
+    const a=parseInt(parts[0]),s=parseInt(parts[1]);
+    const f=semDates(a,s);
+    document.getElementById('replicaSemDest').textContent='Sem. '+s+' ('+f.ini+')';
+  };
+  sel.dispatchEvent(new Event('change'));
+  // Cambiar el botón de confirmar para que llame a confirmarReplicaCierre
+  const btnConf=document.querySelector('#movReplica .mf .btn.bpri');
+  if(btnConf){
+    btnConf.onclick=confirmarReplicaCierre;
+    btnConf.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Confirmar Réplica de Cierre';
+  }
+  document.getElementById('movReplica').classList.add('active');
+}
+
+function confirmarReplicaCierre(){
+  const p=PROG.find(x=>x.id===_replicaCierreId);
+  if(!p){toast('⚠️ Programa origen no encontrado.');return;}
+  const val=document.getElementById('replicaSemSelect').value;
+  if(!val){toast('⚠️ Selecciona la semana destino.');return;}
+  const parts=val.split('_');
+  const anioD=parseInt(parts[0]),semD=parseInt(parts[1]);
+  // Buscar programa destino
+  const dest=PROG.find(x=>x.serv===p.serv&&x.area===p.area&&x.anio===anioD&&x.semana===semD&&(x.subareaId||'')===(p.subareaId||'')&&!x.eliminado);
+  if(!dest){
+    toast('⚠️ No existe un programa de '+SVCL[p.serv]+' para la Semana '+semD+'. Primero crea el programa con Replicar Apertura.');
+    return;
+  }
+  if(dest.estado==='CERRADO'){
+    toast('⚠️ El programa destino (Sem. '+semD+') ya está CERRADO. No se puede sobrescribir.');
+    return;
+  }
+  // Calcular fechas del período destino para actualizar las fechas de ejecución
+  const feD=semDates(anioD,semD);
+  const feO=semDates(p.anio,p.semana);
+  const DIAS_ORD=['LUN','MAR','MIÉ','JUE','VIE','SAB','DOM'];
+  // Copiar ejecución adaptando los locId del destino
+  const nuevaEjec={};
+  const locsOrig=p.localizaciones||[];
+  const locsDest=dest.localizaciones||[];
+  const ejecOrig=p.ejecucion||{};
+  // Para cada localización del destino, buscar la equivalente en origen por locId y día
+  locsDest.forEach(locD=>{
+    const key=locD.locId+'_'+locD.dia;
+    const regOrig=ejecOrig[key];
+    if(regOrig){
+      // Actualizar fecha en el registro si existe
+      nuevaEjec[key]={...regOrig,registradoEn:new Date().toISOString()};
+    }
+  });
+  // Copiar también extras adaptados
+  const extrasOrig=p.extras||[];
+  const nuevosExtras=extrasOrig.map(ex=>{
+    const diaIdx=DIAS_ORD.indexOf(ex.dia);
+    const base=new Date(feD.l);
+    const f=new Date(base);f.setUTCDate(base.getUTCDate()+(diaIdx>=0?diaIdx:0));
+    const dd=String(f.getUTCDate()).padStart(2,'0');
+    const mm=String(f.getUTCMonth()+1).padStart(2,'0');
+    return{...ex,fecha:dd+'/'+mm+'/'+f.getUTCFullYear(),registradoEn:new Date().toISOString()};
+  });
+  dest.ejecucion=nuevaEjec;
+  dest.extras=nuevosExtras;
+  dest.estado='EN_CURSO';
+  dest.updatedAt=new Date().toISOString();
+  save(LS.P,PROG);
+  cerrarReplica();
+  // Restaurar el botón de confirmar al original
+  const btnConf=document.querySelector('#movReplica .mf .btn.bpri');
+  if(btnConf){
+    btnConf.onclick=confirmarReplica;
+    btnConf.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Confirmar Réplica';
+  }
+  aplicarFiltros();renderProgramasTab();renderTendencia();
+  toast('✅ Ejecución replicada a Semana '+semD+' — '+Object.keys(nuevaEjec).length+' registros copiados.');
 }
 
 </script>
