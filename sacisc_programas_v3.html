@@ -121,7 +121,7 @@ tbody td{padding:9px 13px;color:#333;}
 .mov{display:none;position:fixed;inset:0;background:rgba(0,47,42,.62);z-index:10000;align-items:center;justify-content:center;padding:16px;}
 .mov.active{display:flex;}
 .mc{background:#fff;border-radius:14px;width:100%;max-height:93vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,47,42,.3);}
-.mc.sm{max-width:500px;}.mc.md{max-width:720px;}.mc.lg{max-width:960px;}.mc.xl{max-width:1160px;}
+.mc.sm{max-width:500px;}.mc.md{max-width:720px;}.mc.lg{max-width:960px;}.mc.xl{max-width:1050px;width:95vw;}
 .mh{background:var(--gd);color:#fff;padding:18px 26px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
 .mh h2{font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:9px;}
 .mc-x{background:rgba(255,255,255,.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:background .18s;}
@@ -2778,6 +2778,8 @@ function guardarRegDia(progId,locId,dia){
   if(status==='DESVIACION'&&tipo==='CAMBIO_LOC'){
     setTimeout(()=>{
       const loc=p.localizaciones.find(l=>l.locId===locId);
+  const _subNomRP3=p.subareaNom||((p.subareaId?((SA.find(s=>s.id===p.subareaId)||{}).nombre||''):''));
+  const _esHospProg=_subNomRP3.toUpperCase().includes('HOSPITAL');
       const locNomOrig=loc?loc.nombre:'Localización original';
       const fecha=loc?loc.fecha:'';
       imprimirConstanciaEmergente(p,dia,fecha,locNomOrig,nuevaLoc,motivo,autoridad,domEjec);
