@@ -2814,10 +2814,14 @@ function guardarCierre(){
   if(!confirm(msg))return;
   p.estado='CERRADO';
   p.cierreData={firmaCabo:fc,firmaMando:fm,fecha:document.getElementById('fechaCierre').value,obs:document.getElementById('obsCierre').value.trim(),cerradoEn:new Date().toISOString()};
-  saveLocal(LS.P,PROG);cerrarMovCierre();aplicarFiltros();renderProgramasTab();
+  p.updatedAt=new Date().toISOString();
+  save(LS.P,PROG);
+  const _btnVer=document.getElementById('btnVerReporteCierre');
+  if(_btnVer)_btnVer.style.display='inline-flex';
+  aplicarFiltros();renderProgramasTab();renderTendencia();
+  cerrarMovCierre();
   toast('✅ Programa cerrado y validado.');
 }
-
 // ══════════════════════════════════════════════════════════════
 // CATÁLOGOS
 // ══════════════════════════════════════════════════════════════
