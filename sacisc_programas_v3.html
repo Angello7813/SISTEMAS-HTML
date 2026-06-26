@@ -367,7 +367,7 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
 <main>
 
 <!-- TAB TABLERO -->
-<div class="tp" id="pane-tablero">
+<div class="tp active" id="pane-tablero">
   <div class="panel">
     <div class="ph"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg> Filtros de Consulta</div>
     <div class="pb">
@@ -490,12 +490,34 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
         <div class="field"><label>Servicio</label><select id="eServicio" onchange="cargarProgramasEjec()"><option value="">— Todos —</option><option value="AV">Áreas Verdes</option><option value="DOM">Domésticos</option><option value="RB">🗑️ Recolección de Basura</option></select></div>
       </div>
 <div id="listaProgEjec"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB CATÁLOGOS -->
+<div class="tp" id="pane-catalogo">
+  <div class="panel">
+    <div class="ph"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"></path></svg> Personas
+      <div class="phr"><button class="btn sm bghost" onclick="abrirModalPersona()">+ Persona</button></div>
+    </div>
+    <div class="pb"><div id="persTabla"></div></div>
+  </div>
+  <div class="panel">
     <div class="ph"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="4" rx="1"></rect><rect x="1" y="18" width="6" height="4" rx="1"></rect><rect x="9" y="18" width="6" height="4" rx="1"></rect><rect x="17" y="18" width="6" height="4" rx="1"></rect><line x1="12" y1="6" x2="12" y2="12"></line><line x1="4" y1="20" x2="12" y2="12"></line><line x1="12" y1="12" x2="12" y2="20"></line><line x1="20" y1="20" x2="12" y2="12"></line></svg> Estructura: Áreas → Subáreas → Localizaciones
       <div class="phr"><button class="btn sm bghost" onclick="abrirModalSubarea()">+ Subárea</button><button class="btn sm bghost" onclick="abrirModalLocalizacion()">+ Localización</button></div>
     </div>
-<div id="orgTree"></div>
+    <div class="pb"><div id="orgTree"></div></div>
+  </div>
+  <div class="panel">
+    <div class="ph"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg> Actividades Base
+      <div class="phr"><button class="btn sm bghost" onclick="abrirModalActBase()">+ Actividad</button></div>
+    </div>
+    <div class="pb"><div id="actTabla"></div></div>
+  </div>
+</div>
+
 <!-- TAB TENDENCIA -->
-<div class="tp active" id="pane-tendencia">
+<div class="tp" id="pane-tendencia">
   <div class="panel">
     <div class="ph"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> Tendencia de Cumplimiento Semanal
       <div class="phr">
@@ -1798,9 +1820,12 @@ function renderCards(datos){
       </div>
       <div class="pc-ft">
         <button class="btn xs bsec" onclick="editarPrograma('${p.id}')">✏️ Editar</button>
-        ${(p.estado!=='CERRADO'&&p.estado!=='CANCELADO')?`<button class="btn xs bpri" onclick="abrirEjecucion('${p.id}')">📋 Ejecutar</button>`:''}
-        ${p.estado!=='CERRADO'&&p.estado!=='CANCELADO'?`<button class="btn xs bwarn" onclick="abrirCierre('${p.id}')">✅ Cerrar</button>`:''}${p.estado==='CERRADO'?`<button class="btn xs" style="background:#f0fdf4;color:#065f46;border:1.5px solid #a7f3d0;" onclick="abrirDocCierre('${p.id}')">🖨️ Cierre</button>`:''}
+        ${p.estado!=='CERRADO'&&p.estado!=='CANCELADO'?'<button class="btn xs bpri" onclick="abrirEjecucion(\''+p.id+'\')">📋 Ejecutar</button>':''}
+        ${p.estado!=='CERRADO'&&p.estado!=='CANCELADO'?'<button class="btn xs bwarn" onclick="abrirCierre(\''+p.id+'\')">✅ Cerrar</button>':''}
+        ${p.estado==='CERRADO'?'<button class="btn xs" style="background:#f0fdf4;color:#065f46;border:1.5px solid #a7f3d0;" onclick="abrirDocCierre(\''+p.id+'\')">🖨️ Cierre</button>':''}
         <button class="btn xs" style="background:#f0f9f6;color:var(--gm);border:1.5px solid #c3e0d6;" onclick="imprimirApertura('${p.id}')">🖨️ Apertura</button>
+        <button class="btn xs" style="background:#f0f4ff;color:#3730a3;border:1.5px solid #c7d2fe;" onclick="abrirReplica('${p.id}')">📋 Replicar Apertura</button>
+        ${p.estado==='CERRADO'?'<button class="btn xs" style="background:#fdf4ff;color:#7e22ce;border:1.5px solid #d8b4fe;" onclick="abrirReplicaCierre(\''+p.id+'\')">📋 Replicar Cierre</button>':''}
         <button class="btn xs bdng" onclick="confirmarElim('${p.id}')">🗑</button>
       </div>
     </div>`;
