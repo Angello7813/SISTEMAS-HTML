@@ -121,7 +121,7 @@ tbody td{padding:9px 13px;color:#333;}
 .mov{display:none;position:fixed;inset:0;background:rgba(0,47,42,.62);z-index:10000;align-items:center;justify-content:center;padding:16px;}
 .mov.active{display:flex;}
 .mc{background:#fff;border-radius:14px;width:100%;max-height:93vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,47,42,.3);}
-.mc.sm{max-width:500px;}.mc.md{max-width:720px;}.mc.lg{max-width:960px;}.mc.xl{max-width:1080px;}
+.mc.sm{max-width:500px;}.mc.md{max-width:720px;}.mc.lg{max-width:960px;}.mc.xl{max-width:1180px;width:96vw;}
 .mh{background:var(--gd);color:#fff;padding:18px 26px;border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
 .mh h2{font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:9px;}
 .mc-x{background:rgba(255,255,255,.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:background .18s;}
@@ -1828,7 +1828,7 @@ const EST_LABEL={PROGRAMADO:'Programado',EN_CURSO:'En Curso',CERRADO:'Cerrado',C
 const EST_CLS={PROGRAMADO:'s-programado',EN_CURSO:'s-en-curso',CERRADO:'s-cerrado',CANCELADO:'s-cancelado'};
 function getPer(id){return PE.find(p=>p.id===id)||null;}
 function initials(n){return(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();}
-function semColor(p){return p>=80?'#10b981':p>=50?'#f59e0b':'#ef4444';}
+function semColor(p){return p>100?'#f59e0b':p>=80?'#10b981':p>=50?'#f59e0b':'#ef4444';}
 function fmtF(x){return`${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}/${x.getFullYear()}`;}
 
 // ══════════════════════════════════════════════════════════════
@@ -1836,11 +1836,26 @@ function fmtF(x){return`${String(x.getDate()).padStart(2,'0')}/${String(x.getMon
 // ══════════════════════════════════════════════════════════════
 function calcCump(prog){
   const locs=prog.localizaciones||[];if(!locs.length)return 0;
-  let total=locs.length,ejecutado=0;
+  const total=locs.length;
+  let ejecutado=0;
   locs.forEach(loc=>{
     const key=`${loc.locId}_${loc.dia}`;
     const reg=(prog.ejecucion||{})[key];
-    if(reg&&reg.status==='EJECUTADO')ejecutado++;
+    // EJECUTADO, DESVIACION y NO_APLICA cuentan — el servicio se realizó
+    if(reg&&(reg.status==='EJECUTADO'||reg.status==='DESVIACION'||reg.status==='NO_APLICA'))ejecutado++;
+  });
+  // Extras suman por encima del 100%
+  const extras=(prog.extras||[]).length;
+  return total?Math.round(((ejecutado+extras)/total)*100):0;
+}
+function calcCumpBase(prog){
+  // Cumplimiento base sin extras (para reportes internos)
+  const locs=prog.localizaciones||[];if(!locs.length)return 0;
+  const total=locs.length;let ejecutado=0;
+  locs.forEach(loc=>{
+    const key=`${loc.locId}_${loc.dia}`;
+    const reg=(prog.ejecucion||{})[key];
+    if(reg&&(reg.status==='EJECUTADO'||reg.status==='DESVIACION'||reg.status==='NO_APLICA'))ejecutado++;
   });
   return total?Math.round((ejecutado/total)*100):0;
 }
@@ -2016,9 +2031,17 @@ function renderCards(datos){
   const g=document.getElementById('cardGrid'),e=document.getElementById('emptyTab');
   if(!datos.length){g.innerHTML='';e.style.display='block';return;}
   e.style.display='none';
+  // Ordenar cards por semana ASC → servicio
+  datos=[...datos].sort((a,b)=>a.semana-b.semana||a.serv.localeCompare(b.serv)||((a.subareaNom||'').localeCompare(b.subareaNom||'')));
   g.innerHTML=datos.map(p=>{
     const pct=calcCump(p),sc=semColor(pct);
-    const R=78,cx=88,cy=88,circ=2*Math.PI*R,dash=circ*(pct/100);
+    const pctBase=calcCumpBase(p);
+    const extras=(p.extras||[]).length;
+    const pctDisplay=pct>100?'⭐ '+pct:pct;
+    const R=78,cx=88,cy=88,circ=2*Math.PI*R;
+    // Si >100%, círculo completo dorado; si no, proporcional
+    const dashPct=Math.min(pct,100);
+    const dash=circ*(dashPct/100);
     const locs=(p.localizaciones||[]).length,desv=countDesv(p);
     const cab=getPer(p.caboId),mnd=getPer(p.mandoId);
     const fe=semDates(p.anio,p.semana);
@@ -2028,7 +2051,7 @@ function renderCards(datos){
       <div class="pc-hd" style="background:linear-gradient(135deg,${svcC}ee,${svcC});">
         <div><div class="pc-t">${SVCL[p.serv]||p.serv}</div><div class="pc-s">${p.area}${(()=>{const _sn=p.subareaNom||((p.subareaId?((SA.find(s=>s.id===p.subareaId)||{}).nombre||''):''));return _sn?' · 📁 '+_sn:'';})()}  · ${fe.label}</div></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-          <span class="chip" style="color:#fff;background:rgba(255,255,255,.22);">${pct}%</span>
+          <span class="chip" style="color:#fff;background:rgba(255,255,255,.22);">${pct>100?'⭐ '+pct:pct}%</span>
           <span class="sbadge ${esCls}" style="font-size:.62rem;">${EST_LABEL[p.estado]||p.estado}</span>
         </div>
       </div>
@@ -2037,9 +2060,9 @@ function renderCards(datos){
           <svg width="94" height="94" viewBox="0 0 176 176">
             <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#e8f0ed" stroke-width="17"/>
             <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${sc}" stroke-width="17"
-              stroke-dasharray="${dash} ${circ}" style="transform:rotate(-90deg);transform-origin:center;"/>
+              stroke-dasharray="${dash} ${circ}" stroke="${pct>100?'#f59e0b':sc}" style="transform:rotate(-90deg);transform-origin:center;"/>
           </svg>
-          <div class="pc-dnum">${pct}<span style="font-size:.72rem">%</span><br><span class="pc-dsub">cumpl.</span></div>
+          <div class="pc-dnum" style="font-size:${pct>100?'1rem':'1.4rem'}">${pct>100?'⭐ '+pct:pct}<span style="font-size:.72rem">%</span><br><span class="pc-dsub">cumpl.</span></div>
         </div>
         <div class="pc-kpis">
           <div class="pck"><div class="pkv">${locs}</div><div class="pkl">Locs.</div></div>
@@ -2410,11 +2433,12 @@ function filtrarLocsPorSubarea(){
     sel.innerHTML='<option value="">Sin localizaciones para este filtro</option>';
     return;
   }
+  // Ordenar alfabéticamente
+  lFilt.sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
   lFilt.forEach(l=>{
     const sub=SA.find(s=>s.id===l.subarea);
     const o=document.createElement('option');
     o.value=l.id;
-    // Si no hay subárea filtrada, mostrar la subárea entre paréntesis para contexto
     o.textContent=l.nombre+((!subFilt&&sub)?' ('+sub.nombre+')':'');
     sel.appendChild(o);
   });
