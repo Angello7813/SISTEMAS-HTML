@@ -3,25 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SACISC · Módulo de Combustible — PEMEX</title>
+<title>SACISC · Módulo Combustibles — PEMEX URCS Sur</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
 
 
-// ── Datos de estaciones para correo de surtimiento ───────────────────
-const _EST_CORREO = {
-  '7394':  { razon:'SUPER SERVICIO AGUA DULCE, S.A. DE C.V.',
-             dir:'AVENIDA FRANCISCO I. MADERO NO. 225, AGUA DULCE, VER.' },
-  '9602':  { razon:'ALICIA LIZETH BREMONT JONES',
-             dir:'CARRETERA COATZACOALCOS-VILLAHERMOSA KM 35+250, AGUA DULCE, VER.' },
-  '9851':  { razon:'ALICIA LIZETH BREMONT JONES',
-             dir:'CARRETERA COATZACOALCOS-VILLAHERMOSA KM 38+750, AGUA DULCE, VER.' },
-  '10885': { razon:'ALICIA LIZETH BREMONT JONES',
-             dir:'ANTONIO M. QUIRASCO SN, COLONIA J. MARIO ROSADO, LAS CHOAPAS, VER.' },
-};
-const _EST_NOMBRES = {
-  '7394':'LOS COCOS', '9602':'GAVILÁN', '9851':'EL GRAHAM', '10885':'LAS CHOAPAS'
-};
 </script>
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -188,7 +174,7 @@ function renderSaldoSobrante() {
         </div>
         <div style="background:${a.hasFuga?'#fde8e8':'#f8f8f8'};border-radius:8px;padding:8px 10px;">
           <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;color:#aaa;">
-            Exist. inicial ${_SS_MES_N[mesAct]||''}
+            Exist. inicial ${_SS_MES_N[mesAct]||''} del proveedor
           </div>
           <div style="font-size:0.88rem;font-weight:800;color:${a.hasFuga?'#c0392b':'#555'};">${fmt(a.invActual)} L</div>
         </div>
@@ -427,12 +413,37 @@ function procesarHoja5(rows) {
 
 function abrirMonitorTanques() {
   if (!RAW.length) { alert('Cargue datos primero.'); return; }
-  // Iniciar slider en día 1 para ver el mes completo
-  document.getElementById('monSliderDia').value = 1;
-  document.getElementById('monDiaLabel').textContent = 'Día 1';
+  // Inicializar selector de mes al mes actual
+  const _mesHoy = new Date().getMonth()+1;
+  const _selMes = document.getElementById('monFiltroMes');
+  if (_selMes) _selMes.value = String(_mesHoy);
+  // Ajustar max del slider y posicionarlo en el último día con datos
+  actualizarSliderMes();
   document.getElementById('monitorModal').style.display = 'flex';
   document.getElementById('monitorModal').scrollTop = 0;
   renderMonitor();
+}
+
+function actualizarSliderMes() {
+  const mes = parseInt(document.getElementById('monFiltroMes')?.value || new Date().getMonth()+1);
+  const diasEnMes = new Date(new Date().getFullYear(), mes, 0).getDate();
+  const slider = document.getElementById('monSliderDia');
+  if (!slider) return;
+  slider.max = diasEnMes;
+  // Posicionar en el último día con datos reales de ese mes
+  const _diasMes = [...new Set(
+    RAW.filter(r=>Number(r.mes)===mes)
+       .map(r=>{
+         const f=String(r.fecha||'').trim();
+         if(f.includes('-')){ const p=f.split('-'); return parseInt(p[2]||0); }
+         if(f.includes('/')){ const p=f.split('/'); return p[0].length===4?parseInt(p[2]):parseInt(p[0]); }
+         return 0;
+       })
+       .filter(d=>d>=1&&d<=diasEnMes)
+  )].sort((a,b)=>a-b);
+  const _ultDia = _diasMes.length ? _diasMes[_diasMes.length-1] : 1;
+  slider.value = _ultDia;
+  document.getElementById('monDiaLabel').textContent = 'Día ' + _ultDia;
 }
 
 function simularNivel(cap, invInicial, consDiario, surtimientos, dia) {
@@ -454,7 +465,15 @@ function drawTanqueSVG(svgEl, nivel, cap, color, pct) {
   const W=84, H=210, tY=12, tH=178, rx=18;
   const alerta = pct<=20, warn=pct>20&&pct<=35;
   const negativo = nivel < 0; // gasolinero presta producto — activa patrón visual
+  // Usar balanceReal (sin límite de cap) para el % visual
+  // Si balance > cap → overflow: tanque al 100% + indicador visual externo
+  const tieneOverflow = nivel > cap && cap > 0;
+  // pctReal: si hay overflow → mostrar 100% (tanque lleno) para el líquido visual
+  // El % real (puede ser >100) se muestra como texto encima del tanque
   const pctReal  = cap>0 ? Math.min(100, Math.max(0, nivel/cap*100)) : 0;
+  const pctBalReal = cap>0 ? Math.round(nivel/cap*100) : 0; // puede ser >100
+  // Para el texto dentro del tanque — mostrar el % real si hay overflow
+  const pctTexto = tieneOverflow ? pctBalReal : Math.round(pctReal);
   const fillColor= alerta?'#E24B4A': warn?'#EF9F27': color;
   const bgTank   = color==='#1D9E75'?'#f0faf6': color==='#685860'?'#f5f3f2':'#f0faf6';
   const fH = Math.round(tH*(pctReal/100));
@@ -492,9 +511,10 @@ function drawTanqueSVG(svgEl, nivel, cap, color, pct) {
       </g>
     </g>
 
-    <!-- Marco exterior -->
+    <!-- Marco exterior — borde rojo si hay overflow -->
     <rect x="6" y="${tY}" width="${W-12}" height="${tH}" rx="${rx}"
-      fill="none" stroke="${alerta?'#E24B4A':warn?'#EF9F27':color+'99'}" stroke-width="2"/>
+      fill="none" stroke="${alerta?'#E24B4A':warn?'#EF9F27':tieneOverflow?'#b71c1c':color+'99'}"
+      stroke-width="${tieneOverflow?2.5:2}"/>
 
     <!-- Tapa superior (elipse) -->
     <ellipse cx="${W/2}" cy="${tY}" rx="${(W-12)/2}" ry="8"
@@ -515,10 +535,21 @@ function drawTanqueSVG(svgEl, nivel, cap, color, pct) {
     ${pctReal>14
       ? `<text x="${W/2}" y="${fY+fH/2+5}" font-size="14" font-weight="700"
             fill="white" text-anchor="middle" opacity="0.95"
-            font-family="sans-serif">${Math.round(pctReal)}%</text>`
+            font-family="sans-serif">${pctTexto}%</text>`
       : `<text x="${W/2}" y="${tY+tH*0.55}" font-size="13" font-weight="700"
             fill="${fillColor}" text-anchor="middle"
-            font-family="sans-serif">${Math.round(pctReal)}%</text>`}
+            font-family="sans-serif">${pctTexto}%</text>`}
+
+    <!-- Indicador de overflow (balance > capacidad declarada) -->
+    ${tieneOverflow ? `
+      <!-- Flecha hacia arriba indicando que hay producto fuera del tanque -->
+      <text x="${W/2}" y="${tY-14}" font-size="9" font-weight="800"
+        fill="#b71c1c" text-anchor="middle" font-family="sans-serif">+${Math.round(pctBalReal-100)}%</text>
+      <text x="${W/2}" y="${tY-4}" font-size="7.5"
+        fill="#b71c1c" text-anchor="middle" font-family="sans-serif" opacity="0.85">excedente</text>
+      <line x1="${W/2-8}" y1="${tY+2}" x2="${W/2}" y2="${tY-1}" stroke="#b71c1c" stroke-width="1.5" opacity="0.8"/>
+      <line x1="${W/2+8}" y1="${tY+2}" x2="${W/2}" y2="${tY-1}" stroke="#b71c1c" stroke-width="1.5" opacity="0.8"/>
+    ` : ''}
 
     <!-- Badge préstamo del gasolinero (nivel negativo) -->
     ${negativo ? `
@@ -543,7 +574,10 @@ function renderMonitor() {
   const fEst  = document.getElementById('monFiltroEst')?.value  || '';
   const fComb = document.getElementById('monFiltroComb')?.value || '';
   const dia   = parseInt(document.getElementById('monSliderDia')?.value||'1');
-  const mesActual = new Date().getMonth()+1;
+  // Usar el mes seleccionado en el filtro — permite consultar meses históricos
+  const mesActual = parseInt(document.getElementById('monFiltroMes')?.value || new Date().getMonth()+1);
+  const MESES_NOM = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const fmt   = n => n.toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1});
 
   const EST_NOM = {'7394':'Los Cocos','9602':'Gavilán','9851':'Graham','10885':'Las Choapas'};
@@ -664,74 +698,105 @@ function renderMonitor() {
   // Calcular todos los casos
   const casos = keys.map(key => {
     const {est,comb,meses} = INVENTARIO_TANQUES[key];
-    // Buscar mes actual, si no el más reciente disponible
     const _mesDisp = meses[mesActual] ? mesActual :
                      Object.keys(meses).map(Number).sort((a,b)=>b-a)[0];
     const blk  = meses[_mesDisp] || {invInicial:0, surtimientos:[]};
-    console.log(`[Monitor] ${est}||${comb} → mes:${_mesDisp} invInicial:${blk.invInicial} surtimientos:${blk.surtimientos.length}`);
     const cap  = CAPS[est]?.[comb]||(comb==='MAGNA'?40000:20000);
     const consD = getConsDetalle(est,comb,mesActual);
     const cons  = consD.cons;
-    const nivel= simularNivel(cap,blk.invInicial,cons,blk.surtimientos,dia);
-    const pct  = cap>0?Math.min(100,nivel/cap*100):0;
-    const dias30=cons>0?Math.round(nivel/cons):99;
-    // Timeline 30 días
-    const niveles=[];
-    let n=Math.min(blk.invInicial,cap);
-    const sm={};
-    blk.surtimientos.forEach(s=>sm[s.dia]=(sm[s.dia]||0)+s.vol);
-    for(let d=1;d<=30;d++){
-      // 1. Primero llega la pipa (si hay surtimiento ese día)
-      if(sm[d]) n=Math.min(cap,n+sm[d]);
-      // 2. Luego se consume durante el día
-      n -= cons;
-      // 3. El nivel al final del día
-      niveles.push(Math.round(n));
+
+    // ── PASO 1: acumEntradasReal (Hoja5 + Hoja2) ────────────────────────
+    const _acumEnt0 = blk.surtimientos.filter(s=>(s.dia||s.d)<=dia).reduce((s,x)=>s+x.vol,0);
+    const _keyVR0   = `${est}||${comb}`;
+    const _vblkE0   = VALES_RETIRO[_keyVR0]?.meses?.[mesActual];
+    let   _entVR0   = 0;
+    if (_vblkE0?.vales?.length) {
+      _vblkE0.vales.forEach(v => {
+        if (!v.vol||v.vol<=0) return;
+        const _es = v.estatus.toUpperCase().trim();
+        if (_es!=='SURTIDO'&&!_es.includes('EN SURT')) return;
+        let _dv=0;
+        if(v.fechaSurt){const p=String(v.fechaSurt).trim().split(' ');_dv=parseInt(p[0])||0;}
+        if(!_dv&&v.dia>0)_dv=v.dia;
+        if(_dv>=1&&_dv<=dia)_entVR0+=v.vol;
+      });
     }
-    const surtHoy     = blk.surtimientos.filter(s=>(s.dia||s.d)===dia);
-    const proxSurt    = blk.surtimientos.filter(s=>(s.dia||s.d)>dia).sort((a,b)=>(a.dia||a.d)-(b.dia||b.d))[0];
-    const acumEntradas= blk.surtimientos.filter(s=>(s.dia||s.d)<=dia).reduce((s,x)=>s+x.vol,0);
-    // Consumo acumulado REAL — suma directa de RAW (Hoja1) hasta el día del slider
+    const acumEntradasReal = Math.max(_acumEnt0, _entVR0);
+
+    // ── PASO 2: _balPrelim y pct (usa acumEntradasReal) ─────────────────
+    const _balPrelim = blk.invInicial + acumEntradasReal - Math.round(cons*dia);
+    const pct  = cap>0 ? Math.min(100,Math.max(0,Math.round(_balPrelim/cap*100))) : 0;
+    const dias30 = cons>0 ? Math.round(_balPrelim/cons) : 99;
+
+    // ── PASO 3: simularNivel (para el SVG del tanque) ───────────────────
+    const nivel = simularNivel(cap,blk.invInicial,cons,blk.surtimientos,dia);
+
+    // ── PASO 4: Timeline 30 días ─────────────────────────────────────────
+    const niveles=[];
+    let _n=Math.min(blk.invInicial,cap);
+    const _sm={};
+    blk.surtimientos.forEach(s=>_sm[s.dia]=(_sm[s.dia]||0)+s.vol);
+    for(let d=1;d<=30;d++){
+      if(_sm[d]) _n=Math.min(cap,_n+_sm[d]);
+      _n -= cons;
+      niveles.push(Math.round(_n));
+    }
+
+    // ── PASO 5: acumConsumo real + proyección futura ─────────────────────
     const _estKey = String(est).trim().replace(/\.0$/,'').replace(/^E0*/,'');
-    const acumConsumo = Math.round(
-      RAW.filter(r => {
-        const rEst  = String(r.estacion||'').trim().replace(/\.0$/,'').replace(/^E0*/,'');
-        const rProd = String(r.producto||'').trim().toUpperCase();
-        const rMes  = Number(r.mes);
-        // Extraer día de r.fecha (string YYYY-MM-DD o Date)
-        let rDia = 0;
-        if (r.fecha) {
-          if (typeof r.fecha === 'string') rDia = parseInt(r.fecha.split('-')[2]||0);
-          else if (r.fecha instanceof Date) rDia = r.fecha.getDate();
+    const _rawMes = RAW.filter(r => {
+      const rEst  = String(r.estacion||'').trim().replace(/\.0$/,'').replace(/^E0*/,'');
+      const rProd = String(r.producto||'').trim().toUpperCase().includes('DIESEL')?'DIESEL':'MAGNA';
+      return rEst===_estKey && rProd===comb && Number(r.mes)===mesActual;
+    });
+    const _diasReales = _rawMes.map(r=>{
+      if(!r.fecha) return 0;
+      if(typeof r.fecha==='string') return parseInt(r.fecha.split('-')[2]||0);
+      if(r.fecha instanceof Date) return r.fecha.getDate();
+      return 0;
+    }).filter(d=>d>=1&&d<=31);
+    const _ultimoDiaReal = _diasReales.length ? Math.max(..._diasReales) : 0;
+    const _consumoReal = Math.round(
+      _rawMes.filter(r=>{
+        let d=0;
+        if(r.fecha){
+          if(typeof r.fecha==='string') d=parseInt(r.fecha.split('-')[2]||0);
+          else if(r.fecha instanceof Date) d=r.fecha.getDate();
         }
-        const rProdNorm = rProd.includes('DIESEL') ? 'DIESEL' : 'MAGNA';
-        return rEst === _estKey && rProdNorm === comb &&
-               rMes === mesActual && rDia >= 1 && rDia <= dia;
-      }).reduce((s,r) => s + (parseFloat(r.litros)||0), 0)
+        return d>=1 && d<=Math.min(dia,_ultimoDiaReal);
+      }).reduce((s,r)=>s+(parseFloat(r.litros)||0),0)
     );
-    // Excedente: balance real vs capacidad declarada
-    const balanceReal  = blk.invInicial + acumEntradas - acumConsumo;
+    const _diasFuturos = dia > _ultimoDiaReal ? dia - _ultimoDiaReal : 0;
+    const acumConsumo  = _consumoReal + Math.round(cons * _diasFuturos);
+
+    // ── PASO 6: balanceReal y excedente ──────────────────────────────────
+    const balanceReal  = blk.invInicial + acumEntradasReal - acumConsumo;
     const excedenteCap = Math.max(0, balanceReal - cap);
-    const tieneExcedente = excedenteCap > 200; // tolerancia 200 L
+    const tieneExcedente = excedenteCap > 200;
+
+    const surtHoy  = blk.surtimientos.filter(s=>(s.dia||s.d)===dia);
+    const proxSurt = blk.surtimientos.filter(s=>(s.dia||s.d)>dia).sort((a,b)=>(a.dia||a.d)-(b.dia||b.d))[0];
+
     return {est,comb,cap,cons,consD,nivel,pct,dias30,niveles,surtHoy,proxSurt,blk,
-            acumEntradas,acumConsumo,balanceReal,excedenteCap,tieneExcedente};
+            acumEntradas:acumEntradasReal,acumConsumo,balanceReal,excedenteCap,tieneExcedente};
   });
 
   // KPIs globales
-  const totNivel = casos.reduce((s,c)=>s+c.nivel,0);
-  const totCap   = casos.reduce((s,c)=>s+c.cap,0);
-  const pctGlobal= totCap>0?Math.round(totNivel/totCap*100):0;
-  const nCrit    = casos.filter(c=>c.pct<=20).length;
-  const nWarn    = casos.filter(c=>c.pct>20&&c.pct<=35).length;
-  const colGlobal= pctGlobal<=20?'#c0392b':pctGlobal<=35?'#e65100':'var(--green-dark)';
+  const totNivel   = casos.reduce((s,c)=>s+c.balanceReal,0);
+  const totCap     = casos.reduce((s,c)=>s+c.cap,0);
+  const pctGlobal  = totCap>0?Math.round(totNivel/totCap*100):0;
+  const nCrit      = casos.filter(c=>c.pct<=20).length;
+  const nWarn      = casos.filter(c=>c.pct>20&&c.pct<=35).length;
+  const colGlobal  = pctGlobal<=20?'#c0392b':pctGlobal<=35?'#e65100':'var(--green-dark)';
+  // KPI excedente: litros por encima de capacidad declarada (almacenamiento externo)
+  const casosExcKpi  = casos.filter(c=>c.tieneExcedente);
+  const totExcKpi    = casosExcKpi.reduce((s,c)=>s+c.excedenteCap,0);
+  // KPI faltante: litros negativos (gasolinero prestando producto)
+  const casosPrestamo= casos.filter(c=>c.balanceReal<0);
+  const totPrestamo  = casosPrestamo.reduce((s,c)=>s+Math.abs(c.balanceReal),0);
 
   let html = `
     <div class="mon-kpi-row">
-      <div class="mon-kpi">
-        <div class="mon-kpi-lbl">Nivel global</div>
-        <div class="mon-kpi-val" style="color:${colGlobal};">${pctGlobal}%</div>
-        <div class="mon-kpi-sub">${fmt(totNivel)} L de ${fmt(totCap)} L</div>
-      </div>
       <div class="mon-kpi">
         <div class="mon-kpi-lbl">Críticos ≤ 20%</div>
         <div class="mon-kpi-val" style="color:${nCrit>0?'#c0392b':'var(--green-dark)'};">${nCrit}</div>
@@ -745,36 +810,38 @@ function renderMonitor() {
       <div class="mon-kpi">
         <div class="mon-kpi-lbl">Día simulado</div>
         <div class="mon-kpi-val" style="color:var(--green-dark);">Día ${dia}</div>
-        <div class="mon-kpi-sub">Junio ${new Date().getFullYear()}</div>
+        <div class="mon-kpi-sub">${['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][mesActual]||''} ${new Date().getFullYear()}</div>
       </div>
-      ${(()=>{
-        const casosExc = casos.filter(c=>c.tieneExcedente);
-        if (!casosExc.length) return '';
-        const totExc = casosExc.reduce((s,c)=>s+c.excedenteCap,0);
-        return `<div class="mon-kpi" style="background:#fff0f0;border-left:3px solid #c0392b;">
-          <div class="mon-kpi-lbl" style="color:#c0392b;">⚠ Excedente total</div>
-          <div class="mon-kpi-val" style="color:#c0392b;">${fmt(totExc)} L</div>
-          <div class="mon-kpi-sub" style="color:#c0392b;">${casosExc.length} estación(es) con alerta</div>
-        </div>`;
-      })()}
+      ${totExcKpi > 0 ? `
+      <div class="mon-kpi" style="background:#fff0f0;border-left:3px solid #b71c1c;">
+        <div class="mon-kpi-lbl" style="color:#b71c1c;">⚠ Excedente total</div>
+        <div class="mon-kpi-val" style="color:#b71c1c;">${fmt(totExcKpi)} L</div>
+        <div class="mon-kpi-sub" style="color:#b71c1c;">${casosExcKpi.length} estación(es) · almacén externo</div>
+      </div>` : ''}
+      ${totPrestamo > 0 ? `
+      <div class="mon-kpi" style="background:#fff3e0;border-left:3px solid #e65100;">
+        <div class="mon-kpi-lbl" style="color:#e65100;">⛽ Gasolina prestada</div>
+        <div class="mon-kpi-val" style="color:#e65100;">−${fmt(totPrestamo)} L</div>
+        <div class="mon-kpi-sub" style="color:#e65100;">${casosPrestamo.length} estación(es) · por regularizar</div>
+      </div>` : ''}
     </div>`;
 
   // Alertas negativos (préstamo gasolinero)
-  casos.filter(c=>c.nivel<0).forEach(c=>{
+  casos.filter(c=>c.balanceReal<0).forEach(c=>{
     html+=`<div class="mon-alert" style="background:#fff3e0;border-color:#e65100;">
       <svg width="18" height="18" fill="none" stroke="#e65100" stroke-width="2.2" viewBox="0 0 24 24">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
       </svg>
       <div class="mon-alert-txt" style="color:#e65100;">
-        ${EST_NOM[c.est]} · ${c.comb} — Saldo negativo: −${fmt(Math.abs(c.nivel))} L
+        ${EST_NOM[c.est]} · ${c.comb} — Saldo negativo: −${fmt(Math.abs(c.balanceReal))} L
         · El gasolinero está prestando producto — regularizar en próximo surtimiento
       </div>
     </div>`;
   });
 
   // Alertas críticas
-  casos.filter(c=>c.pct<=20 && c.nivel>=0).forEach(c=>{
+  casos.filter(c=>c.pct<=20 && c.balanceReal>=0).forEach(c=>{
     html+=`<div class="mon-alert">
       <svg width="18" height="18" fill="none" stroke="#c0392b" stroke-width="2.2" viewBox="0 0 24 24">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -792,7 +859,7 @@ function renderMonitor() {
     const col   = PROD_COL[c.comb]||'#1D9E75';
     const light = PROD_LT[c.comb]||'#e8f5f0';
     const alerta= c.pct<=20, warn=c.pct>20&&c.pct<=35;
-    const negativo= c.nivel<0;
+    const negativo= c.balanceReal<0;
     const lvlCol= negativo?'#e65100':alerta?'#c0392b':warn?'#e65100':col;
     const badge = negativo?'mon-badge-warn':alerta?'mon-badge-crit':warn?'mon-badge-warn':'mon-badge-ok';
     const bdgTxt= negativo?'⚠ Préstamo':alerta?'⚠ Crítico':warn?'Nivel bajo':'✓ Normal';
@@ -817,16 +884,16 @@ function renderMonitor() {
         <div class="mon-tank-info">
           <div>
             <div class="mon-level-big" style="color:${lvlCol};">
-              ${c.nivel<0
+              ${c.balanceReal<0
                 ? `<span style="background:#fff3e0;border:1.5px solid #e65100;border-radius:8px;
                     padding:4px 10px;display:inline-block;">
-                    − ${fmt(Math.abs(c.nivel))} L
+                    − ${fmt(Math.abs(c.balanceReal))} L
                     <span style="font-size:0.65rem;color:#e65100;font-weight:700;
                       display:block;margin-top:1px;">⚠ Saldo a favor del gasolinero</span>
                   </span>`
-                : `${fmt(c.nivel)} L`}
+                : `${fmt(c.balanceReal)} L`}
             </div>
-            <div class="mon-level-sub">${Math.round(c.pct)}% de ${fmt(c.cap)} L capacidad</div>
+            <div class="mon-level-sub">${Math.round(c.balanceReal/c.cap*100)}% de ${fmt(c.cap)} L capacidad${c.tieneExcedente?` · <span style="color:#b71c1c;font-weight:700;">+${fmt(c.excedenteCap)} L excedente externo</span>`:''}</div>
             <div class="mon-prog-bg">
               <div class="mon-prog-fill" style="width:${Math.max(2,Math.round(c.pct))}%;background:${lvlCol};"></div>
             </div>
@@ -846,7 +913,7 @@ function renderMonitor() {
               <span class="mon-metric-val" title="Calculado entre días con despacho real">
                 ${fmt(c.cons)} L/día
                 <span style="font-size:0.6rem;color:#aaa;font-weight:400;margin-left:3px;">
-                  (${c.consD?.diasUsados||'—'} días c/despacho${c.consD?.esActual?'':' · mes ant.'})
+
                 </span>
               </span>
             </div>
@@ -943,14 +1010,13 @@ function renderMonitor() {
               </span>
               <span class="mon-metric-val" style="color:#c0392b;">
                 −${fmt(c.acumConsumo)} L
-                <span style="font-size:0.62rem;color:#aaa;font-weight:400;"> (real Hoja1 días 1–${dia})</span>
+
               </span>
             </div>
             <div class="mon-metric" style="background:#f7faf9;border-radius:6px;padding:4px 6px;margin-top:2px;">
-              <span class="mon-metric-lbl" style="font-weight:700;">Nivel simulado día ${dia}</span>
-              <span class="mon-metric-val" style="color:${c.nivel>=0?'var(--green-dark)':'#c0392b'};">
-                ${c.nivel>=0?'+':''}${fmt(c.nivel)} L
-                <span style="font-size:0.62rem;color:#888;font-weight:400;"> (respeta cap. ${fmt(c.cap)} L)</span>
+              <span class="mon-metric-lbl" style="font-weight:700;">Balance al día ${dia}</span>
+              <span class="mon-metric-val" style="color:${c.balanceReal>=0?'var(--green-dark)':'#c0392b'};">
+                ${c.balanceReal>=0?'+':''}${fmt(c.balanceReal)} L
               </span>
             </div>
             ${c.tieneExcedente ? `
@@ -958,7 +1024,7 @@ function renderMonitor() {
               border-radius:8px;padding:8px 10px;">
               <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;
                 font-weight:800;color:#ff4444;letter-spacing:0.05em;margin-bottom:4px;">
-                ⚠ ALERTA DE AUDITORÍA
+                ⚠ ALERTA DE AUDITORÍA — EXCEDENTE
               </div>
               <div style="font-size:0.68rem;color:#ffb3b3;line-height:1.5;">
                 Balance PEMEX días 1–${dia}:
@@ -969,8 +1035,35 @@ function renderMonitor() {
                   Excedente no contabilizado: +${fmt(c.excedenteCap)} L
                 </span>
               </div>
-              <div style="font-size:0.62rem;color:#ff9999;margin-top:4px;font-style:italic;">
-                Posible almacenamiento externo no declarado ante CRE/PEMEX.
+              <div style="font-size:0.62rem;color:#ff9999;margin-top:6px;line-height:1.6;">
+                El balance PEMEX supera la capacidad declarada del tanque. El volumen excedente
+                no puede estar contenido en la infraestructura registrada ante CRE/PEMEX.
+                Se presume uso de <strong style="color:#ffd0d0;">almacenamiento auxiliar externo no declarado</strong>.
+                Se recomienda verificación física e inicio de proceso de auditoría.
+              </div>
+            </div>` : ''}
+
+            ${c.balanceReal < 0 ? `
+            <div style="margin-top:6px;background:#1a0800;border:2px solid #e65100;
+              border-radius:8px;padding:8px 10px;">
+              <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;
+                font-weight:800;color:#ff8c00;letter-spacing:0.05em;margin-bottom:4px;">
+                ⛽ ALERTA DE AUDITORÍA — PRÉSTAMO DE PRODUCTO
+              </div>
+              <div style="font-size:0.68rem;color:#ffd9b3;line-height:1.5;">
+                Balance acumulado días 1–${dia}:
+                <strong style="color:#fff;">−${fmt(Math.abs(c.balanceReal))} L</strong><br>
+                <span style="color:#ffb347;font-weight:700;">
+                  Saldo negativo: gasolinero opera con producto propio
+                </span>
+              </div>
+              <div style="font-size:0.62rem;color:#ffcc99;margin-top:6px;line-height:1.6;">
+                El balance acumulado del período es negativo, lo que indica que la estación
+                despachó más producto del que tenía disponible en inventario.
+                El gasolinero está operando con <strong style="color:#ffe0b2;">producto de su inventario
+                comercial a cuenta de PEMEX</strong>. Este saldo deberá regularizarse en el
+                próximo surtimiento. Se recomienda documentar el adeudo y notificar
+                al responsable de la estación.
               </div>
             </div>` : ''}
           </div>
@@ -989,8 +1082,20 @@ function renderMonitor() {
             const ini  = vblk.vales.filter(v=>v.program.toUpperCase().includes('INICIAL'));
             const amp  = vblk.vales.filter(v=>v.program.toUpperCase().includes('AMPLI'));
 
-            const totProgIni  = ini.length>0 ? Math.max(...ini.map(v=>v.volProg)) : 0;
-            const totProgAmp  = amp.length>0 ? Math.max(...amp.map(v=>v.volProg)) : 0;
+            // totProgIni = suma del volumen (v.vol) de TODOS los vales iniciales
+            // independientemente de su estatus (surtido, en surtimiento, pendiente)
+            // Esto da el volumen total comprometido en el programa inicial
+            // Si volProg está disponible y es coherente, usarlo como validación
+            const _sumVolIni  = ini.reduce((s,v)=>s+v.vol, 0);
+            const _maxProgIni = ini.length>0 ? Math.max(...ini.map(v=>v.volProg||0)) : 0;
+            // Preferir volProg si es >= suma de vols individuales (viene de columna del Excel)
+            // Si no, usar la suma de vols individuales de cada vale
+            const totProgIni  = _maxProgIni >= _sumVolIni && _maxProgIni > 0 ? _maxProgIni : _sumVolIni;
+
+            const _sumVolAmp  = amp.reduce((s,v)=>s+v.vol, 0);
+            const _maxProgAmp = amp.length>0 ? Math.max(...amp.map(v=>v.volProg||0)) : 0;
+            const totProgAmp  = _maxProgAmp >= _sumVolAmp && _maxProgAmp > 0 ? _maxProgAmp : _sumVolAmp;
+
             const totProg     = totProgIni + totProgAmp;
 
             const volSurtIni  = ini.filter(v=>v.estatus.toUpperCase()==='SURTIDO').reduce((s,v)=>s+v.vol,0);
@@ -1009,10 +1114,14 @@ function renderMonitor() {
             const totPendVol   = volPendIni+volPendAmp;
             // Ejecución = lo realmente surtido al tanque (INVENTARIO_TANQUES) vs programado (Hoja2)
             const _invBlk   = INVENTARIO_TANQUES[`${c.est}||${c.comb}`]?.meses?.[mesActual];
-            const _realSurt = _invBlk
-              ? _invBlk.surtimientos.reduce((s,x)=>s+x.vol, 0)
-              : totSurtVol;
-            const pctEjec = totProg>0 ? Math.round(_realSurt/totProg*100) : 0;
+            // Ejecución del programa:
+            // Base 100% = volumen del Programa Inicial
+            // Si hay ampliación surtida, el % supera el 100%
+            const _realSurt   = totSurtVol; // total surtido (ini + amp)
+            const _baseEjec   = totProgIni > 0 ? totProgIni : totProg; // base siempre = inicial
+            const pctEjec     = _baseEjec > 0 ? Math.floor(_realSurt / _baseEjec * 100) : 0;
+            const pctBarra    = Math.min(100, pctEjec); // barra visual máx 100%
+            const superoProg  = pctEjec > 100; // hay ampliación ejecutada
 
             return `<div style="margin-top:8px;background:#f8faf9;border-radius:8px;
               border:1.5px solid var(--border);overflow:hidden;">
@@ -1023,9 +1132,7 @@ function renderMonitor() {
                   font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.06em;">
                   📋 Vales de Retiro
                 </span>
-                <span style="font-size:0.68rem;color:rgba(255,255,255,0.75);">
-                  ${totVales} vales · ${fmt(totProg)} L prog.
-                </span>
+
               </div>
 
               <!-- Barra de ejecución global -->
@@ -1034,13 +1141,19 @@ function renderMonitor() {
                   margin-bottom:4px;">
                   <span style="color:#888;">Ejecución del programa</span>
                   <span style="font-weight:700;color:${pctEjec>=100?'#27ae60':pctEjec>=70?'var(--green-mid)':'#e67e22'};">
-                    ${pctEjec}%
+                    ${pctEjec}%${superoProg?' <span style="font-size:0.58rem;background:#27ae60;color:#fff;border-radius:3px;padding:0 5px;margin-left:2px;">+AMP</span>':''}
                   </span>
                 </div>
                 <div style="height:6px;background:#eee;border-radius:3px;overflow:hidden;">
-                  <div style="height:6px;border-radius:3px;background:${pctEjec>=100?'#27ae60':pctEjec>=70?'var(--green-mid)':'#e67e22'};
-                    width:${Math.min(100,pctEjec)}%;transition:width 0.4s;"></div>
+                  <div style="height:6px;border-radius:3px;
+                    background:${pctEjec>=100?'#27ae60':pctEjec>=70?'var(--green-mid)':'#e67e22'};
+                    width:${pctBarra}%;transition:width 0.4s;"></div>
                 </div>
+                ${superoProg?`
+                <div style="margin-top:3px;height:4px;background:#e8f5e9;border-radius:3px;overflow:hidden;">
+                  <div style="height:4px;border-radius:3px;background:#27ae60;opacity:0.5;
+                    width:${Math.min(100,(pctEjec-100)/(totProgAmp>0?Math.round(totProgAmp/_baseEjec*100):1)*100)}%;"></div>
+                </div>`:''}
               </div>
 
               <!-- Estatus de vales -->
@@ -1074,6 +1187,11 @@ function renderMonitor() {
                             border-radius:3px;padding:0 4px;font-size:0.6rem;font-weight:800;">
                             ${(v.vol/1000).toFixed(0)}K L
                           </span>
+                          <span style="background:${v.program.toUpperCase().includes('AMPLI')?'rgba(230,101,0,0.15)':'rgba(30,91,79,0.12)'};
+                            color:${v.program.toUpperCase().includes('AMPLI')?'#e65100':'#1e5b4f'};
+                            border-radius:3px;padding:0 5px;font-size:0.58rem;font-weight:800;">
+                            ${v.program.toUpperCase().includes('AMPLI')?'AMP':'INI'}
+                          </span>
                           ${_fs ? '<span style="background:rgba(30,91,79,0.15);border-radius:3px;padding:0 5px;font-size:0.58rem;font-weight:700;">📅 '+_fs+'</span>' : ''}
                         </span>`;
                       }).join('')}
@@ -1105,6 +1223,11 @@ function renderMonitor() {
                             border-radius:3px;padding:0 4px;font-size:0.6rem;font-weight:800;">
                             ${(v.vol/1000).toFixed(0)}K L
                           </span>
+                          <span style="background:${v.program.toUpperCase().includes('AMPLI')?'rgba(230,101,0,0.2)':'rgba(30,91,79,0.12)'};
+                            color:${v.program.toUpperCase().includes('AMPLI')?'#e65100':'#1e5b4f'};
+                            border-radius:3px;padding:0 5px;font-size:0.58rem;font-weight:800;">
+                            ${v.program.toUpperCase().includes('AMPLI')?'AMP':'INI'}
+                          </span>
                         </span>`
                       ).join('')}
                     </div>
@@ -1126,34 +1249,8 @@ function renderMonitor() {
                       font-weight:800;color:#c0392b;">${fmt(totPendVol)} L</div>
                     <div style="font-size:0.62rem;color:#888;">${nPend} vale${nPend!==1?'s':''}</div>
                     <div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px;">
-                      ${vblk.vales.filter(v=>v.estatus.toUpperCase()==='PENDIENTE').map(v=>{
-                        const _ei   = _EST_CORREO[vblk.est] || {razon:'—',dir:'—'};
-                        const _nom  = _EST_NOMBRES[vblk.est] || vblk.est;
-                        const _prod = String(vblk.comb||'').includes('DIESEL') ? 'DIESEL AUTOMOTRIZ' : 'MAGNA';
-                        const _hoy  = new Date();
-                        const _MM   = ['','ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
-                                        'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-                        const _fech = `${_hoy.getDate()} DE ${_MM[_hoy.getMonth()+1]} DE ${_hoy.getFullYear()}`;
-                        const _volFmt = Number(v.vol).toLocaleString('es-MX',{minimumFractionDigits:3,maximumFractionDigits:3});
-                        const _nl   = '\n';
-                        const _body = 'Con la finalidad de atender las necesidades de consumo de combustible del parque vehicular y equipos correspondientes al Activo de Extracción Cinco Presidentes, solicito su valioso apoyo para programar el surtimiento de producto correspondiente a los siguientes parámetros:' + _nl + _nl +
-                          'No. Vale:              ' + v.folio + _nl +
-                          'Clave Estación:        E' + vblk.est + _nl +
-                          'Estación de Servicios: ' + _nom + _nl +
-                          'Razón Social:          ' + _ei.razon + _nl +
-                          'Producto:              ' + _prod + _nl +
-                          'Volumen:               ' + _volFmt + ' LTS' + _nl +
-                          'Ubicación:             ' + _ei.dir + _nl +
-                          'Fecha solicitud:       ' + _fech + _nl + _nl +
-                          'Agradeciendo el favor de su atención, quedo de usted.' + _nl + _nl +
-                          'Saludos,' + _nl +
-                          'Ing. Ángel Pérez Chávez' + _nl +
-                          'F-383573  |  Ext. 27-301  |  angel.perez@pemex.com' + _nl +
-                          'PEMEX URCS Sur — DAS-SSAB-GSG' + _nl +
-                          'Coatzacoalcos, Veracruz';
-                        const _asunto = 'Solicitud de Surtimiento ' + v.folio;
-                        const _ml = 'mailto:?subject=' + encodeURIComponent(_asunto) + '&body=' + encodeURIComponent(_body);
-                        return `<span style="font-size:0.58rem;background:rgba(192,57,43,0.1);color:#c0392b;
+                      ${vblk.vales.filter(v=>v.estatus.toUpperCase()==='PENDIENTE').map(v=>
+                        `<span style="font-size:0.58rem;background:rgba(192,57,43,0.1);color:#c0392b;
                           border-radius:4px;padding:2px 6px;font-weight:600;
                           display:inline-flex;align-items:center;gap:4px;">
                           ${v.folio}
@@ -1161,13 +1258,13 @@ function renderMonitor() {
                             border-radius:3px;padding:0 4px;font-size:0.6rem;font-weight:800;">
                             ${(v.vol/1000).toFixed(0)}K L
                           </span>
-                          <a href="${_ml}" onclick="event.stopPropagation()" target="_self"
-                            title="Generar correo de surtimiento"
-                            style="display:inline-flex;align-items:center;justify-content:center;
-                              width:18px;height:18px;border-radius:4px;background:#c0392b;
-                              color:#fff;text-decoration:none;font-size:0.7rem;flex-shrink:0;">✉</a>
-                        </span>`;
-                      }).join('')}
+                          <span style="background:${v.program.toUpperCase().includes('AMPLI')?'rgba(230,101,0,0.15)':'rgba(30,91,79,0.12)'};
+                            color:${v.program.toUpperCase().includes('AMPLI')?'#e65100':'#1e5b4f'};
+                            border-radius:3px;padding:0 5px;font-size:0.58rem;font-weight:800;">
+                            ${v.program.toUpperCase().includes('AMPLI')?'AMP':'INI'}
+                          </span>
+                        </span>`
+                      ).join('')}
                     </div>
                   </div>
                 </div>`:''}
@@ -1205,7 +1302,7 @@ function renderMonitor() {
   html += `</div>
     <div style="text-align:center;font-size:0.6rem;font-weight:700;text-transform:uppercase;
       letter-spacing:0.1em;color:#ccc;padding-top:12px;border-top:1px solid var(--border);">
-      MONITOR DE TANQUES — SISTEMA DE CONTROL COMBUSTIBLE PEMEX 2026
+      MONITOR DE TANQUES — SACISC · Módulo Combustibles · PEMEX URCS Sur
     </div>`;
 
   document.getElementById('monitorBody').innerHTML = html;
@@ -1215,7 +1312,7 @@ function renderMonitor() {
     const col   = PROD_COL[c.comb]||'#1D9E75';
     const light = PROD_LT[c.comb]||'#e8f5f0';
     const svgEl = document.getElementById(`mon_svg_${ki}`);
-    if (svgEl) drawTanqueSVG(svgEl, c.nivel, c.cap, col, Math.round(c.pct));
+    if (svgEl) drawTanqueSVG(svgEl, c.balanceReal, c.cap, col, Math.round(c.balanceReal/c.cap*100));
     // nivel negativo activa patrón de rayas en drawTanqueSVG
   });
 }
@@ -5125,10 +5222,10 @@ function renderRendDiario(rows, mes) {
           <text x="11" y="27" font-family="Arial,sans-serif" font-size="9" font-weight="900" fill="#fff">XLS</text>
         </svg>
         <div class="dz-title">Arrastra tu archivo aquí</div>
-        <div class="dz-sub">Formatos soportados: .xlsx, .xls, .csv</div>
+        <div class="dz-sub">Formatos soportados: .xlsx, .xlsm, .xls, .csv</div>
         <button class="dz-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">Seleccionar archivo</button>
       </div>
-      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="procesarArchivo(this.files[0])">
+      <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls,.csv" onchange="procesarArchivo(this.files[0])">
 
       <!-- Status -->
       <div class="upload-status" id="uploadStatus"></div>
@@ -5273,7 +5370,7 @@ function renderRendDiario(rows, mes) {
       <p id="rptFooterDate"></p>
     </div>
   </div>
-  <div class="rpt-watermark">DOCUMENTO GENERADO ELECTRÓNICAMENTE — SACISC · MÓDULO DE COMBUSTIBLE · PEMEX</div>
+  <div class="rpt-watermark">DOCUMENTO GENERADO ELECTRÓNICAMENTE — SACISC · Módulo Combustibles · PEMEX URCS Sur</div>
 </div>
 
 <!-- ══ MODAL HISTORIAL DE EVALUACIONES ══ -->
@@ -5994,8 +6091,8 @@ function dzDrop(e) {
 function procesarArchivo(file) {
   if (!file) return;
   const ext = file.name.split('.').pop().toLowerCase();
-  if (!['xlsx','xls','csv'].includes(ext)) {
-    mostrarStatus('error', '❌ Formato no soportado. Use .xlsx, .xls o .csv');
+  if (!['xlsx','xlsm','xls','csv'].includes(ext)) {
+    mostrarStatus('error', '❌ Formato no soportado. Use .xlsx, .xlsm, .xls o .csv');
     return;
   }
   mostrarStatus('info', '⏳ Leyendo archivo…');
@@ -8979,7 +9076,7 @@ async function _generarPDFAjustado(elemento, nombreArchivo, orientacion='portrai
     pdf.setPage(p);
     pdf.setFontSize(7);
     pdf.setTextColor(150);
-    pdf.text(`SACISC · Módulo de Combustible · PEMEX  —  Pág. ${p} de ${totalPags}`, margin, pdf.internal.pageSize.getHeight()-4);
+    pdf.text(`SACISC · Módulo Combustibles · PEMEX URCS Sur  —  Pág. ${p} de ${totalPags}`, margin, pdf.internal.pageSize.getHeight()-4);
   }
 
   pdf.save(nombreArchivo);
@@ -11199,7 +11296,7 @@ function renderTrazabilidad(tarjeta, rows) {
   // Watermark
   html += `<div style="text-align:center;font-size:0.6rem;font-weight:700;text-transform:uppercase;
     letter-spacing:0.12em;color:#ccc;margin-top:24px;padding-top:16px;border-top:1px solid #e8f5f0;">
-    TRAZABILIDAD GENERADA — SACISC · MÓDULO DE COMBUSTIBLE · PEMEX
+    TRAZABILIDAD GENERADA — SACISC · Módulo Combustibles · PEMEX URCS Sur
   </div>`;
 
   document.getElementById('trazBody').innerHTML = html;
@@ -11458,7 +11555,7 @@ function renderCambiosModal() {
     </div>
     <div style="text-align:center;font-size:0.62rem;font-weight:700;text-transform:uppercase;
       letter-spacing:0.1em;color:#ccc;margin-top:20px;padding-top:14px;border-top:1px solid var(--border);">
-      ALERTA DE TRAZABILIDAD — SACISC · MÓDULO DE COMBUSTIBLE · PEMEX
+      ALERTA DE TRAZABILIDAD — SACISC · Módulo Combustibles · PEMEX URCS Sur
     </div>`;
 
   document.getElementById('cambiosBody').innerHTML = html;
@@ -11534,7 +11631,191 @@ function cerrarRankDet() {
   document.getElementById('rankDetModal').style.display = 'none';
 }
 
+function abrirTransaccionesTarjeta(tarjeta) {
+  const rows = (window._rankDetRows || []).filter(r => String(r.tarjeta).trim() === tarjeta);
+  if (!rows.length) return;
+
+  const MESES_N = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const MESES_C = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const fmt  = n => n.toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1});
+  const fmtI = n => n.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0});
+
+  rows.sort((a,b) => a.mes!==b.mes ? a.mes-b.mes : String(a.fecha||'').localeCompare(String(b.fecha||'')));
+
+  const r0      = rows[0];
+  const placa   = String(r0.placa||'').trim()||'—';
+  const unidad  = [r0.marca,r0.subMarca,r0.modelo].filter(Boolean).join(' ')||'—';
+  const usuario = String(r0.usuario||'').trim()||'—';
+  const area    = String(r0.areaUsuaria||r0.area||'').trim()||'—';
+  const totLts  = rows.reduce((s,r)=>s+r.litros,0);
+  const totCrg  = rows.length;
+  const totKm   = rows.reduce((s,r)=>s+(r.distancia||0),0);
+  const rendRows= rows.filter(r=>r.rendimiento>0);
+  const promRend= rendRows.length ? rendRows.reduce((s,r)=>s+r.rendimiento,0)/rendRows.length : 0;
+  const mesesList=[...new Set(rows.map(r=>r.mes))].sort((a,b)=>a-b).map(m=>MESES_C[m]).join(', ');
+
+  const porMes = {};
+  rows.forEach(r => { if(!porMes[r.mes]) porMes[r.mes]=[]; porMes[r.mes].push(r); });
+
+  let modal = document.getElementById('txTarjetaModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'txTarjetaModal';
+    modal.style.cssText = `position:fixed;inset:0;z-index:10800;background:rgba(0,0,0,0.65);
+      display:flex;align-items:center;justify-content:center;padding:16px;`;
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:920px;
+      max-height:92vh;display:flex;flex-direction:column;
+      box-shadow:0 32px 80px rgba(0,0,0,0.45);overflow:hidden;">
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#002f2a,#1e5b4f);padding:16px 20px;flex-shrink:0;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;
+              font-weight:900;color:#fff;letter-spacing:0.06em;">🪪 TARJETA ${tarjeta}</div>
+            <div style="font-size:0.72rem;color:rgba(255,255,255,0.7);margin-top:2px;">
+              ${usuario} · ${placa} · ${unidad} · ${area}</div>
+            <div style="font-size:0.65rem;color:rgba(255,255,255,0.5);margin-top:1px;">Meses: ${mesesList}</div>
+          </div>
+          <button onclick="document.getElementById('txTarjetaModal').style.display='none'"
+            style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50%;
+              width:30px;height:30px;cursor:pointer;font-size:1rem;flex-shrink:0;">✕</button>
+        </div>
+        <!-- KPIs -->
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+          ${[['Total Litros',fmt(totLts)+' L'],['Cargas',fmtI(totCrg)],
+             ['Prom./Carga',fmt(totLts/Math.max(totCrg,1))+' L'],
+             totKm>0?['Km Recorridos',fmtI(totKm)+' km']:null,
+             promRend>0?['Rend. Prom.',promRend.toFixed(2)+' km/L']:null]
+            .filter(Boolean).map(([l,v])=>`
+            <div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:5px 12px;text-align:center;">
+              <div style="font-size:0.55rem;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.06em;">${l}</div>
+              <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:900;color:#fff;">${v}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <!-- Buscador -->
+      <div style="padding:8px 16px;background:#f8fbf9;border-bottom:1px solid #dde8e2;flex-shrink:0;">
+        <div style="position:relative;max-width:380px;">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.85rem;color:#aaa;">🔍</span>
+          <input id="txTarjetaFiltro" type="text" placeholder="Filtrar por fecha, hora, estación..."
+            oninput="filtrarTxTarjeta(this.value)"
+            style="width:100%;padding:7px 70px 7px 32px;border:1.5px solid #c8ddd8;border-radius:8px;
+              font-size:0.8rem;outline:none;box-sizing:border-box;font-family:inherit;background:#fff;"
+            onfocus="this.style.borderColor='#2d9e7e'" onblur="this.style.borderColor='#c8ddd8'">
+          <span id="txTarjetaCount" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+            font-size:0.68rem;color:#888;pointer-events:none;"></span>
+        </div>
+      </div>
+      <!-- Tabla -->
+      <div style="flex:1;overflow-y:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+          <thead>
+            <tr style="background:#f0f7f4;position:sticky;top:0;z-index:1;">
+              ${['Mes','Fecha','Hora','Estación','Producto','Litros','Km','Rendimiento']
+                .map((h,i)=>`<th style="padding:8px 10px;text-align:${i>=5?'right':'left'};
+                  font-size:0.63rem;font-weight:800;color:#555;text-transform:uppercase;
+                  letter-spacing:0.06em;border-bottom:2px solid #c8ddd8;">${h}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody id="txTarjetaTbody">
+            ${Object.entries(porMes).sort(([a],[b])=>Number(a)-Number(b)).map(([mes,regs])=>{
+              const mesLts = regs.reduce((s,r)=>s+r.litros,0);
+              const hdr = `<tr class="tx-mes-hdr">
+                <td colspan="8" style="padding:5px 10px;background:#1e5b4f;
+                  font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;
+                  font-weight:800;color:#fff;letter-spacing:0.04em;">
+                  ${MESES_N[mes]||mes} · ${regs.length} carga${regs.length!==1?'s':''} · ${fmt(mesLts)} L
+                </td></tr>`;
+              const filas = regs.map((r,ri)=>{
+                const bg  = ri%2===0?'#fff':'#f9fdfb';
+                const est = String(r.estacion||'').trim().replace(/^E0*/,'');
+                const estNom = (typeof EST_NOM!=='undefined'&&EST_NOM[est])||est;
+                const srch = [MESES_C[r.mes]||'',String(r.fecha||''),String(r.hora||''),
+                  est,estNom,String(r.producto||''),String(r.litros||'')].join('|').toLowerCase();
+                const rendStr = r.rendimiento>0?r.rendimiento.toFixed(2)+' km/L':'—';
+                const rCol = r.rendimiento>=10?'#1e5b4f':r.rendimiento>=6?'#e67e22':'#c0392b';
+                return `<tr class="tx-tarjeta-row" data-search="${srch}" style="background:${bg};">
+                  <td style="padding:6px 10px;border-bottom:1px solid #eee;">
+                    <span style="background:#e8f5f0;color:#1e5b4f;border-radius:4px;
+                      padding:1px 6px;font-size:0.7rem;font-weight:700;">${MESES_C[mes]||mes}</span></td>
+                  <td style="padding:6px 10px;border-bottom:1px solid #eee;color:#555;font-size:0.8rem;">
+                    ${String(r.fecha||'—').substring(0,10)}</td>
+                  <td style="padding:6px 10px;border-bottom:1px solid #eee;">
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;
+                      font-weight:800;color:#1e5b4f;">${String(r.hora||'—').substring(0,5)}</span></td>
+                  <td style="padding:6px 10px;border-bottom:1px solid #eee;">
+                    <span style="font-size:0.75rem;font-weight:700;">${estNom}</span>
+                    <span style="font-size:0.68rem;color:#aaa;"> E${est}</span></td>
+                  <td style="padding:6px 10px;border-bottom:1px solid #eee;">
+                    <span style="background:#e8f5f0;color:#1e5b4f;border-radius:6px;
+                      padding:2px 7px;font-size:0.72rem;font-weight:700;">${r.producto||'—'}</span></td>
+                  <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;">
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;
+                      font-weight:900;color:#1e5b4f;">${fmt(r.litros)}</span>
+                    <span style="font-size:0.68rem;color:#aaa;"> L</span></td>
+                  <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;
+                    color:#666;font-size:0.78rem;">${r.distancia>0?fmtI(r.distancia)+' km':'—'}</td>
+                  <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;">
+                    <span style="font-size:0.78rem;font-weight:700;color:${rCol};">${rendStr}</span></td>
+                </tr>`;
+              }).join('');
+              return hdr+filas;
+            }).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="background:#f0f7f4;">
+              <td colspan="5" style="padding:8px 10px;font-size:0.72rem;font-weight:800;
+                color:#555;text-transform:uppercase;letter-spacing:0.06em;">TOTAL</td>
+              <td style="padding:8px 10px;text-align:right;">
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;
+                  font-weight:900;color:#1e5b4f;">${fmt(totLts)}</span>
+                <span style="font-size:0.72rem;color:#aaa;"> L</span></td>
+              <td style="padding:8px 10px;text-align:right;color:#666;font-size:0.78rem;">
+                ${totKm>0?fmtI(totKm)+' km':'—'}</td>
+              <td style="padding:8px 10px;text-align:right;">
+                <span style="font-size:0.78rem;font-weight:700;color:#1e5b4f;">
+                  ${promRend>0?promRend.toFixed(2)+' km/L':'—'}</span></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>`;
+
+  modal.style.display = 'flex';
+  setTimeout(()=>{ const inp=document.getElementById('txTarjetaFiltro'); if(inp){inp.value='';filtrarTxTarjeta('');} },80);
+}
+
+function filtrarTxTarjeta(texto) {
+  const q = texto.trim().toLowerCase();
+  const rows = document.querySelectorAll('.tx-tarjeta-row');
+  let vis = 0;
+  rows.forEach(tr => {
+    const match = !q || (tr.dataset.search||'').includes(q);
+    tr.style.display = match?'':'none';
+    if (match) vis++;
+  });
+  document.querySelectorAll('.tx-mes-hdr').forEach(hdr => {
+    let next=hdr.nextElementSibling, tieneVis=false;
+    while(next&&next.classList.contains('tx-tarjeta-row')){
+      if(next.style.display!=='none') tieneVis=true;
+      next=next.nextElementSibling;
+    }
+    hdr.style.display=tieneVis?'':'none';
+  });
+  const cnt=document.getElementById('txTarjetaCount');
+  if(cnt) cnt.textContent=q?`${vis} resultado${vis!==1?'s':''}`:''
+}
+
 function renderRankDet(usuario, rows) {
+  // Guardar referencia global para el drill-down de transacciones
+  window._rankDetRows    = rows;
+  window._rankDetUsuario = usuario;
+
   const MESES_N = {1:'Ene',2:'Feb',3:'Mar',4:'Abr',5:'May',6:'Jun',
                    7:'Jul',8:'Ago',9:'Sep',10:'Oct',11:'Nov',12:'Dic'};
 
@@ -11628,7 +11909,10 @@ function renderRankDet(usuario, rows) {
             const rendNum = t.cargas ? t.rendSum/t.cargas : 0;
             const rendCls = rendNum >= 10 ? 'rend-ok' : rendNum >= 6 ? 'rend-med' : 'rend-bad';
             const mesesList = [...t.meses].sort((a,b)=>a-b).map(m=>MESES_N[m]||m).join(', ');
-            return `<tr>
+            return `<tr style="cursor:pointer;transition:background 0.15s;"
+              onmouseover="this.style.background='#e8f5f0'"
+              onmouseout="this.style.background=''"
+              onclick="abrirTransaccionesTarjeta('${t.tarjeta.replace(/'/g,"\\'")}')">
               <td class="tc" style="font-weight:700;color:var(--green-mid);">${i+1}</td>
               <td class="bold">${t.tarjeta}</td>
               <td style="font-weight:600;">${t.placa||'—'}</td>
@@ -11671,7 +11955,7 @@ function renderRankDet(usuario, rows) {
     <div style="text-align:center;font-size:0.6rem;font-weight:700;text-transform:uppercase;
       letter-spacing:0.1em;color:#ccc;margin-top:20px;padding-top:14px;
       border-top:1px solid var(--border);">
-      DETALLE DE TARJETAS — SISTEMA DE CONTROL COMBUSTIBLE PEMEX 2026
+      DETALLE DE TARJETAS — SACISC · Módulo Combustibles · PEMEX URCS Sur
     </div>`;
 
   document.getElementById('rankDetBody').innerHTML = html;
@@ -12071,7 +12355,14 @@ function abrirMatrizConsumo() {
       }
     }
     if (dia >= 1 && dia <= diasEnMes) {
+      if (!byTarjeta[t].detDia) byTarjeta[t].detDia = {};
+      if (!byTarjeta[t].detDia[dia]) byTarjeta[t].detDia[dia] = [];
       byTarjeta[t].dias[dia] = (byTarjeta[t].dias[dia] || 0) + Number(r.litros || 0);
+      byTarjeta[t].detDia[dia].push({
+        hora:    String(r.hora||'').trim().substring(0,5) || '—',
+        estacion:String(r.estacion||'').trim().replace(/^E0*/,'') || '—',
+        litros:  Number(r.litros||0)
+      });
     }
   });
 
@@ -12175,6 +12466,12 @@ function abrirMatrizConsumo() {
   // ── Tbody ─────────────────────────────────────────────────────────────
   const tbodyRows = lista.map((t, idx) => {
     const bgBase = idx % 2 === 0 ? '#fafcfb' : '#f0f7f4';
+    // Construir cadena de búsqueda con todos los campos fijos del registro
+    const _searchStr = [
+      t.usuario, t.fichaTrabajo, t.area, t.tarjeta, t.placa,
+      t.inventario, t.economico, t.clasificacion, t.marca, t.modelo, t.tenencia
+    ].join('|').toLowerCase();
+
     const tdId = COL_ID.map((c, i) => {
       let val = c.key === 'marca' ? `${t.marca} ${t.modelo}`.trim() : (t[c.key] || '—');
       let extraStyle = '';
@@ -12198,12 +12495,19 @@ function abrirMatrizConsumo() {
       else if (esFds) extraCls = 'col-fds-data';
 
       if (!lit) return `<td class="mat-cero ${extraCls}">·</td>`;
-      const bg = heatBg(lit);
-      return `<td class="mat-litros ${extraCls}" style="${extraCls?'':'background:'+bg+';'}" title="${lit.toFixed(1)} L">${lit.toFixed(1)}</td>`;
+      const bg  = heatBg(lit);
+      // Construir tooltip con detalle de cargas del día
+      const det = t.detDia?.[d] || [];
+      const tipLines = det.map((c,ci) =>
+        `  Carga ${ci+1}:  ${c.hora}  |  Est. ${c.estacion}  |  ${c.litros.toFixed(1)} L`
+      ).join('&#10;');
+      const tipHdr  = det.length > 1 ? `${det.length} cargas registradas:` : `1 carga registrada:`;
+      const tipTxt  = tipHdr + '&#10;' + tipLines;
+      return `<td class="mat-litros ${extraCls}" style="${extraCls?'':'background:'+bg+';'}" title="${tipTxt}">${lit.toFixed(1)}</td>`;
     }).join('');
 
     const totFila = dias.reduce((s,d) => s + (t.dias[d]||0), 0);
-    return `<tr>
+    return `<tr class="mat-row" data-search="${_searchStr}">
       ${tdId}${tdDias}
       <td style="font-weight:800;color:#002f2a;background:#dff0ea;">${totFila.toFixed(1)}</td>
     </tr>`;
@@ -12243,10 +12547,28 @@ function abrirMatrizConsumo() {
     </table>`;
 
   document.getElementById('matrizModal').style.display = 'flex';
+  // Limpiar filtro al abrir
+  setTimeout(() => {
+    const inp = document.getElementById('matrizFiltro');
+    if (inp) { inp.value = ''; filtrarMatriz(''); }
+  }, 80);
 }
 
 function cerrarMatrizConsumo() {
   document.getElementById('matrizModal').style.display = 'none';
+}
+
+function filtrarMatriz(texto) {
+  const q    = texto.trim().toLowerCase();
+  const rows = document.querySelectorAll('#matrizBody .mat-row');
+  let vis    = 0;
+  rows.forEach(tr => {
+    const match = !q || (tr.dataset.search||'').includes(q);
+    tr.style.display = match ? '' : 'none';
+    if (match) vis++;
+  });
+  const cnt = document.getElementById('matrizFiltroCount');
+  if (cnt) cnt.textContent = q ? `${vis} fila${vis!==1?'s':''}` : '';
 }
 
 function exportarMatrizExcel() {
@@ -12339,8 +12661,8 @@ function abrirDesgloseDiario() {
   // Agrupar por estación y día
   const byEst = {};
   EST_IDS.forEach(id => {
-    byEst[id] = { litros:{}, cargas:{} };
-    dias.forEach(d => { byEst[id].litros[d]=0; byEst[id].cargas[d]=0; });
+    byEst[id] = { litros:{}, cargas:{}, detalle:{} };
+    dias.forEach(d => { byEst[id].litros[d]=0; byEst[id].cargas[d]=0; byEst[id].detalle[d]=[]; });
   });
   rows.forEach(r => {
     const id = String(r.estacion||'').trim();
@@ -12352,8 +12674,21 @@ function abrirDesgloseDiario() {
       if (p.length===3) dia = p[0].length===4 ? parseInt(p[2]) : parseInt(p[0]);
     }
     if (dia>=1 && dia<=diasEnMes) {
-      byEst[id].litros[dia] += Number(r.litros||0);
+      byEst[id].litros[dia]  += Number(r.litros||0);
       byEst[id].cargas[dia]++;
+      if (!byEst[id].detalle[dia]) byEst[id].detalle[dia] = [];
+      byEst[id].detalle[dia].push({
+        hora:       String(r.hora||'').trim().substring(0,5)||'—',
+        usuario:    String(r.usuario||'').trim()||'—',
+        tarjeta:    String(r.tarjeta||'').trim()||'—',
+        placa:      String(r.placa||'').trim()||'—',
+        litros:     Number(r.litros||0),
+        km:         String(r.odometroFinal||r.odometroInicial||'').trim()||'—',
+        rend:       Number(r.rendimiento||0),
+        area:       String(r.areaUsuaria||r.area||'').trim()||'—',
+        economico:  String(r.economico||'').trim()||'—',
+        producto:   String(r.producto||'').trim().toUpperCase()||'—',
+      });
     }
   });
 
@@ -12420,12 +12755,10 @@ function renderDesgloseDiario(estId) {
   const fmt    = n => n.toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1});
   const fmtI   = n => n.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0});
 
-  // ── Entradas desde VALES_RETIRO con detalle de folio ────────────────
-  // entDia[d] = litros totales
-  // entDetalle[d] = array de {folio, vol, estatus, razon, fechaSurt}
+  // ── Entradas desde VALES_RETIRO ──────────────────────────────────────
   const entDia     = {};
-  const entDiaIni  = {};   // programación inicial
-  const entDiaAmp  = {};   // programación por ampliación
+  const entDiaIni  = {};
+  const entDiaAmp  = {};
   const entDetalle = {};
   dias.forEach(d => { entDia[d]=0; entDiaIni[d]=0; entDiaAmp[d]=0; entDetalle[d]=[]; });
 
@@ -12439,26 +12772,20 @@ function renderDesgloseDiario(estId) {
       if (!blkV?.vales?.length) return;
       blkV.vales.forEach(v => {
         if (!v.vol || v.vol <= 0) return;
+        // Solo graficar entradas con estatus SURTIDO — el producto ya entró físicamente
+        // PENDIENTE o EN SURTIMIENTO aún no llegaron al tanque, no deben graficarse
+        if (String(v.estatus||'').toUpperCase().trim() !== 'SURTIDO') return;
         let diaEnt = 0;
         if (v.fechaSurt) { const p=String(v.fechaSurt).trim().split(' '); diaEnt=parseInt(p[0])||0; }
         if (!diaEnt && v.dia > 0) diaEnt = v.dia;
         if (diaEnt >= 1 && diaEnt <= diasEnMes) {
           entDia[diaEnt] = (entDia[diaEnt]||0) + v.vol;
-          // Acumular también por tipo de programa
           const _prog = String(v.program||'').trim().toUpperCase();
-          if (_prog.includes('AMPLI')) {
-            entDiaAmp[diaEnt] = (entDiaAmp[diaEnt]||0) + v.vol;
-          } else {
-            entDiaIni[diaEnt] = (entDiaIni[diaEnt]||0) + v.vol;
-          }
+          if (_prog.includes('AMPLI')) entDiaAmp[diaEnt] = (entDiaAmp[diaEnt]||0) + v.vol;
+          else                         entDiaIni[diaEnt] = (entDiaIni[diaEnt]||0) + v.vol;
           entDetalle[diaEnt].push({
-            folio:     v.folio || '—',
-            vol:       v.vol,
-            estatus:   v.estatus || '—',
-            program:   v.program || '—',
-            razon:     v.razon  || '—',
-            fechaSurt: v.fechaSurt || '—',
-            comb
+            folio:     v.folio||'—', vol:v.vol, estatus:v.estatus||'—',
+            program:   v.program||'—', razon:v.razon||'—', fechaSurt:v.fechaSurt||'—', comb
           });
         }
       });
@@ -12468,83 +12795,81 @@ function renderDesgloseDiario(estId) {
   const salDia = dias.map(d => data.litros[d]||0);
   const crgDia = dias.map(d => data.cargas[d]||0);
 
-  // ── Existencia inicial (desde Hoja5/INVENTARIO_TANQUES) ──────────────
-  // Para estación individual — tomar el mayor invInicial entre los productos
+  // ── Existencia inicial ───────────────────────────────────────────────
   let invInicial = 0;
   if (estId !== '_total') {
     combsCheck.forEach(comb => {
-      const key = `${estId}||${comb}`;
-      const blk = INVENTARIO_TANQUES[key]?.meses[mesNum];
+      const blk = INVENTARIO_TANQUES[`${estId}||${comb}`]?.meses[mesNum];
       if (blk?.invInicial > 0) invInicial += blk.invInicial;
-    });
-  } else {
-    estIds2.forEach(eid => {
-      combsCheck.forEach(comb => {
-        const blk = INVENTARIO_TANQUES[`${eid}||${comb}`]?.meses[mesNum];
-        if (blk?.invInicial > 0) invInicial += blk.invInicial;
-      });
     });
   }
   const tieneExistenciaInicial = invInicial > 0;
 
-  // ── Nivel acumulado del tanque día a día ─────────────────────────────
-  // nivelDia[i] = nivel al CIERRE del día i (después de entrada y consumo)
-  // Si nivel < 0 → gasolinero está prestando producto
+  // ── Nivel acumulado día a día ─────────────────────────────────────────
   const nivelDia = [];
   let nivelAcum  = invInicial;
-  let primerDiaNegativo = -1; // índice del día donde cruza cero por primera vez
-
+  let primerDiaNegativo = -1;
   dias.forEach((d, i) => {
-    const ent = entDia[d] || 0;
-    const sal = salDia[i] || 0;
-    nivelAcum += ent;   // primero entra la pipa
-    nivelAcum -= sal;   // luego se consume
+    nivelAcum += entDia[d]||0;
+    nivelAcum -= salDia[i]||0;
     nivelDia.push(nivelAcum);
     if (nivelAcum < 0 && primerDiaNegativo < 0) primerDiaNegativo = i;
   });
 
+  // ── Pronóstico de agotamiento ─────────────────────────────────────────
+  // Promedio diario = consumo total / días con despacho
+  const diasConSal  = salDia.filter(v=>v>0).length;
+  const totSal      = salDia.reduce((a,b)=>a+b,0);
+  const promDiario  = diasConSal > 0 ? totSal / diasConSal : 0;
+  // Último día con datos
+  const ultimoDia   = dias.filter((_,i) => salDia[i]>0).slice(-1)[0] || dias[0];
+  const ultimoIdx   = dias.indexOf(ultimoDia);
+  const nivelUltimo = nivelDia[ultimoIdx] || 0;
+  // Días restantes antes de agotamiento
+  let diaAgotamiento = null;
+  if (promDiario > 0 && nivelUltimo > 0) {
+    const diasRestantes = Math.floor(nivelUltimo / promDiario);
+    const diaPronostico = ultimoDia + diasRestantes;
+    if (diaPronostico <= diasEnMes) diaAgotamiento = diaPronostico;
+  }
+
+  // ── Episodios de préstamo ─────────────────────────────────────────────
+  const episodios = [];
+  let enEpisodio = false, epActual = null;
+  puntosNivelTemp = []; // se llena más abajo
+  nivelDia.forEach((n, i) => {
+    if (n < 0 && !enEpisodio) {
+      enEpisodio = true;
+      epActual = { diaInicio:dias[i], diaFin:dias[i], idxInicio:i, idxFin:i,
+                   maxDeuda:Math.abs(n), totalPrestado:salDia[i]||0 };
+    } else if (n < 0 && enEpisodio) {
+      epActual.diaFin = dias[i]; epActual.idxFin = i;
+      epActual.maxDeuda = Math.max(epActual.maxDeuda, Math.abs(n));
+      epActual.totalPrestado += (salDia[i]||0);
+    } else if (n >= 0 && enEpisodio) {
+      episodios.push({...epActual}); enEpisodio=false; epActual=null;
+    }
+  });
+  if (enEpisodio && epActual) episodios.push({...epActual});
+
+  // ── Episodios para KPI ────────────────────────────────────────────────
+  const episodiosKpi = JSON.parse(JSON.stringify(episodios));
+
   // ── KPIs ─────────────────────────────────────────────────────────────
   const totEnt     = dias.reduce((s,d)=>s+(entDia[d]||0),0);
-  const totSal     = salDia.reduce((a,b)=>a+b,0);
-  const totCrg     = crgDia.reduce((a,b)=>a+b,0);
-  const diasConSal = salDia.filter(v=>v>0).length;
   const diasConEnt = dias.filter(d=>entDia[d]>0).length;
-  const promDiario = diasConSal>0 ? totSal/diasConSal : 0;
   const idxMaxSal  = salDia.indexOf(Math.max(...salDia));
   const diaMaxSal  = dias[idxMaxSal];
   const balance    = totEnt - totSal;
   const DIA_NOM    = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
-
-  // Saldo mínimo (mayor deuda con gasolinero)
   const minNivel   = Math.min(...nivelDia);
   const idxMinNiv  = nivelDia.indexOf(minNivel);
   const diaMinNiv  = dias[idxMinNiv];
-
-  // Calcular todos los episodios para el KPI (misma lógica que el SVG)
-  const episodiosKpi = [];
-  let enEp2 = false, ep2 = null;
-  nivelDia.forEach((n, i) => {
-    if (n < 0 && !enEp2) {
-      enEp2 = true;
-      ep2 = { d: dias[i], maxDeuda: Math.abs(n), totalPrestado: salDia[i]||0 };
-    } else if (n < 0 && enEp2) {
-      ep2.maxDeuda      = Math.max(ep2.maxDeuda, Math.abs(n));
-      ep2.totalPrestado = (ep2.totalPrestado||0) + (salDia[i]||0);
-    } else if (n >= 0 && enEp2) {
-      episodiosKpi.push({...ep2});
-      enEp2 = false; ep2 = null;
-    }
-  });
-  if (enEp2 && ep2) episodiosKpi.push({...ep2});
+  const balCol     = balance>=0?'#27ae60':'#c0392b';
+  const balIcon    = balance>=0?'▲':'▼';
 
   const kpiContainer = document.getElementById('ddKpis');
   if (kpiContainer) {
-    const balCol = balance>=0?'#27ae60':'#c0392b';
-    const balIcon= balance>=0?'▲':'▼';
-    const negBadge = primerDiaNegativo >= 0
-      ? `<div style="font-size:0.65rem;color:#c0392b;margin-top:1px;">
-           ⚠️ Desde día ${dias[primerDiaNegativo]} · Máx. deuda: ${fmt(Math.abs(minNivel))} L (día ${diaMinNiv})
-         </div>` : '';
     kpiContainer.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
         gap:8px;padding:10px 18px 8px;background:#fff;border-bottom:1px solid #e8f0ec;">
@@ -12558,11 +12883,6 @@ function renderDesgloseDiario(estId) {
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.35rem;font-weight:900;color:${colEst};">${fmt(totSal)} L</div>
           <div style="font-size:0.65rem;color:#888;margin-top:1px;">${diasConSal} días con despacho</div>
         </div>
-        <div style="background:#fff8e6;border-radius:10px;padding:10px 14px;border-left:3px solid #e67e22;">
-          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#c0620a;margin-bottom:3px;">Total Cargas</div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.35rem;font-weight:900;color:#c0620a;">${fmtI(totCrg)}</div>
-          <div style="font-size:0.65rem;color:#888;margin-top:1px;">${(totCrg/Math.max(diasConSal,1)).toFixed(1)} cargas/día</div>
-        </div>
         <div style="background:#f0f4ff;border-radius:10px;padding:10px 14px;border-left:3px solid #5c6bc0;">
           <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#3949ab;margin-bottom:3px;">Prom. Diario</div>
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.35rem;font-weight:900;color:#3949ab;">${fmt(promDiario)} L</div>
@@ -12575,184 +12895,173 @@ function renderDesgloseDiario(estId) {
           <div style="font-size:0.65rem;color:#888;margin-top:1px;">Al inicio del mes</div>
         </div>` : ''}
         <div style="background:${(()=>{const n=nivelDia[nivelDia.length-1]||0;return n<0?'#fde8e8':n<invInicial*0.2?'#fff3e0':'#e8f5e9';})()};border-radius:10px;padding:10px 14px;border-left:3px solid ${(()=>{const n=nivelDia[nivelDia.length-1]||0;return n<0?'#c0392b':n<invInicial*0.2?'#e67e22':'#27ae60';})()};">
-          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${(()=>{const n=nivelDia[nivelDia.length-1]||0;return n<0?'#c0392b':n<invInicial*0.2?'#e67e22':'#27ae60';})()};margin-bottom:3px;">
-            Existencia Actual
-          </div>
+          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${(()=>{const n=nivelDia[nivelDia.length-1]||0;return n<0?'#c0392b':n<invInicial*0.2?'#e67e22':'#27ae60';})()};margin-bottom:3px;">Existencia Actual</div>
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.35rem;font-weight:900;color:${(()=>{const n=nivelDia[nivelDia.length-1]||0;return n<0?'#c0392b':n<invInicial*0.2?'#e67e22':'#27ae60';})()};">
             ${(()=>{const n=nivelDia[nivelDia.length-1]||0;return (n<0?'−':'')+fmt(Math.abs(n))+' L';})()}
           </div>
           <div style="font-size:0.65rem;color:#888;margin-top:1px;">
             ${(()=>{const n=nivelDia[nivelDia.length-1]||0;
-              if (!tieneExistenciaInicial) return 'Basado en entradas − consumo del mes';
-              return n<0?'⚠ Gasolinero prestando producto':n<invInicial*0.2?'⚠ Nivel bajo':'Al cierre del último día';})()}
+              if(!tieneExistenciaInicial) return 'Basado en entradas − consumo';
+              return n<0?'⚠ Gasolinero prestando':n<invInicial*0.2?'⚠ Nivel bajo':'Al cierre del último día';})()}
           </div>
         </div>
+        ${diaAgotamiento ? `
+        <div style="background:#fde8e8;border-radius:10px;padding:10px 14px;border-left:3px solid #b71c1c;">
+          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#b71c1c;margin-bottom:3px;">🏁 Agotamiento estimado</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.35rem;font-weight:900;color:#b71c1c;">Día ${diaAgotamiento}</div>
+          <div style="font-size:0.65rem;color:#888;margin-top:1px;">${Math.floor(nivelUltimo/promDiario)} días restantes</div>
+        </div>` : ''}
+        ${(()=>{
+          const hoy        = new Date().getDate();
+          const esFindeMes = hoy >= diasEnMes;
+          let saldoProximo;
+          if (esFindeMes) {
+            saldoProximo = nivelDia[nivelDia.length-1] || 0;
+          } else {
+            const diasRestantesMes = diasEnMes - ultimoDia;
+            saldoProximo = nivelUltimo - (promDiario * diasRestantesMes);
+          }
+          const sProxFmt = fmt(Math.abs(Math.round(saldoProximo)));
+          const esDeuda  = saldoProximo < 0;
+          const bgColP   = esDeuda ? '#fde8e8' : '#e8f5e9';
+          const bdColP   = esDeuda ? '#c0392b' : '#27ae60';
+          const txColP   = esDeuda ? '#c0392b' : '#1e5b4f';
+          const labelP   = esDeuda ? '\u26A0 Inicia con deuda' : '\u2705 Saldo inicial est.';
+          const subP     = esFindeMes ? 'Dato real al cierre' : 'Proyecci\u00F3n al d\u00EDa ' + diasEnMes;
+          const signo    = esDeuda ? '\u2212' : '+';
+          return '<div style="background:' + bgColP + ';border-radius:10px;padding:10px 14px;border-left:3px solid ' + bdColP + ';">' +
+            '<div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:' + txColP + ';margin-bottom:3px;">' + labelP + ' pr\u00F3x. mes</div>' +
+            '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:1.35rem;font-weight:900;color:' + txColP + ';">' + signo + ' ' + sProxFmt + ' L</div>' +
+            '<div style="font-size:0.65rem;color:#888;margin-top:1px;">' + subP + '</div>' +
+            '</div>';
+        })()}
       </div>`;
   }
 
   // ── Dimensiones SVG ──────────────────────────────────────────────────
-  const wrap   = document.getElementById('ddChartWrap');
-  const wrapW  = wrap ? Math.max(wrap.clientWidth-4, 860) : 860;
-  const W      = Math.max(wrapW, dias.length*30+140);
-  const H      = Math.max(460, Math.round(window.innerHeight*0.52));
-  const PAD    = {top:44, right:68, bottom:86, left:78};
+  const wrap  = document.getElementById('ddChartWrap');
+  const wrapW = wrap ? Math.max(wrap.clientWidth-4, 860) : 860;
+  const W     = Math.max(wrapW, dias.length*30+140);
+  const H     = Math.max(460, Math.round(window.innerHeight*0.52));
+  const PAD   = {top:44, right:30, bottom:86, left:78};
   const chartH = H-PAD.top-PAD.bottom;
-  const cW     = (W-PAD.left-PAD.right)/dias.length;
-  const barW   = Math.min(cW*0.38, 18);
-  const gap    = barW*0.4;
+  const cW    = (W-PAD.left-PAD.right)/dias.length;
+  const barW  = Math.min(cW*0.38, 18);
+  const gap   = barW*0.4;
   const maxVal = Math.max(...dias.map(d=>entDia[d]), ...salDia,
     tieneExistenciaInicial ? Math.max(...nivelDia.filter(n=>n>0)) : 1, 1)*1.12;
-  const y0     = PAD.top+chartH;
-  const maxCrg = Math.max(...crgDia, 1);
+  const y0    = PAD.top+chartH;
   const scaleH = v => (Math.abs(v)/maxVal)*chartH;
-  const DIA_LABEL = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
-
-  function claseCol(d) {
-    const info = getDayInfo(d);
-    if (info.fest?.tipo==='lft')   return {bg:'rgba(180,80,0,0.07)',  lb:'rgba(160,70,0,0.9)'  };
-    if (info.fest?.tipo==='pemex') return {bg:'rgba(13,74,107,0.07)', lb:'rgba(13,74,107,0.9)' };
-    if (info.fds)                  return {bg:'rgba(93,78,109,0.06)', lb:'rgba(93,78,109,0.9)' };
-    return {bg:'none',lb:null};
-  }
 
   let svg = `<svg xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"
     style="font-family:'Barlow Condensed',Barlow,sans-serif;display:block;width:100%;height:auto;min-height:${H}px;">
     <rect width="${W}" height="${H}" fill="#f8fbf9" rx="10"/>`;
 
+  // Línea cero
   svg += `<line x1="${PAD.left}" y1="${y0}" x2="${W-PAD.right}" y2="${y0}"
     stroke="#1e5b4f" stroke-width="1.8"/>`;
 
-  // Grid + ticks
-  const TICKS=5;
+  // Grid horizontal
+  const TICKS = 5;
   for (let t=1;t<=TICKS;t++) {
     const yG=(y0-(chartH/TICKS)*t), val=(maxVal/TICKS)*t;
     svg += `<line x1="${PAD.left}" y1="${yG.toFixed(1)}" x2="${W-PAD.right}" y2="${yG.toFixed(1)}"
       stroke="#dde8e2" stroke-width="1" stroke-dasharray="4,3"/>`;
     svg += `<text x="${PAD.left-7}" y="${(yG+4).toFixed(1)}" text-anchor="end"
       font-size="11" fill="#777">${val>=1000?(val/1000).toFixed(1)+'k':Math.round(val)}</text>`;
-    svg += `<text x="${W-PAD.right+7}" y="${(yG+4).toFixed(1)}" text-anchor="start"
-      font-size="11" fill="#e67e22">${Math.round((maxCrg/TICKS)*t)}</text>`;
   }
+
+  // Eje Y izquierdo
   svg += `<text transform="translate(14,${PAD.top+chartH/2}) rotate(-90)"
     text-anchor="middle" font-size="12" font-weight="700" fill="#444" letter-spacing="0.04em">LITROS</text>`;
-  svg += `<text transform="translate(${W-14},${PAD.top+chartH/2}) rotate(90)"
-    text-anchor="middle" font-size="12" font-weight="700" fill="#e67e22" letter-spacing="0.04em">CARGAS</text>`;
   svg += `<line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${y0}" stroke="#aacfc5" stroke-width="1.5"/>`;
-  svg += `<line x1="${W-PAD.right}" y1="${PAD.top}" x2="${W-PAD.right}" y2="${y0}" stroke="#e67e22" stroke-width="1.5" stroke-dasharray="3,2"/>`;
 
-  // ── Línea de existencia acumulada del tanque (desde Junio) ──────────
-  // Solo se dibuja si hay invInicial o si hay entradas registradas
-  // Muestra cómo evoluciona el nivel del tanque día a día
+  // ── Línea de nivel del tanque ─────────────────────────────────────────
   const puntosNivel = [];
   if (tieneExistenciaInicial || totEnt > 0) {
     dias.forEach((d,i) => {
       const cx = PAD.left+i*cW+cW/2;
       const n  = nivelDia[i];
-      // Punto Y: si negativo, se dibuja por debajo de la línea 0
       const yN = n >= 0
         ? y0 - scaleH(n)
-        : y0 + Math.min(scaleH(Math.abs(n)), chartH*0.25); // zona negativa limitada
+        : y0 + Math.min(scaleH(Math.abs(n)), chartH*0.25);
       puntosNivel.push({cx, yN, n, d, i});
     });
 
-    // Área bajo la línea (relleno)
-    const ptStr = puntosNivel.map(p=>`${p.cx.toFixed(1)},${p.yN.toFixed(1)}`).join(' ');
-    const firstX = puntosNivel[0].cx.toFixed(1);
-    const lastX  = puntosNivel[puntosNivel.length-1].cx.toFixed(1);
+    const ptStr   = puntosNivel.map(p=>`${p.cx.toFixed(1)},${p.yN.toFixed(1)}`).join(' ');
+    const firstX  = puntosNivel[0].cx.toFixed(1);
+    const lastX   = puntosNivel[puntosNivel.length-1].cx.toFixed(1);
     svg += `<polygon points="${firstX},${y0} ${ptStr} ${lastX},${y0}"
       fill="rgba(142,36,170,0.07)" stroke="none"/>`;
-
-    // Línea de nivel
     svg += `<polyline points="${ptStr}"
       fill="none" stroke="#8e24aa" stroke-width="2" stroke-linejoin="round"/>`;
 
-    // ── Detectar TODOS los segmentos negativos (episodios de préstamo) ──
-    // Un episodio = secuencia consecutiva de días con nivel < 0
-    const episodios = []; // [{diaInicio, diaFin, idxInicio, idxFin, maxDeuda}]
-    let enEpisodio  = false;
-    let epActual    = null;
-
-    puntosNivel.forEach((p, i) => {
-      if (p.n < 0 && !enEpisodio) {
-        // Inicio de nuevo episodio — totalPrestado acumula los litros negativos de cada día
-        enEpisodio = true;
-        epActual   = { diaInicio: p.d, diaFin: p.d, idxInicio: i, idxFin: i,
-                       maxDeuda: Math.abs(p.n), totalPrestado: salDia[i]||0 };
-      } else if (p.n < 0 && enEpisodio) {
-        // Continúa el episodio
-        epActual.diaFin        = p.d;
-        epActual.idxFin        = i;
-        epActual.maxDeuda      = Math.max(epActual.maxDeuda, Math.abs(p.n));
-        epActual.totalPrestado += (salDia[i]||0);  // suma litros consumidos mientras hay deuda
-      } else if (p.n >= 0 && enEpisodio) {
-        // Fin del episodio
-        episodios.push({...epActual});
-        enEpisodio = false;
-        epActual   = null;
-      }
-    });
-    if (enEpisodio && epActual) episodios.push({...epActual}); // último si termina en negativo
-
-    // Dibujar cada episodio
+    // Episodios de préstamo — solo banda roja, sin sombrear FDS/festivos
     episodios.forEach((ep, epIdx) => {
-      const xIni = puntosNivel[ep.idxInicio].cx;
-      const xFin = puntosNivel[ep.idxFin].cx;
+      const xIni  = puntosNivel[ep.idxInicio].cx;
+      const xFin  = puntosNivel[ep.idxFin].cx;
       const bandW = xFin - xIni + cW;
-
-      // Banda de fondo roja semitransparente para todo el periodo de préstamo
       svg += `<rect x="${(xIni-cW/2).toFixed(1)}" y="${PAD.top}"
         width="${bandW.toFixed(1)}" height="${chartH}"
-        fill="rgba(192,57,43,0.07)" stroke="rgba(192,57,43,0.25)"
+        fill="rgba(192,57,43,0.08)" stroke="rgba(192,57,43,0.2)"
         stroke-width="1" stroke-dasharray="4,3" rx="2"/>`;
-
-      // Línea vertical en el inicio del episodio (cruce a negativo)
-      svg += `<line x1="${xIni.toFixed(1)}" y1="${PAD.top}"
-        x2="${xIni.toFixed(1)}" y2="${y0}"
+      svg += `<line x1="${xIni.toFixed(1)}" y1="${PAD.top}" x2="${xIni.toFixed(1)}" y2="${y0}"
         stroke="#c0392b" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.75"/>`;
-
-      // Badge "Préstamo #N" arriba de la línea — alternando altura para no empalmar
-      const badgeY   = PAD.top + 4 + (epIdx % 2) * 28;
-      // Badge con rango de días + litros prestados en el periodo
-      const _litFmt  = n => n>=1000?(n/1000).toFixed(1)+'k L':Math.round(n)+' L';
-      const _rango   = ep.diaInicio===ep.diaFin
-        ? `día ${ep.diaInicio}`
-        : `días ${ep.diaInicio}–${ep.diaFin}`;
-      const _litTxt  = ep.totalPrestado>0 ? ` · ${_litFmt(ep.totalPrestado)}` : '';
-      const badgeTxt = `⚠ Préstamo #${epIdx+1} — ${_rango}${_litTxt}`;
-      // Ancho dinámico según longitud del texto (aprox 6.5px por carácter)
-      const badgeW   = Math.min(Math.max(badgeTxt.length*6.5+16, 120), W-PAD.left-PAD.right-20);
-      const badgeX   = Math.min(xIni+3, W-PAD.right-badgeW-4);
-      svg += `<rect x="${badgeX.toFixed(1)}" y="${badgeY.toFixed(1)}"
-        width="${badgeW.toFixed(1)}" height="20" rx="5"
-        fill="#c0392b" opacity="0.90"/>`;
-      svg += `<text x="${(badgeX+badgeW/2).toFixed(1)}" y="${(badgeY+14).toFixed(1)}"
-        text-anchor="middle" font-size="10.5" font-weight="800" fill="#fff">${badgeTxt}</text>`;
-
-      // Si el episodio tiene fin diferente al inicio, línea vertical también al salir
       if (ep.idxFin < puntosNivel.length-1) {
         const xSal = puntosNivel[ep.idxFin+1]?.cx || xFin;
-        svg += `<line x1="${xSal.toFixed(1)}" y1="${PAD.top}"
-          x2="${xSal.toFixed(1)}" y2="${y0}"
+        svg += `<line x1="${xSal.toFixed(1)}" y1="${PAD.top}" x2="${xSal.toFixed(1)}" y2="${y0}"
           stroke="#27ae60" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.65"/>`;
       }
+      const badgeY  = PAD.top + 4 + (epIdx%2)*28;
+      const _litFmt = n => n>=1000?(n/1000).toFixed(1)+'k L':Math.round(n)+' L';
+      const _rango  = ep.diaInicio===ep.diaFin?`día ${ep.diaInicio}`:`días ${ep.diaInicio}–${ep.diaFin}`;
+      const _litTxt = ep.totalPrestado>0?` · ${_litFmt(ep.totalPrestado)}`:'';
+      const badgeTxt= `⚠ Préstamo #${epIdx+1} — ${_rango}${_litTxt}`;
+      const badgeW  = Math.min(Math.max(badgeTxt.length*6.5+16,120),W-PAD.left-PAD.right-20);
+      const badgeX  = Math.min(xIni+3, W-PAD.right-badgeW-4);
+      svg += `<rect x="${badgeX.toFixed(1)}" y="${badgeY.toFixed(1)}"
+        width="${badgeW.toFixed(1)}" height="20" rx="5" fill="#c0392b" opacity="0.90"/>`;
+      svg += `<text x="${(badgeX+badgeW/2).toFixed(1)}" y="${(badgeY+14).toFixed(1)}"
+        text-anchor="middle" font-size="10.5" font-weight="800" fill="#fff">${badgeTxt}</text>`;
     });
 
-    // Puntos sobre la línea de nivel (color rojo si negativo, púrpura si positivo)
+    // Puntos de nivel
     puntosNivel.forEach(p => {
-      const esNeg    = p.n < 0;
-      const negCol   = esNeg ? '#c0392b' : '#8e24aa';
-      const tipExtra = esNeg
-        ? ` ⚠ GASOLINERO PRESTANDO — Episodio ${episodios.findIndex(e=>p.d>=e.diaInicio&&p.d<=e.diaFin)+1}`
-        : '';
+      const esNeg  = p.n < 0;
+      const col    = esNeg ? '#c0392b' : '#8e24aa';
+      const tipEp  = esNeg ? ` ⚠ Préstamo ep.${episodios.findIndex(e=>p.d>=e.diaInicio&&p.d<=e.diaFin)+1}` : '';
       svg += `<circle cx="${p.cx.toFixed(1)}" cy="${p.yN.toFixed(1)}" r="4"
-        fill="${negCol}" stroke="#fff" stroke-width="1.5" opacity="0.85">
-        <title>Nivel tanque día ${p.d}: ${esNeg?'−':''}${fmt(Math.abs(p.n))} L${tipExtra}</title>
+        fill="${col}" stroke="#fff" stroke-width="1.5" opacity="0.85">
+        <title>Nivel tanque día ${p.d}: ${esNeg?'−':''}${fmt(Math.abs(p.n))} L${tipEp}</title>
       </circle>`;
     });
   }
 
-  // ── Barras por día ────────────────────────────────────────────────────
+  // ── Flecha / marca de agotamiento estimado ───────────────────────────
+  if (diaAgotamiento) {
+    const idxAgot = dias.indexOf(diaAgotamiento);
+    if (idxAgot >= 0) {
+      const cxA = PAD.left + idxAgot*cW + cW/2;
+      // Línea vertical naranja
+      svg += `<line x1="${cxA.toFixed(1)}" y1="${PAD.top+2}" x2="${cxA.toFixed(1)}" y2="${y0}"
+        stroke="#b71c1c" stroke-width="2.5" stroke-dasharray="6,3" opacity="0.95"/>`;
+      // Flecha hacia abajo (triángulo)
+      const ax = cxA, ay = PAD.top + 8;
+      svg += `<polygon points="${ax},${ay+14} ${ax-7},${ay} ${ax+7},${ay}"
+        fill="#b71c1c" opacity="1"/>`;
+      // Badge "🏁 Agotamiento día X"
+      const aLabel = `🏁 Agotamiento día ${diaAgotamiento}`;
+      const aW = Math.min(aLabel.length*6.8+16, 200);
+      const aX = Math.min(cxA - aW/2, W-PAD.right-aW-4);
+      svg += `<rect x="${aX.toFixed(1)}" y="${(PAD.top+26).toFixed(1)}"
+        width="${aW.toFixed(1)}" height="20" rx="5" fill="#b71c1c" opacity="1"/>`;
+      svg += `<text x="${(aX+aW/2).toFixed(1)}" y="${(PAD.top+40).toFixed(1)}"
+        text-anchor="middle" font-size="10.5" font-weight="800" fill="#fff">${aLabel}</text>`;
+    }
+  }
+
+  // ── Barras por día ─────────────────────────────────────────────────────
   const barra = (bx,by,bw,bh,col,titulo) => {
     const r=Math.min(3,bw/3);
     return `<path d="M${bx.toFixed(1)},${(by+r).toFixed(1)}
@@ -12764,61 +13073,43 @@ function renderDesgloseDiario(estId) {
   };
 
   dias.forEach((d,i) => {
-    const cx   = PAD.left+i*cW+cW/2;
-    const info = getDayInfo(d);
-    const cls  = claseCol(d);
-    const ent  = entDia[d]||0;
-    const sal  = salDia[i]||0;
-    const crg  = crgDia[i]||0;
+    const info  = getDayInfo(d);
+    const cx    = PAD.left+i*cW+cW/2;
+    const ent   = entDia[d]||0;
+    const sal   = salDia[i]||0;
+    const crg   = crgDia[i]||0;
 
-    if (cls.bg!=='none')
-      svg += `<rect x="${(PAD.left+i*cW).toFixed(1)}" y="${PAD.top}"
-        width="${cW.toFixed(1)}" height="${chartH}" fill="${cls.bg}"/>`;
+    // Sin bandas de FDS ni festivos — el ícono en eje X ya los identifica
 
-    // ENTRADA: barras separadas por tipo de programa
-    // Cyan  = programación inicial | Azul marino = ampliación
+    // ENTRADA — barras por tipo programa
     if (ent > 0) {
-      const bx  = cx - gap/2 - barW;
+      const bx   = cx-gap/2-barW;
       const dets = entDetalle[d];
-
-      // Tooltip con tipo de programa incluido
       const tipDets = dets.map(v =>
         `Folio: ${v.folio} | ${v.comb} | ${fmt(v.vol)} L | ${v.estatus}` +
         (v.program&&v.program!=='—'?' | Prog: '+v.program:'') +
         (v.fechaSurt&&v.fechaSurt!=='—'?' | Surtido: '+v.fechaSurt:'') +
         (v.razon&&v.razon!=='—'?' | '+v.razon:'')
       ).join('&#10;');
-
       const ini = entDiaIni[d]||0;
       const amp = entDiaAmp[d]||0;
-
-      // Si hay ambos tipos: dividir el barW en dos mitades
-      if (ini > 0 && amp > 0) {
-        const hw = barW / 2 - 1; // medio ancho con separación
-        // Barra inicial (izquierda, cyan)
-        const bhI = scaleH(ini), byI = y0 - scaleH(ent); // arranca desde el total
-        const bhIni = scaleH(ini);
-        svg += barra(bx, y0-bhIni, hw, bhIni, 'rgba(0,172,193,0.88)',
-          `🚛 Prog. Inicial — Día ${d}: +${fmt(ini)} L&#10;${tipDets}`);
-        // Barra ampliación (derecha, azul marino)
-        const bhAmp = scaleH(amp);
-        svg += barra(bx+hw+1, y0-bhAmp, hw, bhAmp, 'rgba(13,71,161,0.88)',
-          `🚛 Prog. Ampliación — Día ${d}: +${fmt(amp)} L&#10;${tipDets}`);
-        // Etiqueta total sobre las dos barras
-        const byTop = Math.min(y0-bhIni, y0-bhAmp);
+      if (ini>0 && amp>0) {
+        const hw = barW/2-1;
+        svg += barra(bx, y0-scaleH(ini), hw, scaleH(ini), 'rgba(0,172,193,0.88)',
+          `🚛 Prog. Inicial Día ${d}: +${fmt(ini)} L&#10;${tipDets}`);
+        svg += barra(bx+hw+1, y0-scaleH(amp), hw, scaleH(amp), 'rgba(13,71,161,0.88)',
+          `🚛 Prog. Ampliación Día ${d}: +${fmt(amp)} L&#10;${tipDets}`);
+        const byTop = Math.min(y0-scaleH(ini), y0-scaleH(amp));
         svg += `<text x="${(bx+barW/2).toFixed(1)}" y="${(byTop-5).toFixed(1)}"
           text-anchor="middle" font-size="10" font-weight="800" fill="#006064">
           +${ent>=1000?(ent/1000).toFixed(1)+'k':Math.round(ent)}</text>`;
       } else {
-        // Solo un tipo — barra completa con color correspondiente
-        const col  = amp > 0 ? 'rgba(13,71,161,0.88)' : 'rgba(0,172,193,0.88)';
-        const fill = amp > 0 ? '#0D47A1' : '#006064';
-        const bh   = scaleH(ent);
-        const by   = y0 - bh;
-        const tipTitle = (amp > 0
-          ? `🚛 Prog. Ampliación — Día ${d}: +${fmt(ent)} L`
-          : `🚛 Prog. Inicial — Día ${d}: +${fmt(ent)} L`) +
-          (dets.length>1?' ('+dets.length+' vales)':'') + '&#10;' + tipDets;
+        const col  = amp>0?'rgba(13,71,161,0.88)':'rgba(0,172,193,0.88)';
+        const fill = amp>0?'#0D47A1':'#006064';
+        const bh   = scaleH(ent), by = y0-bh;
+        const tipTitle = (amp>0?`🚛 Prog. Ampliación Día ${d}: +${fmt(ent)} L`
+          :`🚛 Prog. Inicial Día ${d}: +${fmt(ent)} L`) +
+          (dets.length>1?' ('+dets.length+' vales)':'')+'&#10;'+tipDets;
         svg += barra(bx, by, barW, bh, col, tipTitle);
         svg += `<text x="${(bx+barW/2).toFixed(1)}" y="${(by-5).toFixed(1)}"
           text-anchor="middle" font-size="10" font-weight="800" fill="${fill}">
@@ -12826,76 +13117,75 @@ function renderDesgloseDiario(estId) {
       }
     }
 
-    // CONSUMO (siempre verde estación — el FDS ya se ve por la banda de fondo)
+    // CONSUMO — siempre verde estación, clickeable para drill-down
     if (sal > 0) {
-      const bh   = scaleH(sal);
-      const by   = y0-bh;
-      const bx   = cx+gap/2;
-      const bCol = colEst+'cc';   // siempre color estación, ignorar cls.lb
-      svg += barra(bx,by,barW,bh,bCol,
-        `⛽ Consumo — Día ${d}: −${fmt(sal)} L · ${crg} carga${crg!==1?'s':''}`);
-      if (bh > 16)
+      const bh = scaleH(sal), by = y0-bh, bx = cx+gap/2;
+      const tipCrg = crg>0 ? ` · ${crg} carga${crg!==1?'s':''}` : '';
+      // Barra con cursor pointer y onclick para drill-down
+      const r2 = Math.min(3, barW/3);
+      svg += `<path d="M${bx.toFixed(1)},${(by+r2).toFixed(1)}
+        Q${bx.toFixed(1)},${by.toFixed(1)} ${(bx+r2).toFixed(1)},${by.toFixed(1)}
+        H${(bx+barW-r2).toFixed(1)}
+        Q${(bx+barW).toFixed(1)},${by.toFixed(1)} ${(bx+barW).toFixed(1)},${(by+r2).toFixed(1)}
+        V${y0.toFixed(1)} H${bx.toFixed(1)} Z"
+        fill="${colEst+'cc'}"
+        style="cursor:pointer;transition:filter 0.15s;"
+        onmouseover="this.style.filter='brightness(1.2)'"
+        onmouseout="this.style.filter=''"
+        onclick="abrirDrillDownDia(${d},'${estId}')"
+        title="⛽ Consumo Día ${d}: −${fmt(sal)} L${tipCrg} · Clic para ver detalle">
+        </path>`;
+      if (bh>16)
         svg += `<text x="${(bx+barW/2).toFixed(1)}" y="${(by-5).toFixed(1)}"
-          text-anchor="middle" font-size="11" font-weight="800" fill="${colEst}">
+          text-anchor="middle" font-size="11" font-weight="800" fill="${colEst}"
+          style="pointer-events:none;">
           ${sal>=1000?(sal/1000).toFixed(1)+'k':Math.round(sal)}</text>`;
     }
 
-    // MARCADOR CARGAS
-    if (crg > 0) {
-      const yCrg = y0-(crg/maxCrg)*chartH;
-      svg += `<circle cx="${cx.toFixed(1)}" cy="${yCrg.toFixed(1)}" r="6"
-        fill="#e67e22" stroke="#fff" stroke-width="2">
-        <title>Cargas día ${d}: ${crg}</title></circle>`;
-      svg += `<text x="${cx.toFixed(1)}" y="${(yCrg+4).toFixed(1)}"
-        text-anchor="middle" font-size="8.5" font-weight="800" fill="#fff">${crg}</text>`;
-    }
-
-    // Eje X
+    // Eje X — número día y abreviatura (SIN círculos naranjas de cargas)
     const xLabY = y0+16;
     svg += `<text x="${cx.toFixed(1)}" y="${xLabY}"
       text-anchor="middle" font-size="12" font-weight="800"
       fill="${info.fest?'#8b3a00':info.fds?'#5d4e6d':'#444'}">${d}</text>`;
     svg += `<text x="${cx.toFixed(1)}" y="${(xLabY+13).toFixed(1)}"
       text-anchor="middle" font-size="10.5" font-weight="600"
-      fill="${info.fest?'#8b3a00':info.fds?'#5d4e6d':'#999'}">${DIA_LABEL[info.dow]}</text>`;
+      fill="${info.fest?'#8b3a00':info.fds?'#5d4e6d':'#999'}">${DIA_NOM[info.dow]}</text>`;
     if (info.fest)
       svg += `<text x="${cx.toFixed(1)}" y="${(xLabY+25).toFixed(1)}"
         text-anchor="middle" font-size="10">${info.fest.tipo==='lft'?'🎌':'🛢️'}</text>`;
   });
 
-  // Mini-leyenda SVG — centrada en la parte inferior, fuera de la zona de gráfica
-  // Calcular cuántos ítems hay para centrar correctamente
+  // ── Leyenda inferior centrada ─────────────────────────────────────────
   const leyItems = [];
-  leyItems.push({ tipo:'rect', col:'rgba(0,172,193,0.88)', label:'Prog. Inicial',      labelCol:'#006064' });
-  leyItems.push({ tipo:'rect', col:'rgba(13,71,161,0.88)', label:'Prog. Ampliación',   labelCol:'#0D47A1' });
-  leyItems.push({ tipo:'rect', col:colEst+'cc',            label:'Consumo',            labelCol:colEst    });
-  if (tieneExistenciaInicial || totEnt>0)
-    leyItems.push({ tipo:'line', col:'#8e24aa',            label:'Nivel tanque',   labelCol:'#8e24aa' });
-  if (primerDiaNegativo >= 0)
-    leyItems.push({ tipo:'dash', col:'#c0392b', label:'Episodio préstamo', labelCol:'#c0392b' });
+  leyItems.push({tipo:'rect', col:'rgba(0,172,193,0.88)', label:'Prog. Inicial',    labelCol:'#006064'});
+  leyItems.push({tipo:'rect', col:'rgba(13,71,161,0.88)', label:'Prog. Ampliación', labelCol:'#0D47A1'});
+  leyItems.push({tipo:'rect', col:colEst+'cc',            label:'Consumo',          labelCol:colEst});
+  if (tieneExistenciaInicial||totEnt>0)
+    leyItems.push({tipo:'line', col:'#8e24aa', label:'Nivel tanque', labelCol:'#8e24aa'});
+  if (episodios.length>0)
+    leyItems.push({tipo:'dash', col:'#c0392b', label:'Episodio préstamo', labelCol:'#c0392b'});
+  if (diaAgotamiento)
+    leyItems.push({tipo:'dash', col:'#b71c1c', label:'Agotamiento estimado', labelCol:'#b71c1c'});
 
-  const LEY_ITEM_W = 130;
-  const leyTotalW  = leyItems.length * LEY_ITEM_W;
-  const leyX       = (W - leyTotalW) / 2;
-  const leyY       = H - 16; // justo arriba del borde inferior
-
-  // Fondo pill detrás de la leyenda
+  const LEY_ITEM_W = 140;
+  const leyTotalW  = leyItems.length*LEY_ITEM_W;
+  const leyX       = (W-leyTotalW)/2;
+  const leyY       = H-16;
   svg += `<rect x="${(leyX-12).toFixed(1)}" y="${(leyY-18).toFixed(1)}"
     width="${(leyTotalW+24).toFixed(1)}" height="22" rx="11"
     fill="rgba(255,255,255,0.92)" stroke="#dde8e2" stroke-width="1"/>`;
-
-  leyItems.forEach((item, i) => {
-    const ix = leyX + i * LEY_ITEM_W;
-    if (item.tipo === 'rect') {
+  leyItems.forEach((item,i) => {
+    const ix = leyX+i*LEY_ITEM_W;
+    if (item.tipo==='rect') {
       svg += `<rect x="${ix.toFixed(1)}" y="${(leyY-13).toFixed(1)}"
         width="11" height="11" fill="${item.col}" rx="2"/>`;
-    } else if (item.tipo === 'line') {
+    } else if (item.tipo==='line') {
       svg += `<line x1="${ix.toFixed(1)}" y1="${(leyY-7).toFixed(1)}"
         x2="${(ix+11).toFixed(1)}" y2="${(leyY-7).toFixed(1)}"
         stroke="${item.col}" stroke-width="2"/>`;
       svg += `<circle cx="${(ix+5.5).toFixed(1)}" cy="${(leyY-7).toFixed(1)}"
         r="3.5" fill="${item.col}"/>`;
-    } else if (item.tipo === 'dash') {
+    } else {
       svg += `<line x1="${ix.toFixed(1)}" y1="${(leyY-7).toFixed(1)}"
         x2="${(ix+11).toFixed(1)}" y2="${(leyY-7).toFixed(1)}"
         stroke="${item.col}" stroke-width="2" stroke-dasharray="3,2"/>`;
@@ -12904,7 +13194,6 @@ function renderDesgloseDiario(estId) {
       font-size="10.5" font-weight="700" fill="${item.labelCol}">${item.label}</text>`;
   });
 
-  // Nota sin entradas
   if (totEnt===0 && !tieneExistenciaInicial)
     svg += `<text x="${W/2}" y="${PAD.top+chartH/2}" text-anchor="middle"
       font-size="13" fill="#bbb" font-weight="700">Sin datos de Hoja2/Hoja5 para este mes</text>`;
@@ -12916,6 +13205,266 @@ function renderDesgloseDiario(estId) {
 function cerrarDesgloseDiario() {
   document.getElementById('desgDiarioModal').style.display = 'none';
   document.getElementById('ddChartWrap').innerHTML = '';
+}
+
+function abrirDrillDownDia(dia, estId) {
+  const { byEst, anioNum, mesNum, getDayInfo, combFilt } = _DD;
+  const info  = getDayInfo(dia);
+  const def   = ESTACIONES_DEF[estId] || {color:'#1e5b4f', nombre:estId};
+  const colEst= def.color;
+  const DIA_NOM = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const MESES_N = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const fmt = n => n.toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1});
+
+  // Recopilar registros del día desde byEst
+  // byEst[estId].detalle[dia] YA contiene todos los combustibles juntos —
+  // no debe iterarse por cada combustible o se duplican los registros
+  let registros = [];
+  if (estId === '_total') {
+    Object.entries(byEst).forEach(([id, d]) => {
+      (d.detalle?.[dia]||[]).forEach(r => registros.push({...r, _est:id}));
+    });
+  } else {
+    registros = (byEst[estId]?.detalle?.[dia] || []).slice();
+  }
+  // Filtrar por combustible si hay filtro activo
+  if (combFilt) {
+    registros = registros.filter(r => {
+      const p = String(r.producto||'').toUpperCase();
+      return combFilt==='DIESEL' ? p.includes('DIESEL') : !p.includes('DIESEL');
+    });
+  }
+
+  // Ordenar por hora
+  registros.sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+
+  const totLts  = registros.reduce((s,r)=>s+r.litros,0);
+  const nCargas = registros.length;
+
+  // Crear/reusar modal
+  let modal = document.getElementById('drillDownDiaModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'drillDownDiaModal';
+    modal.style.cssText = `position:fixed;inset:0;z-index:10700;background:rgba(0,0,0,0.6);
+      display:flex;align-items:center;justify-content:center;padding:16px;`;
+    document.body.appendChild(modal);
+  }
+
+  const festIcon = info.fest ? (info.fest.tipo==='lft'?'🎌':'🛢️') : (info.fds?'📅':'');
+  const festLbl  = info.fest ? info.fest.label : (info.fds?'Fin de semana':'');
+
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:860px;
+      max-height:90vh;display:flex;flex-direction:column;
+      box-shadow:0 32px 80px rgba(0,0,0,0.45);overflow:hidden;">
+
+      <!-- Header -->
+      <div style="background:${colEst};padding:14px 20px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;
+              font-weight:900;color:#fff;letter-spacing:0.06em;text-transform:uppercase;">
+              ${festIcon} ${DIA_NOM[info.dow]} ${dia} de ${MESES_N[mesNum]} ${anioNum}
+            </div>
+            <div style="font-size:0.72rem;color:rgba(255,255,255,0.75);margin-top:2px;">
+              ${def.nombre||estId} &nbsp;·&nbsp; ${nCargas} carga${nCargas!==1?'s':''} &nbsp;·&nbsp; ${fmt(totLts)} L totales
+              ${festLbl ? ' &nbsp;·&nbsp; ' + festLbl : ''}
+            </div>
+          </div>
+          <button onclick="document.getElementById('drillDownDiaModal').style.display='none'"
+            style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:50%;
+              width:30px;height:30px;cursor:pointer;font-size:1rem;flex-shrink:0;">✕</button>
+        </div>
+        <!-- KPIs rápidos -->
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+          <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;text-align:center;">
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;">Total litros</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:900;color:#fff;">${fmt(totLts)} L</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;text-align:center;">
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;">Cargas</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:900;color:#fff;">${nCargas}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;text-align:center;">
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;">Prom. / carga</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:900;color:#fff;">${fmt(nCargas>0?totLts/nCargas:0)} L</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;text-align:center;">
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;">Primera carga</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:900;color:#fff;">${registros[0]?.hora||'—'}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:6px 14px;text-align:center;">
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;">Última carga</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:900;color:#fff;">${registros[registros.length-1]?.hora||'—'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buscador -->
+      <div style="padding:10px 16px;background:#f8fbf9;border-bottom:1px solid #e0ede8;flex-shrink:0;">
+        <div style="position:relative;">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);
+            font-size:0.85rem;color:#aaa;">🔍</span>
+          <input id="drillFiltro" type="text" placeholder="Filtrar por usuario, tarjeta, placa, área..."
+            oninput="filtrarDrillDown(this.value)"
+            style="width:100%;padding:8px 12px 8px 32px;border:1.5px solid #dde8e2;
+              border-radius:8px;font-size:0.82rem;outline:none;box-sizing:border-box;
+              font-family:inherit;transition:border-color 0.2s;"
+            onfocus="this.style.borderColor='#2d9e7e'"
+            onblur="this.style.borderColor='#dde8e2'">
+          <span id="drillFiltroCount" style="position:absolute;right:10px;top:50%;
+            transform:translateY(-50%);font-size:0.7rem;color:#aaa;"></span>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div style="flex:1;overflow-y:auto;">
+        ${nCargas === 0 ? `
+          <div style="padding:40px;text-align:center;color:#aaa;font-size:0.9rem;">
+            Sin registros de consumo para este día
+          </div>` : `
+        <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+          <thead>
+            <tr style="background:#f5f8f7;position:sticky;top:0;z-index:1;">
+              <th style="padding:8px 12px;text-align:left;font-size:0.65rem;font-weight:800;
+                color:#666;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #dde8e2;">#</th>
+              <th style="padding:8px 12px;text-align:left;font-size:0.65rem;font-weight:800;
+                color:#666;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #dde8e2;">Hora</th>
+              <th style="padding:8px 12px;text-align:left;font-size:0.65rem;font-weight:800;
+                color:#666;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #dde8e2;">Usuario</th>
+              <th style="padding:8px 12px;text-align:left;font-size:0.65rem;font-weight:800;
+                color:#666;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #dde8e2;">Tarjeta</th>
+              <th style="padding:8px 12px;text-align:left;font-size:0.65rem;font-weight:800;
+                color:#666;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #dde8e2;">Placa</th>
+              <th style="padding:8px 12px;text-align:left;font-size:0.65rem;font-weight:800;
+                color:#666;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #dde8e2;">Área</th>
+              <th style="padding:8px 12px;text-align:right;font-size:0.65rem;font-weight:800;
+                color:#666;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #dde8e2;">Litros</th>
+              <th style="padding:8px 12px;text-align:right;font-size:0.65rem;font-weight:800;
+                color:#666;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #dde8e2;">Rend.</th>
+              ${estId==='_total'?'<th style="padding:8px 12px;text-align:left;font-size:0.65rem;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #dde8e2;">Estación</th>':''}
+            </tr>
+          </thead>
+          <tbody id="drillTbody">
+            ${registros.map((r,i) => {
+              const bg = i%2===0?'#fff':'#f9fdfb';
+              const searchStr = [r.hora,r.usuario,r.tarjeta,r.placa,r.area,r._est||''].join('|').toLowerCase();
+              const rendStr = r.rend>0 ? r.rend.toFixed(1)+' km/L' : '—';
+              const estCol = estId==='_total' ? `<td style="padding:7px 12px;border-bottom:1px solid #eee;">
+                <span style="background:${ESTACIONES_DEF[r._est]?.color||colEst}22;color:${ESTACIONES_DEF[r._est]?.color||colEst};
+                  border-radius:4px;padding:2px 6px;font-size:0.7rem;font-weight:700;">
+                  ${ESTACIONES_DEF[r._est]?.nombre||r._est||'—'}
+                </span></td>` : '';
+              return `<tr style="background:${bg};" data-search="${searchStr}">
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;color:#aaa;font-weight:700;">${i+1}</td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;">
+                  <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.9rem;
+                    font-weight:800;color:${colEst};">${r.hora}</span></td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;font-weight:600;">${r.usuario}</td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;color:#666;">${r.tarjeta}</td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;">
+                  <span style="background:#f0f0f0;border-radius:4px;padding:2px 6px;
+                    font-size:0.75rem;font-weight:700;">${r.placa}</span></td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;color:#888;font-size:0.75rem;">${r.area}</td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:right;">
+                  <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;
+                    font-weight:900;color:${colEst};">${fmt(r.litros)}</span>
+                  <span style="font-size:0.7rem;color:#aaa;"> L</span></td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:right;
+                  color:#888;font-size:0.75rem;">${rendStr}</td>
+                ${estCol}
+              </tr>`;
+            }).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="background:#f0f7f4;font-weight:800;">
+              <td colspan="${estId==='_total'?8:7}" style="padding:8px 12px;font-size:0.75rem;color:#666;
+                text-transform:uppercase;letter-spacing:0.06em;">TOTAL DEL DÍA</td>
+              <td style="padding:8px 12px;text-align:right;">
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;
+                  font-weight:900;color:${colEst};">${fmt(totLts)}</span>
+                <span style="font-size:0.75rem;color:#aaa;"> L</span></td>
+              ${estId==='_total'?'<td></td>':''}
+            </tr>
+          </tfoot>
+        </table>`}
+      </div>
+    </div>`;
+
+  modal.style.display = 'flex';
+
+  // Limpiar filtro al abrir
+  setTimeout(() => {
+    const inp = document.getElementById('drillFiltro');
+    if (inp) { inp.value = ''; filtrarDrillDown(''); inp.focus(); }
+  }, 80);
+}
+
+function filtrarDrillDown(texto) {
+  const q    = texto.trim().toLowerCase();
+  const rows = document.querySelectorAll('#drillTbody tr');
+  let vis    = 0;
+  rows.forEach(tr => {
+    const match = !q || (tr.dataset.search||'').includes(q);
+    tr.style.display = match ? '' : 'none';
+    if (match) vis++;
+  });
+  // Actualizar contador
+  const cnt = document.getElementById('drillFiltroCount');
+  if (cnt) cnt.textContent = q ? `${vis} resultado${vis!==1?'s':''}` : '';
+  // Alternar colores en filas visibles
+  let idx = 0;
+  rows.forEach(tr => {
+    if (tr.style.display !== 'none') {
+      tr.style.background = idx%2===0 ? '#fff' : '#f9fdfb';
+      idx++;
+    }
+  });
+}
+
+async function exportarDesglosePDF() {
+  const { jsPDF } = window.jspdf;
+  const modal = document.getElementById('desgDiarioModal');
+  const inner = modal.querySelector('div');
+  if (!inner) return;
+  const btnPDF = modal.querySelector('[title="Exportar gráfica completa a PDF"]');
+  try {
+    if (btnPDF) { btnPDF.textContent='⏳ Generando...'; btnPDF.disabled=true; }
+    const canvas = await html2canvas(inner, {
+      scale:2, useCORS:true, backgroundColor:'#f0f7f4', logging:false, allowTaint:true
+    });
+    const imgData = canvas.toDataURL('image/png');
+    const imgW = canvas.width, imgH = canvas.height;
+    const isLandscape = imgW > imgH;
+    const pdf = new jsPDF({ orientation:isLandscape?'landscape':'portrait', unit:'mm', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 8, availW = pageW-margin*2, availH = pageH-margin*2-8;
+    // Escalar para que quepa en la página
+    const scaleX = availW / (imgW * 0.264583);
+    const scaleY = availH / (imgH * 0.264583);
+    const scale  = Math.min(scaleX, scaleY);
+    const finalW = imgW * 0.264583 * scale;
+    const finalH = imgH * 0.264583 * scale;
+    pdf.addImage(imgData, 'PNG', margin, margin, finalW, finalH);
+    // Pie de página
+    const estNom = _DD?.tabActiva ? (ESTACIONES_DEF[_DD.tabActiva]?.nombre||_DD.tabActiva) : '';
+    const MESES_N = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const mesNom = MESES_N[_DD?.mesNum||0]||'';
+    pdf.setFontSize(7); pdf.setTextColor(150,150,150);
+    pdf.text(`SACISC · Desglose Diario · ${estNom} · ${mesNom} ${_DD?.anioNum||''}`, margin, pageH-3);
+    pdf.text(`Emitido: ${new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'})}`,
+             pageW-margin, pageH-3, {align:'right'});
+    pdf.save(`DesgloseDiario_${estNom}_${mesNom}${_DD?.anioNum||''}.pdf`);
+    if (btnPDF) { btnPDF.textContent='✅ Listo'; setTimeout(()=>{ btnPDF.textContent='📄 PDF'; btnPDF.disabled=false; },2000); }
+  } catch(err) {
+    console.error('PDF error:',err);
+    if (btnPDF) { btnPDF.textContent='📄 PDF'; btnPDF.disabled=false; }
+    alert('Error al generar PDF: '+err.message);
+  }
 }
 
 // ── PDF por panel ─────────────────────────────────────────────────────
@@ -13377,7 +13926,7 @@ function renderTrazUsuario(usuario) {
     </div>
     <div style="text-align:center;font-size:0.6rem;font-weight:700;text-transform:uppercase;
       letter-spacing:0.1em;color:#ccc;margin-top:20px;padding-top:14px;border-top:1px solid var(--border);">
-      TRAZABILIDAD POR USUARIO — SISTEMA DE CONTROL COMBUSTIBLE PEMEX 2026
+      TRAZABILIDAD POR USUARIO — SACISC · Módulo Combustibles · PEMEX URCS Sur
     </div>`;
 
   document.getElementById('trazUsrBody').innerHTML = html;
@@ -13977,7 +14526,7 @@ function renderHistUnidad(placa, economico, rows) {
     <div style="text-align:center;font-size:0.6rem;font-weight:700;text-transform:uppercase;
       letter-spacing:0.1em;color:#ccc;margin-top:20px;padding-top:14px;
       border-top:1px solid var(--border);">
-      SACISC · HISTORIAL DE UNIDAD · MÓDULO DE COMBUSTIBLE · PEMEX
+      SACISC · HISTORIAL DE UNIDAD · SACISC · Módulo Combustibles · PEMEX URCS Sur
     </div>`;
 
   document.getElementById('histUnidadBody').innerHTML = html;
@@ -14291,7 +14840,7 @@ function renderInterrupcion(umbralDias) {
     <div style="text-align:center;font-size:0.6rem;font-weight:700;text-transform:uppercase;
       letter-spacing:0.1em;color:#ccc;margin-top:20px;padding-top:14px;
       border-top:1px solid var(--border);">
-      INTERRUPCIÓN DE USO — SISTEMA DE CONTROL COMBUSTIBLE PEMEX 2026
+      INTERRUPCIÓN DE USO — SACISC · Módulo Combustibles · PEMEX URCS Sur
     </div>`;
 
   document.getElementById('interrupcionBody').innerHTML = html;
@@ -14756,7 +15305,7 @@ function abrirBenchmarkEfic() {
     <div style="margin-bottom:18px;">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:800;
         color:var(--green-dark);margin-bottom:4px;letter-spacing:0.04em;">
-        Tabla de Benchmarks de Eficiencia — Flotilla PEMEX 2026
+        Tabla de Benchmarks de Eficiencia — SACISC · Módulo Combustibles · PEMEX URCS Sur
       </div>
       <div style="font-size:0.72rem;color:#888;">
         Rendimiento de referencia (Percentil 75) calculado de los datos reales del año.
@@ -15035,7 +15584,7 @@ function renderAnomalias() {
     <div style="text-align:center;font-size:0.6rem;font-weight:700;text-transform:uppercase;
       letter-spacing:0.1em;color:#ccc;margin-top:18px;padding-top:12px;
       border-top:1px solid var(--border);">
-      ANOMALÍAS DE RENDIMIENTO — SISTEMA DE CONTROL COMBUSTIBLE PEMEX 2026
+      ANOMALÍAS DE RENDIMIENTO — SACISC · Módulo Combustibles · PEMEX URCS Sur
     </div>`;
 
   document.getElementById('anomaliasBody').innerHTML = html;
@@ -15167,22 +15716,6 @@ function renderEstaciones() {
   let html = `
   <!-- ── ACCIONES RÁPIDAS ── -->
   <div style="padding:14px 28px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <button onclick="abrirMonitorTanques()"
-      style="display:flex;align-items:center;gap:7px;
-        background:linear-gradient(135deg,#1e5b4f,#27ae60);
-        color:#fff;border:none;border-radius:10px;padding:9px 18px;
-        font-family:'Barlow Condensed',sans-serif;font-size:0.88rem;
-        font-weight:700;letter-spacing:0.07em;text-transform:uppercase;
-        cursor:pointer;box-shadow:0 4px 14px rgba(30,91,79,0.4);
-        transition:all 0.2s;"
-      onmouseover="this.style.background='linear-gradient(135deg,#163f37,#1e5b4f)'"
-      onmouseout="this.style.background='linear-gradient(135deg,#1e5b4f,#27ae60)'">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-        <path d="M12 2C8 2 4 5 4 9c0 5 8 13 8 13s8-8 8-13c0-4-4-7-8-7z"/>
-        <circle cx="12" cy="9" r="2.5"/>
-      </svg>
-      Monitor Tanques
-    </button>
     <button onclick="abrirConsumoVsProgramado()"
       style="display:flex;align-items:center;gap:7px;
         background:linear-gradient(135deg,#1e5b4f,#2d9e7e);
@@ -15201,6 +15734,22 @@ function renderEstaciones() {
         <line x1="3" y1="3" x2="21" y2="3" stroke-dasharray="2 2"/>
       </svg>
       Consumo vs Programado
+    </button>
+    <button onclick="abrirMonitorTanques()"
+      style="display:flex;align-items:center;gap:7px;
+        background:linear-gradient(135deg,#1e5b4f,#27ae60);
+        color:#fff;border:none;border-radius:10px;padding:9px 18px;
+        font-family:'Barlow Condensed',sans-serif;font-size:0.88rem;
+        font-weight:700;letter-spacing:0.07em;text-transform:uppercase;
+        cursor:pointer;box-shadow:0 4px 14px rgba(30,91,79,0.4);
+        transition:all 0.2s;"
+      onmouseover="this.style.background='linear-gradient(135deg,#163f37,#1e5b4f)'"
+      onmouseout="this.style.background='linear-gradient(135deg,#1e5b4f,#27ae60)'">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <path d="M12 2C8 2 4 5 4 9c0 5 8 13 8 13s8-8 8-13c0-4-4-7-8-7z"/>
+        <circle cx="12" cy="9" r="2.5"/>
+      </svg>
+      Monitor Tanques
     </button>
     ${_mesFilt ? `
     <button onclick="abrirDesgloseDiario()"
@@ -15373,9 +15922,7 @@ function renderEstaciones() {
             return `<tr><td>${MESES_FULL[mes]||mes}</td>
               ${ests.map(e=>{
                 const lit=e.meses[mes]?.litros||0;
-                return `<td><div style="font-weight:700;">${lit>0?fmt(lit):'—'}</div>
-                  ${lit>0?`<div style="height:3px;background:${e.color};border-radius:2px;width:${(lit/maxMes*100).toFixed(0)}%;margin-top:2px;opacity:0.7;"></div>`:''}
-                </td>`;}).join('')}
+                return `<td style="font-weight:700;">${lit>0?fmt(lit)+' L':'—'}</td>`;}).join('')}
               <td style="font-weight:800;color:var(--green-dark);">${fmt(totMes)}</td>
             </tr>`;}).join('')}
         </tbody>
@@ -15407,9 +15954,7 @@ function renderEstaciones() {
             return `<tr><td>${MESES_FULL[mes]||mes}</td>
               ${ests.map(e=>{
                 const c=e.meses[mes]?.cargas||0;
-                return `<td><div style="font-weight:700;">${c>0?c:'—'}</div>
-                  ${c>0?`<div style="height:3px;background:${e.color};border-radius:2px;width:${(c/maxCMes*100).toFixed(0)}%;margin-top:2px;opacity:0.7;"></div>`:''}
-                </td>`;}).join('')}
+                return `<td style="font-weight:700;">${c>0?c:'—'}</td>`;}).join('')}
               <td style="font-weight:800;color:var(--green-dark);">${totCMes}</td>
             </tr>`;}).join('')}
         </tbody>
@@ -15853,8 +16398,37 @@ function renderCvp() {
       combs.forEach(prod => {
         const real = realMap[est]?.[mes]?.[prod] || 0;
         const blk  = PROGRAMACION_TANQUES[est]?.[mes];
-        const prog = blk?.[prod+'_PROG'] || 0;
-        const surt = blk?.[prod+'_SURT'] || 0;
+
+        // ── Surtido real: VALES_RETIRO (Hoja2) — Inicial + Ampliación, solo SURTIDO ──
+        // Más confiable que PROGRAMACION_TANQUES que puede no reflejar ampliaciones
+        const _keyVR2 = est + '||' + prod;
+        const _vblkVR = VALES_RETIRO[_keyVR2]?.meses?.[mes];
+        let _surtReal = 0, _progReal = 0;
+        if (_vblkVR?.vales?.length) {
+          _vblkVR.vales.forEach(v => {
+            if (!v.vol || v.vol<=0) return;
+            const _es2 = String(v.estatus||'').toUpperCase().trim();
+            if (_es2==='SURTIDO') _surtReal += v.vol;
+          });
+          // Programado total = Math.max por tipo (inicial) + Math.max por tipo (ampliación)
+          const _iniV = _vblkVR.vales.filter(v=>String(v.program||'').toUpperCase().includes('INICIAL'));
+          const _ampV = _vblkVR.vales.filter(v=>String(v.program||'').toUpperCase().includes('AMPLI'));
+          // volProg puede venir inconsistente o vacío en el Excel origen.
+          // El programado real confiable = suma de vol (volumen de retiro real)
+          // de TODOS los vales de ese tipo, ya que cada vale representa
+          // una pipa distinta del programa (no un total repetido)
+          const _sumVolIniReal = _iniV.reduce((s,v)=>s+(v.vol||0),0);
+          const _maxProgIniRaw = _iniV.length ? Math.max(..._iniV.map(v=>v.volProg||0)) : 0;
+          const _progIni = Math.max(_sumVolIniReal, _maxProgIniRaw);
+
+          const _sumVolAmpReal = _ampV.reduce((s,v)=>s+(v.vol||0),0);
+          const _maxProgAmpRaw = _ampV.length ? Math.max(..._ampV.map(v=>v.volProg||0)) : 0;
+          const _progAmp = Math.max(_sumVolAmpReal, _maxProgAmpRaw);
+          _progReal = _progIni + _progAmp;
+        }
+        // Fallback a PROGRAMACION_TANQUES si VALES_RETIRO no tiene datos de ese mes
+        const prog = _progReal>0 ? _progReal : (blk?.[prod+'_PROG'] || 0);
+        const surt = _surtReal>0 ? _surtReal : (blk?.[prod+'_SURT'] || 0);
         if (prog===0 && surt===0 && real===0) return;
 
         // Ejecución vs surtido (lo que realmente entró a la estación)
@@ -15864,9 +16438,11 @@ function renderCvp() {
         const cuN       = realMap[est]?.[mes]?.[prod+'_N']||0;
         const cuSum     = realMap[est]?.[mes]?.[prod+'_CU']||0;
         const cu        = cuN>0 ? cuSum/cuN : 0;
-        const saldoL    = delta<0 ? Math.abs(delta) : 0;
-        const saldoImp  = saldoL>0 && cu>0 ? saldoL*cu : 0;
-        filas.push({est,mes,prod,prog,surt,real,pct,delta,cu,saldoL,saldoImp});
+        const saldoL      = delta<0 ? Math.abs(delta) : 0;
+        const saldoImp    = saldoL>0 && cu>0 ? saldoL*cu : 0;
+        const excedidoL   = delta>0 ? delta : 0;          // litros prestados por gasolinero
+        const excedidoImp = excedidoL>0 && cu>0 ? excedidoL*cu : 0; // importe equivalente
+        filas.push({est,mes,prod,prog,surt,real,pct,delta,cu,saldoL,saldoImp,excedidoL,excedidoImp});
       });
     });
   });
@@ -15901,7 +16477,7 @@ function renderCvp() {
 
   html += `
     <!-- KPIs -->
-    <div class="cvp-kpis" style="grid-template-columns:repeat(5,1fr);">
+    <div class="cvp-kpis" style="grid-template-columns:repeat(6,1fr);">
       <div class="cvp-kpi real">
         <div class="cvp-kpi-label">📋 Total Programado</div>
         <div class="cvp-kpi-val" style="color:#555;">${fmt(totProg)} L</div>
@@ -15928,14 +16504,35 @@ function renderCvp() {
           ${totRemanente>=0 ? '⛽ Se quedaron en tanques' : '⚠️ ¡Se debe al gasolinero!'}
         </div>
       </div>
-      <div class="cvp-kpi ${nSobr>0||nDefi>0?'delta-neg':'delta-pos'}">
-        <div class="cvp-kpi-label">⚠️ Alertas</div>
-        <div class="cvp-kpi-val" style="color:#c0392b;">${nSobr+nDefi}</div>
-        <div class="cvp-kpi-sub">${nSobr} sobreconsumos · ${nDefi} déficits</div>
-      </div>
+
     </div>
 
-    <!-- Aviso mes en curso excluido (solo en vista "Todos los meses") -->
+    <!-- Aviso profesional: migración del remanente al mes siguiente -->
+    ${(totRemanente>0 && fMes>0) ? `
+    <div style="margin:0 0 4px;padding:12px 18px;background:#fffbea;
+      border:1.5px solid #f0c14b;border-left:4px solid #b8860b;border-radius:10px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:1.1rem;flex-shrink:0;">📋</span>
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.85rem;
+            font-weight:800;color:#8a6d00;letter-spacing:0.03em;text-transform:uppercase;margin-bottom:3px;">
+            Aviso de Continuidad de Saldo — Notificación al Proveedor
+          </div>
+          <div style="font-size:0.78rem;color:#5a4a00;line-height:1.6;">
+            El remanente de <b>${fmt(totRemanente)} L</b> (${fmtM(totImpRem)}) correspondiente a
+            ${(()=>{const MN=['','enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];return fMes>0?MN[fMes]:'el periodo consultado';})()}
+            permaneció en los tanques de las estaciones de servicio y
+            <b>debe migrar íntegramente como existencia inicial del mes siguiente</b>,
+            sin desviaciones, ajustes ni absorciones por parte del proveedor.
+          </div>
+          <div style="font-size:0.7rem;color:#8a6d00;margin-top:6px;font-style:italic;">
+            Se recomienda capturar evidencia (pantalla) de este indicador y compartirla con el responsable
+            de la estación de servicio como respaldo formal para la conciliación del saldo inicial del
+            siguiente periodo.
+          </div>
+        </div>
+      </div>
+    </div>` : ''}
     ${!fMes ? `
     <div style="display:flex;align-items:center;gap:8px;background:#fffbea;
       border:1.5px solid #f0c040;border-radius:8px;padding:8px 14px;margin-bottom:14px;">
@@ -15964,7 +16561,7 @@ function renderCvp() {
             <th style="text-align:right;background:#163f37;">Diferencia<br><span style="font-size:0.6rem;opacity:0.7;">(Real vs Surtido)</span></th>
             <th style="text-align:center;background:#163f37;min-width:130px;">Ejecución</th>
             <th style="text-align:right;background:#163f37;">Saldo Sobrante</th>
-            <th style="text-align:center;background:#163f37;">Status</th>
+            <th style="text-align:right;background:#7b1113;">Saldo Excedido</th>
           </tr>
         </thead>
         <tbody>
@@ -16004,7 +16601,12 @@ function renderCvp() {
                   <div style="font-size:0.65rem;color:#e67e22;">${fmt(f.saldoL)} L</div>
                 `:'<span style="color:#ccc;">—</span>'}
               </td>
-              <td style="text-align:center;"><span class="${sCls}">${st}</span></td>
+              <td style="text-align:right;">
+                ${f.excedidoL>0?`
+                  <div style="font-weight:800;color:#b71c1c;">${fmtM(f.excedidoImp)}</div>
+                  <div style="font-size:0.65rem;color:#e53935;">${fmt(f.excedidoL)} L</div>
+                `:'<span style="color:#ccc;">—</span>'}
+              </td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -16018,7 +16620,11 @@ function renderCvp() {
           <td style="text-align:center;font-weight:700;">${ejec.toFixed(1)}% ejecución</td>
           <td style="text-align:right;color:#c0392b;font-weight:800;">
             ${totSaldo>0?fmtM(totSaldo):'—'}</td>
-          <td></td>
+          <td style="text-align:right;color:#b71c1c;font-weight:800;">
+            ${filas.reduce((s,f)=>s+f.excedidoL,0)>0?`
+              <div>${fmtM(filas.reduce((s,f)=>s+f.excedidoImp,0))}</div>
+              <div style="font-size:0.72rem;">${fmt(filas.reduce((s,f)=>s+f.excedidoL,0))} L</div>
+            `:'—'}</td>
         </tr></tfoot>
       </table>
     </div>
@@ -16033,7 +16639,7 @@ function renderCvp() {
     <div style="text-align:center;font-size:0.6rem;color:#ccc;margin-top:14px;
       padding-top:12px;border-top:1px solid var(--border);text-transform:uppercase;
       letter-spacing:0.1em;font-weight:700;">
-      PROGRAMADO vs SURTIDO vs CONSUMO REAL — ESTACIONES PEMEX 2026
+      PROGRAMADO vs SURTIDO vs CONSUMO REAL — SACISC · Módulo Combustibles · PEMEX URCS Sur
     </div>`;
 
   document.getElementById('cvpBody').innerHTML = html;
@@ -16113,34 +16719,11 @@ function renderPronostico() {
   const MES_CRT = {1:'Ene',2:'Feb',3:'Mar',4:'Abr',5:'May',6:'Jun',
                    7:'Jul',8:'Ago',9:'Sep',10:'Oct',11:'Nov',12:'Dic'};
 
-  // Actualizar label
   const lbl = document.getElementById('pronMesLabel');
-  if (lbl) lbl.textContent = `Histórico Ene–${MES_NOM[mesBase]} → Pronóstico ${MES_NOM[mesSig]}`;
+  if (lbl) lbl.textContent = 'Histórico Ene–' + MES_NOM[mesBase] + ' → Pronóstico ' + MES_NOM[mesSig];
 
-  // ── Series históricas hasta mesBase ────────────────────────────────
-  // SURTIDO: fuente principal de verdad (lo que realmente entró a la estación)
-  // REAL:    para calcular % ejecución histórico (tasa de consumo vs surtido)
-  const surtMap = {}; // {est: {prod: {mes: litros}}}
+  // ── Consumo REAL histórico (RAW) — esta es la meta a programar ───────
   const realMap = {}; // {est: {prod: {mes: litros}}}
-
-  // Surtido desde PROGRAMACION_TANQUES (ya procesado de Hoja4)
-  Object.keys(PROGRAMACION_TANQUES).forEach(est => {
-    Object.keys(PROGRAMACION_TANQUES[est]).forEach(mesStr => {
-      const mes = Number(mesStr);
-      if (mes > mesBase) return;
-      const blk = PROGRAMACION_TANQUES[est][mes];
-      ['MAGNA','DIESEL'].forEach(prod => {
-        const surt = blk[prod+'_SURT'] || 0;
-        const prog = blk[prod+'_PROG'] || 0;
-        if (surt===0 && prog===0) return; // skip si no hay nada
-        if (!surtMap[est]) surtMap[est]={};
-        if (!surtMap[est][prod]) surtMap[est][prod]={};
-        surtMap[est][prod][mes] = surt; // puede ser 0 si no se surtió
-      });
-    });
-  });
-
-  // Real desde RAW
   RAW.forEach(r => {
     const est  = String(r.estacion||'').trim().replace(/\.0$/,'');
     const mes  = Number(r.mes);
@@ -16158,73 +16741,72 @@ function renderPronostico() {
 
   ests.forEach(est => {
     combs.forEach(prod => {
-      const surtSerie = surtMap[est]?.[prod] || {};
       const realSerie = realMap[est]?.[prod] || {};
-      const meses = Object.keys(surtSerie).map(Number).sort((a,b)=>a-b);
-      if (meses.length < 1) return; // con 1 mes ya podemos pronosticar
+      const meses = Object.keys(realSerie).map(Number).sort((a,b)=>a-b);
+      if (meses.length < 1) return;
 
-      const surtHist = meses.map(m => surtSerie[m]);
-      const realHist = meses.map(m => realSerie[m]||0);
-      const n = surtHist.length;
+      const realHist = meses.map(m => realSerie[m]);
+      const n = realHist.length;
 
-      // ── Tasa de ejecución histórica (real/surtido) ─────────────────
-      // Excluir meses donde la tasa es > 1.3 (anomalías por saldo anterior)
-      const tasas = meses.map((m,i) => {
-        const s = surtSerie[m]; const r = realSerie[m]||0;
-        const t = s>0 ? r/s : null;
-        return (t!==null && t<=1.3) ? t : null;
-      }).filter(t => t!==null);
-      const tasaMedia = tasas.length ? tasas.reduce((s,t)=>s+t,0)/tasas.length : 0.95;
+      // ── META: promedio histórico real de consumo mensual ────────────
+      const metaConsumo = realHist.reduce((s,v)=>s+v,0) / n;
 
-      // ── Promedio ponderado del surtido (meses recientes pesan más) ──
-      const pesos  = surtHist.map((_,i)=>i+1);
-      const sumP   = pesos.reduce((s,p)=>s+p,0);
-      const promW  = surtHist.reduce((s,v,i)=>s+v*pesos[i],0)/sumP;
+      // ── Saldo inicial de arrastre: balance real del Monitor de Tanques ──
+      const _blkMon = INVENTARIO_TANQUES[est+'||'+prod]?.meses?.[mesBase];
+      let saldoArrastre = 0, hayArrastre = false;
+      let invIniMes = 0, entMes = 0, consMesBase = 0;
+      if (_blkMon) {
+        // Entradas reales = ÚNICAMENTE vales con estatus SURTIDO de VALES_RETIRO (Hoja2)
+        // Hoja5 (blk.surtimientos) puede incluir pipas EN SURTIMIENTO o PENDIENTES
+        // que aún no entraron físicamente al tanque — NO deben contarse aquí
+        const _vblkPron = VALES_RETIRO[est+'||'+prod]?.meses?.[mesBase];
+        let _entSurtidoVR = 0;
+        if (_vblkPron?.vales?.length) {
+          _vblkPron.vales.forEach(v => {
+            if (!v.vol || v.vol<=0) return;
+            if (String(v.estatus||'').toUpperCase().trim()==='SURTIDO') _entSurtidoVR += v.vol;
+          });
+        }
+        // Si VALES_RETIRO no tiene datos de ese mes, usar Hoja5 como único fallback
+        const _entHoja5 = (_blkMon.surtimientos||[]).reduce((s,x)=>s+x.vol,0);
+        entMes      = (_vblkPron?.vales?.length>0) ? _entSurtidoVR : _entHoja5;
+        consMesBase = realSerie[mesBase]||0;
+        invIniMes   = _blkMon.invInicial||0;
+        saldoArrastre = invIniMes + entMes - consMesBase;
+        hayArrastre = true;
+      }
 
-      // ── Tendencia lineal del surtido (requiere ≥2 meses) ───────────
+      // ── PRONÓSTICO = Meta − Saldo de arrastre ────────────────────────
+      const pronosticoFinal = Math.max(0, metaConsumo - saldoArrastre);
+      const sinRequerimiento = pronosticoFinal <= 0;
+
+      // ── Certeza basada en estabilidad del consumo histórico ──────────
+      const yMed = metaConsumo;
+      const std  = Math.sqrt(realHist.reduce((s,v)=>s+Math.pow(v-yMed,2),0)/n);
+      const cv   = yMed>0 ? std/yMed : 1;
+      const certeza = n===1 ? 50 : Math.min(97, Math.max(40, Math.round(100-cv*100)));
+
+      // ── Tendencia (informativa, no afecta el cálculo) ────────────────
       const xMed  = (n-1)/2;
-      const yMed  = surtHist.reduce((s,v)=>s+v,0)/n;
-      const num   = n>=2 ? surtHist.reduce((s,v,i)=>s+(i-xMed)*(v-yMed),0) : 0;
-      const den   = n>=2 ? surtHist.reduce((s,_,i)=>s+(i-xMed)**2,0) : 1;
+      const num   = n>=2 ? realHist.reduce((s,v,i)=>s+(i-xMed)*(v-yMed),0) : 0;
+      const den   = n>=2 ? realHist.reduce((s,_,i)=>s+(i-xMed)**2,0) : 1;
       const slope = den!==0 ? num/den : 0;
 
-      // ── Saldo sobrante del mes base (real < surtido → diferencia) ───
-      const surtMesBase = surtSerie[mesBase]||0;
-      const realMesBase = realSerie[mesBase]||0;
-      const saldoSob    = surtMesBase>realMesBase ? surtMesBase-realMesBase : 0;
-      const ajusteSaldo = saldoSob * 0.20; // 20% como referencia
-
-      // ── Pronóstico de surtido para mes siguiente ────────────────────
-      const pronosticoBase  = promW + slope;
-      const pronosticoFinal = Math.max(0, pronosticoBase - ajusteSaldo);
-
-      // ── Consumo esperado = pronóstico surtido × tasa ejecución ──────
-      const consumoEsperado = pronosticoFinal * tasaMedia;
-
-      // ── Certeza basada en estabilidad del surtido histórico ─────────
-      const std    = Math.sqrt(surtHist.reduce((s,v)=>s+Math.pow(v-yMed,2),0)/n);
-      const cv     = yMed>0 ? std/yMed : 1;
-      const certeza= n===1 ? 50 : Math.min(97, Math.max(40, Math.round(100-cv*100)));
-      const margen = pronosticoFinal*(cv*0.5);
-
-      // ── Datos del mes siguiente si ya existen ───────────────────────
-      const progMesSig = PROGRAMACION_TANQUES[est]?.[mesSig]?.[prod+'_PROG']||0;
-      const surtMesSig = PROGRAMACION_TANQUES[est]?.[mesSig]?.[prod+'_SURT']||0;
+      // ── Datos del mes siguiente si ya existen ────────────────────────
       const realMesSig = realMap[est]?.[prod]?.[mesSig]||0;
 
       casos.push({
-        est, prod, mesBase, mesSig, meses, surtHist, realHist,
-        promW, slope, tasaMedia, saldoSob, ajusteSaldo,
-        pronosticoFinal, consumoEsperado, certeza, margen, cv,
-        progMesSig, surtMesSig, realMesSig,
-        color: EST_COL[est]
+        est, prod, mesBase, mesSig, meses, realHist,
+        metaConsumo, saldoArrastre, hayArrastre, invIniMes, entMes, consMesBase,
+        pronosticoFinal, sinRequerimiento, certeza, slope, cv,
+        realMesSig, color: EST_COL[est]
       });
     });
   });
 
   if (!casos.length) {
     document.getElementById('pronosticoBody').innerHTML =
-      '<div style="padding:40px;text-align:center;color:var(--gray);">Sin datos suficientes. Verifique que el Excel contenga Hoja4 con datos de surtido.</div>';
+      '<div style="padding:40px;text-align:center;color:var(--gray);">Sin datos suficientes. Verifique que el Excel contenga Hoja1 con consumo real.</div>';
     return;
   }
 
@@ -16234,14 +16816,79 @@ function renderPronostico() {
   let html = `
     <div class="pron-grid">
     ${casos.map(c => {
-      const litMin  = Math.round(Math.max(0, c.pronosticoFinal-c.margen));
-      const litMax  = Math.round(c.pronosticoFinal+c.margen);
       const pipas20 = Math.floor(c.pronosticoFinal/20000);
       const resto   = c.pronosticoFinal - pipas20*20000;
       const pipas10 = Math.round(resto/10000);
       const totalP  = pipas20*20000 + pipas10*10000;
       const soloP10 = Math.max(1, Math.round(c.pronosticoFinal/10000));
-      const maxS    = Math.max(...c.surtHist, 1);
+      const MN2     = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+      // ── Card de saldo de arrastre (paso 1 del razonamiento) ──────────
+      let _htmlArrastre = '';
+      if (c.hayArrastre) {
+        const _esDeu = c.saldoArrastre < 0;
+        const _colA  = _esDeu ? '#c0392b' : '#1e5b4f';
+        const _bgA   = _esDeu ? '#fde8e8' : '#e8f5e9';
+        const _iconA = _esDeu ? '🔴' : '🟢';
+        const _signo = c.saldoArrastre >= 0 ? '+' : '';
+        const _invLine = c.invIniMes > 0
+          ? 'Saldo inicial ' + MN2[c.mesBase] + ': <b>' + fmt(c.invIniMes) + ' L</b><br>' : '';
+        _htmlArrastre = [
+          '<div style="background:'+_bgA+';border-radius:8px;border-left:3px solid '+_colA+';padding:9px 11px;margin-bottom:8px;">',
+            '<div style="font-size:0.58rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:'+_colA+';margin-bottom:4px;">',
+              '1️⃣ Saldo inicial de arrastre (' + MN2[c.mesBase] + ')',
+            '</div>',
+            '<div style="font-family:Barlow Condensed,sans-serif;font-size:1.15rem;font-weight:900;color:'+_colA+';">',
+              _iconA + ' ' + _signo + fmt(c.saldoArrastre) + ' L',
+            '</div>',
+            '<div style="font-size:0.6rem;color:#888;margin-top:3px;line-height:1.5;">',
+              _invLine + '+ Entradas: <b>' + fmt(c.entMes) + ' L</b> &minus; Consumo real: <b>' + fmt(c.consMesBase) + ' L</b>',
+            '</div>',
+          '</div>'
+        ].join('');
+      }
+
+      // ── Card de meta (paso 2) ─────────────────────────────────────────
+      const _htmlMeta = [
+        '<div style="background:#e8f0fb;border-radius:8px;border-left:3px solid #1565c0;padding:9px 11px;margin-bottom:8px;">',
+          '<div style="font-size:0.58rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#1565c0;margin-bottom:4px;">',
+            '2️⃣ Meta: promedio histórico real',
+          '</div>',
+          '<div style="font-family:Barlow Condensed,sans-serif;font-size:1.15rem;font-weight:900;color:#1565c0;">',
+            fmt(c.metaConsumo) + ' L',
+          '</div>',
+          '<div style="font-size:0.6rem;color:#888;margin-top:3px;">',
+            'Promedio de consumo real en ' + c.meses.length + ' mes' + (c.meses.length!==1?'es':'') + ' (' +
+            c.meses.map(m=>MN2[m]).join(', ') + ')',
+          '</div>',
+        '</div>'
+      ].join('');
+
+      // ── Card de operación aritmética (paso 3) ──────────────────────────
+      const _opTxt = c.sinRequerimiento
+        ? fmt(c.metaConsumo) + ' &minus; ' + fmt(c.saldoArrastre) + ' L = <b style="color:#27ae60">cubierto, no se requiere pedir</b>'
+        : fmt(c.metaConsumo) + ' &minus; ' + (c.saldoArrastre>=0?fmt(c.saldoArrastre):'(' + fmt(c.saldoArrastre) + ')') + ' L = ' + fmt(c.pronosticoFinal) + ' L';
+      const _htmlOperacion = [
+        '<div style="background:#fff8e1;border-radius:8px;border-left:3px solid #f57f17;padding:9px 11px;margin-bottom:8px;">',
+          '<div style="font-size:0.58rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#e65100;margin-bottom:4px;">',
+            '3️⃣ Operación: meta &minus; arrastre',
+          '</div>',
+          '<div style="font-size:0.78rem;color:#555;line-height:1.5;">',
+            _opTxt,
+          '</div>',
+        '</div>'
+      ].join('');
+
+      // ── Datos reales del mes siguiente si ya existen ───────────────────
+      const _htmlRealSig = c.realMesSig>0 ? [
+        '<div style="margin-top:6px;padding:7px 10px;background:#f0f9f5;border-radius:8px;border:1px solid var(--green-mid)22;">',
+          '<div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--green-mid);margin-bottom:4px;">',
+            'Consumo real registrado en ' + MES_NOM[c.mesSig],
+          '</div>',
+          '<div class="pron-row"><span class="pron-row-label">Consumo real</span>',
+          '<span class="pron-row-val" style="color:var(--green-dark);">' + fmt(c.realMesSig) + ' L</span></div>',
+        '</div>'
+      ].join('') : '';
 
       return `
       <div class="pron-item">
@@ -16267,18 +16914,16 @@ function renderPronostico() {
         </div>
 
         <div class="pron-item-body">
-          <!-- Recomendación principal -->
+          <!-- Resultado principal -->
           <div style="text-align:center;padding:10px 0 8px;border-bottom:1.5px solid var(--border);margin-bottom:10px;">
             <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#aaa;margin-bottom:3px;">
-              🚛 Surtir en ${MES_NOM[c.mesSig]}
+              🚛 ${c.sinRequerimiento ? 'Sin requerimiento para' : 'Surtir en'} ${MES_NOM[c.mesSig]}
             </div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.7rem;font-weight:800;color:${c.color};">
-              ${fmt(c.pronosticoFinal)} L
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.7rem;font-weight:800;
+              color:${c.sinRequerimiento?'#27ae60':c.color};">
+              ${c.sinRequerimiento ? '✅ ' + fmt(c.saldoArrastre) + ' L cubren la meta' : fmt(c.pronosticoFinal) + ' L'}
             </div>
-            <div style="font-size:0.72rem;color:var(--green-mid);font-weight:600;margin-top:6px;">
-              ⛽ Consumo esperado: ~${fmt(c.consumoEsperado)} L
-              <span style="font-size:0.65rem;color:#aaa;">(${(c.tasaMedia*100).toFixed(1)}% ejec. hist.)</span>
-            </div>
+            ${!c.sinRequerimiento ? `
             <!-- Pipas -->
             <div style="margin-top:8px;padding:7px 10px;background:${c.color}11;
               border-radius:8px;border:1px dashed ${c.color}44;">
@@ -16292,41 +16937,88 @@ function renderPronostico() {
                 })()}
               </div>
               <div style="font-size:0.65rem;color:#aaa;margin-top:1px;">Alt: ${soloP10}×10,000L = ${fmt(soloP10*10000)} L</div>
-            </div>
+            </div>` : ''}
           </div>
 
-          <!-- Desglose del modelo -->
-          <div class="pron-row">
-            <span class="pron-row-label">Prom. ponderado surtido</span>
-            <span class="pron-row-val">${fmt(c.promW)} L</span>
-          </div>
+          <!-- Razonamiento paso a paso: arrastre → meta → operación -->
+          ${_htmlArrastre}
+          ${_htmlMeta}
+          ${_htmlOperacion}
+
+          <!-- Tendencia informativa -->
           <div class="pron-row">
             <span class="pron-row-label">Tendencia ${tendIcon(c.slope)}</span>
             <span class="pron-row-val" style="color:${c.slope>=0?'#27ae60':'#c0392b'};">
               ${c.slope>=0?'+':''}${fmt(c.slope)} L/mes</span>
           </div>
-          <div class="pron-row">
-            <span class="pron-row-label">Saldo sobrante (ref. 20%)</span>
-            <span class="pron-row-val" style="color:#e67e22;">
-              ${c.saldoSob>0?'⚠️ −'+fmt(c.ajusteSaldo)+' L':'✅ Sin saldo'}</span>
-          </div>
 
-          <!-- Si ya existen datos del mes siguiente -->
-          ${c.progMesSig>0||c.surtMesSig>0||c.realMesSig>0?`
-          <div style="margin-top:8px;padding:7px 10px;background:#f0f9f5;border-radius:8px;
-            border:1px solid var(--green-mid)22;">
-            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;
-              letter-spacing:0.08em;color:var(--green-mid);margin-bottom:4px;">
-              Datos reales de ${MES_NOM[c.mesSig]}
-            </div>
-            ${c.progMesSig>0?`<div class="pron-row"><span class="pron-row-label">Programado</span><span class="pron-row-val">${fmt(c.progMesSig)} L</span></div>`:''}
-            ${c.surtMesSig>0?`<div class="pron-row"><span class="pron-row-label">Surtido real</span><span class="pron-row-val" style="color:var(--green-dark);">${fmt(c.surtMesSig)} L</span></div>`:''}
-            ${c.realMesSig>0?`<div class="pron-row"><span class="pron-row-label">Consumo real</span><span class="pron-row-val" style="color:var(--green-dark);">${fmt(c.realMesSig)} L</span></div>`:''}
-          </div>`:''}
-
+          ${_htmlRealSig}
         </div>
       </div>`;
     }).join('')}
+    </div>`;
+
+  // ── Tabla: Pronóstico Existencia Inicial — 1 del mes siguiente ────────
+  html += `
+    <div style="margin-top:18px;background:#fff;border-radius:12px;
+      border:1.5px solid var(--border);overflow:hidden;">
+      <div style="background:linear-gradient(135deg,#002f2a,#1e5b4f);padding:12px 16px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:900;
+          color:#fff;letter-spacing:0.06em;text-transform:uppercase;">
+          📅 Pronóstico Existencia Inicial — 1 de ${MES_NOM[mesSig]} ${new Date().getFullYear()}
+        </div>
+        <div style="font-size:0.68rem;color:rgba(255,255,255,0.65);margin-top:2px;">
+          Saldo de arrastre proyectado al cierre de ${MES_NOM[mesBase]} para cada estación
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.78rem;">
+          <thead>
+            <tr style="background:#f0f7f4;">
+              <th style="padding:8px 12px;text-align:left;font-size:0.65rem;font-weight:800;
+                color:#555;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #c8ddd8;">Estación</th>
+              <th style="padding:8px 12px;text-align:left;font-size:0.65rem;font-weight:800;
+                color:#555;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #c8ddd8;">Producto</th>
+              <th style="padding:8px 12px;text-align:right;font-size:0.65rem;font-weight:800;
+                color:#555;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #c8ddd8;">Saldo Inicial</th>
+              <th style="padding:8px 12px;text-align:right;font-size:0.65rem;font-weight:800;
+                color:#555;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #c8ddd8;">+ Entradas</th>
+              <th style="padding:8px 12px;text-align:right;font-size:0.65rem;font-weight:800;
+                color:#555;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #c8ddd8;">− Consumo real</th>
+              <th style="padding:8px 12px;text-align:right;font-size:0.65rem;font-weight:800;
+                color:#555;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #c8ddd8;">Existencia Inicial Est.</th>
+              <th style="padding:8px 12px;text-align:center;font-size:0.65rem;font-weight:800;
+                color:#555;text-transform:uppercase;letter-spacing:0.06em;border-bottom:2px solid #c8ddd8;">Situación</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${casos.filter(c=>c.hayArrastre).map((c,i)=>{
+              const bg = i%2===0?'#fff':'#f9fdfb';
+              const saldo = c.saldoArrastre;
+              const esDeuda = saldo < 0;
+              const situacion = esDeuda
+                ? '<span style="background:#fde8e8;color:#c0392b;border-radius:6px;padding:3px 8px;font-size:0.7rem;font-weight:800;">⚠ Deuda ' + fmt(Math.abs(saldo)) + ' L</span>'
+                : '<span style="background:#e8f5e9;color:#1e5b4f;border-radius:6px;padding:3px 8px;font-size:0.7rem;font-weight:800;">✅ Normal</span>';
+              return `<tr style="background:${bg};">
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;font-weight:700;">${EST_NOM[c.est]||c.est}</td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;">
+                  <span style="background:#e8f5f0;color:#1e5b4f;border-radius:4px;padding:2px 7px;font-size:0.72rem;font-weight:700;">${c.prod}</span></td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:right;color:#666;">${fmt(c.invIniMes)} L</td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:right;color:#1e5b4f;font-weight:700;">+${fmt(c.entMes)} L</td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:right;color:#c0392b;font-weight:700;">−${fmt(c.consMesBase)} L</td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:right;">
+                  <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:900;
+                    color:${esDeuda?'#c0392b':'#1e5b4f'};">${saldo>=0?'+':'−'}${fmt(Math.abs(saldo))} L</span></td>
+                <td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center;">${situacion}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:8px 16px;font-size:0.62rem;color:#aaa;border-top:1px solid #eee;line-height:1.6;">
+        <strong>Nota:</strong> Saldo Inicial = balance real al cierre de ${MES_NOM[mesBase]} (Saldo inicial + Entradas − Consumo real).
+        <strong>Deuda</strong> = el gasolinero debe declarar saldo negativo al inicio de ${MES_NOM[mesSig]}.
+      </div>
     </div>`;
 
   document.getElementById('pronosticoBody').innerHTML = html;
@@ -17258,7 +17950,7 @@ function renderPronostico() {
       </div>
       <div class="rpt-footer">
         <div id="rptAnualFooterDateModal"></div>
-        <div>SACISC · Módulo de Combustible · PEMEX</div>
+        <div>SACISC · Módulo Combustibles · PEMEX URCS Sur</div>
       </div>
     </div>
   </div>
@@ -17404,7 +18096,7 @@ function renderPronostico() {
       </div>
       <div class="rpt-footer">
         <div id="rptMesFooterDate"></div>
-        <div>SACISC · Módulo de Combustible · PEMEX</div>
+        <div>SACISC · Módulo Combustibles · PEMEX URCS Sur</div>
       </div>
     </div>
   </div>
@@ -18379,7 +19071,7 @@ function renderPronostico() {
           <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
           <line x1="6" y1="20" x2="6" y2="14"/>
         </svg>
-        Consumo Real vs Programado — Estaciones PEMEX 2026
+        Consumo Real vs Programado
       </span>
       <div style="display:flex;gap:8px;align-items:center;">
         <button onclick="exportarCvpPDF()"
@@ -18421,7 +19113,7 @@ function renderPronostico() {
             <path d="M12 2C8 2 5 5 5 9c0 5 7 11 7 11s7-6 7-11c0-4-3-7-7-7z"/>
             <circle cx="12" cy="9" r="2.5"/>
           </svg>
-          SALDO SOBRANTE
+          REMANENTE VS SALDO INICIAL
         </button>
         <button onclick="exportarCvpExcel()"
           style="display:flex;align-items:center;gap:6px;background:#217346;
@@ -18600,6 +19292,24 @@ function renderPronostico() {
     <!-- Filtros -->
     <div class="mon-filtros">
       <div class="exec-filter-item">
+        <span class="exec-filter-label">Mes</span>
+        <select id="monFiltroMes" class="exec-filter-select" style="min-width:130px;"
+          onchange="actualizarSliderMes(); renderMonitor();">
+          <option value="1">Enero</option>
+          <option value="2">Febrero</option>
+          <option value="3">Marzo</option>
+          <option value="4">Abril</option>
+          <option value="5">Mayo</option>
+          <option value="6" selected>Junio</option>
+          <option value="7">Julio</option>
+          <option value="8">Agosto</option>
+          <option value="9">Septiembre</option>
+          <option value="10">Octubre</option>
+          <option value="11">Noviembre</option>
+          <option value="12">Diciembre</option>
+        </select>
+      </div>
+      <div class="exec-filter-item">
         <span class="exec-filter-label">Estación</span>
         <select id="monFiltroEst" class="exec-filter-select" style="min-width:160px;"
           onchange="renderMonitor()">
@@ -18647,7 +19357,7 @@ function renderPronostico() {
         </svg>
         Selección de Modo
       </div>
-      <div class="modo-header-sub">SACISC · Módulo de Combustible · PEMEX Coatzacoalcos</div>
+      <div class="modo-header-sub">SACISC · Módulo Combustibles · PEMEX URCS Sur — Coatzacoalcos</div>
     </div>
     <div class="modo-body">
       <div class="modo-pregunta">
@@ -18760,7 +19470,7 @@ function renderPronostico() {
       <div>
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:800;
           color:#fff;letter-spacing:0.06em;text-transform:uppercase;">
-          🔍 SALDO SOBRANTE VS EXISTENCIA INICIAL
+          🔍 SALDO REMANENTE VS EXISTENCIA INICIAL
         </div>
         <div style="font-size:0.72rem;color:rgba(255,255,255,0.7);margin-top:2px;
           text-transform:uppercase;letter-spacing:0.06em;">
@@ -18890,6 +19600,24 @@ function renderPronostico() {
       Punto (·) = sin carga ese día.
     </div>
 
+    <!-- Buscador -->
+    <div style="background:#f0f7f4;padding:8px 20px;border-bottom:1px solid #dde8e2;flex-shrink:0;">
+      <div style="position:relative;max-width:420px;">
+        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:0.85rem;color:#aaa;">🔍</span>
+        <input id="matrizFiltro" type="text"
+          placeholder="Filtrar por usuario, placa, tarjeta, área, ficha..."
+          oninput="filtrarMatriz(this.value)"
+          style="width:100%;padding:7px 70px 7px 32px;border:1.5px solid #c8ddd8;
+            border-radius:8px;font-size:0.8rem;outline:none;box-sizing:border-box;
+            font-family:inherit;background:#fff;transition:border-color 0.2s;"
+          onfocus="this.style.borderColor='#2d9e7e'"
+          onblur="this.style.borderColor='#c8ddd8'">
+        <span id="matrizFiltroCount"
+          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+            font-size:0.68rem;color:#888;pointer-events:none;"></span>
+      </div>
+    </div>
+
     <!-- Cuerpo con scroll -->
     <div id="matrizBody"
       style="overflow:auto;flex:1;padding:0;border-radius:0 0 18px 18px;">
@@ -18919,30 +19647,15 @@ function renderPronostico() {
         <div id="ddSub" style="font-size:0.7rem;color:rgba(255,255,255,0.6);margin-top:2px;
           text-transform:uppercase;letter-spacing:0.05em;"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:10px;font-size:0.65rem;color:rgba(255,255,255,0.75);">
-          <span style="display:flex;align-items:center;gap:4px;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#00bcd4;"></span> Prog. Inicial
-          </span>
-          <span style="display:flex;align-items:center;gap:4px;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#0D47A1;"></span> Prog. Ampliación
-          </span>
-          <span style="display:flex;align-items:center;gap:4px;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(30,91,79,0.8);"></span> Consumo
-          </span>
-          <span style="display:flex;align-items:center;gap:4px;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e67e22;border:1.5px solid #fff;"></span> Cargas
-          </span>
-          <span style="display:flex;align-items:center;gap:4px;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(93,78,109,0.75);"></span> FDS
-          </span>
-          <span style="display:flex;align-items:center;gap:4px;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(180,80,0,0.75);"></span> Festivo LFT
-          </span>
-          <span style="display:flex;align-items:center;gap:4px;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:rgba(13,74,107,0.75);"></span> Festivo PEMEX
-          </span>
-        </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button onclick="exportarDesglosePDF()"
+          title="Exportar gráfica completa a PDF"
+          style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);
+            color:#fff;border-radius:8px;padding:5px 14px;cursor:pointer;
+            font-size:0.75rem;font-weight:800;letter-spacing:0.05em;
+            display:flex;align-items:center;gap:5px;">
+          📄 PDF
+        </button>
         <button onclick="cerrarDesgloseDiario()"
           style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.3);
             color:#fff;border-radius:50%;width:32px;height:32px;font-size:1rem;cursor:pointer;
