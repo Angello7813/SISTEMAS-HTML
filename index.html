@@ -101,7 +101,18 @@ function renderSaldoSobrante() {
   _SS_EST_IDS.forEach(est => {
     ['MAGNA','DIESEL'].forEach(prod => {
       const blkAnt  = PROGRAMACION_TANQUES[est]?.[mesAnt];
-      const surtAnt = blkAnt?.[prod+'_SURT'] || 0;
+
+      // ── Surtido real: VALES_RETIRO (Hoja2) — Inicial + Ampliación, solo SURTIDO ──
+      // Más confiable que PROGRAMACION_TANQUES que puede no reflejar ampliaciones
+      const _vblkSS = VALES_RETIRO[est+'||'+prod]?.meses?.[mesAnt];
+      let _surtRealSS = 0;
+      if (_vblkSS?.vales?.length) {
+        _vblkSS.vales.forEach(v => {
+          if (!v.vol || v.vol<=0) return;
+          if (String(v.estatus||'').toUpperCase().trim()==='SURTIDO') _surtRealSS += v.vol;
+        });
+      }
+      const surtAnt = _surtRealSS>0 ? _surtRealSS : (blkAnt?.[prod+'_SURT'] || 0);
 
       const realAnt = RAW.filter(r =>
         String(r.estacion||'').trim() === est &&
@@ -16776,8 +16787,22 @@ function renderPronostico() {
         hayArrastre = true;
       }
 
-      // ── PRONÓSTICO = Meta − Saldo de arrastre ────────────────────────
-      const pronosticoFinal = Math.max(0, metaConsumo - saldoArrastre);
+      // ── Vales comprometidos pendientes de surtir (PENDIENTE + EN SURTIMIENTO) ──
+      // Ese producto ya fue solicitado y va a llegar tarde o temprano —
+      // debe descontarse del pronóstico para evitar sobreprogramación
+      let valesPendientes = 0;
+      const _vblkComp = VALES_RETIRO[est+'||'+prod]?.meses?.[mesBase];
+      if (_vblkComp?.vales?.length) {
+        _vblkComp.vales.forEach(v => {
+          if (!v.vol || v.vol<=0) return;
+          const _es3 = String(v.estatus||'').toUpperCase().trim();
+          if (_es3==='PENDIENTE' || _es3.includes('EN SURT')) valesPendientes += v.vol;
+        });
+      }
+
+      // ── PRONÓSTICO = Meta − Saldo de arrastre − Vales pendientes comprometidos ──
+      const pronosticoBruto = metaConsumo - saldoArrastre;
+      const pronosticoFinal = Math.max(0, pronosticoBruto - valesPendientes);
       const sinRequerimiento = pronosticoFinal <= 0;
 
       // ── Certeza basada en estabilidad del consumo histórico ──────────
@@ -16798,6 +16823,7 @@ function renderPronostico() {
       casos.push({
         est, prod, mesBase, mesSig, meses, realHist,
         metaConsumo, saldoArrastre, hayArrastre, invIniMes, entMes, consMesBase,
+        valesPendientes, pronosticoBruto,
         pronosticoFinal, sinRequerimiento, certeza, slope, cv,
         realMesSig, color: EST_COL[est]
       });
@@ -16864,14 +16890,36 @@ function renderPronostico() {
         '</div>'
       ].join('');
 
-      // ── Card de operación aritmética (paso 3) ──────────────────────────
+      // ── Card de vales pendientes comprometidos (paso 3) ──────────────
+      let _htmlPendientes = '';
+      if (c.valesPendientes > 0) {
+        _htmlPendientes = [
+          '<div style="background:#fde8e8;border-radius:8px;border-left:3px solid #c0392b;padding:9px 11px;margin-bottom:8px;">',
+            '<div style="font-size:0.58rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#c0392b;margin-bottom:4px;">',
+              '3️⃣ Vales pendientes de surtir (' + MES_NOM[c.mesBase] + ')',
+            '</div>',
+            '<div style="font-family:Barlow Condensed,sans-serif;font-size:1.15rem;font-weight:900;color:#c0392b;">',
+              '&minus;' + fmt(c.valesPendientes) + ' L',
+            '</div>',
+            '<div style="font-size:0.6rem;color:#888;margin-top:3px;line-height:1.5;">',
+              'Producto ya solicitado (Pendiente / En Surtimiento) que va a llegar tarde o temprano —',
+              ' se descuenta para <b>evitar sobreprogramación</b>.',
+            '</div>',
+          '</div>'
+        ].join('');
+      }
+
+      // ── Card de operación aritmética (paso 4) ──────────────────────────
+      const _stepNum = c.valesPendientes>0 ? '4️⃣' : '3️⃣';
+      const _opParts = [fmt(c.metaConsumo), '&minus;', (c.saldoArrastre>=0?fmt(c.saldoArrastre):'(' + fmt(c.saldoArrastre) + ')')];
+      if (c.valesPendientes>0) { _opParts.push('&minus;'); _opParts.push(fmt(c.valesPendientes)); }
       const _opTxt = c.sinRequerimiento
-        ? fmt(c.metaConsumo) + ' &minus; ' + fmt(c.saldoArrastre) + ' L = <b style="color:#27ae60">cubierto, no se requiere pedir</b>'
-        : fmt(c.metaConsumo) + ' &minus; ' + (c.saldoArrastre>=0?fmt(c.saldoArrastre):'(' + fmt(c.saldoArrastre) + ')') + ' L = ' + fmt(c.pronosticoFinal) + ' L';
+        ? _opParts.join(' ') + ' L = <b style="color:#27ae60">cubierto, no se requiere pedir</b>'
+        : _opParts.join(' ') + ' L = ' + fmt(c.pronosticoFinal) + ' L';
       const _htmlOperacion = [
         '<div style="background:#fff8e1;border-radius:8px;border-left:3px solid #f57f17;padding:9px 11px;margin-bottom:8px;">',
           '<div style="font-size:0.58rem;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;color:#e65100;margin-bottom:4px;">',
-            '3️⃣ Operación: meta &minus; arrastre',
+            _stepNum + ' Operación: meta &minus; arrastre' + (c.valesPendientes>0?' &minus; pendientes':''),
           '</div>',
           '<div style="font-size:0.78rem;color:#555;line-height:1.5;">',
             _opTxt,
@@ -16943,6 +16991,7 @@ function renderPronostico() {
           <!-- Razonamiento paso a paso: arrastre → meta → operación -->
           ${_htmlArrastre}
           ${_htmlMeta}
+          ${_htmlPendientes}
           ${_htmlOperacion}
 
           <!-- Tendencia informativa -->
