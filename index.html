@@ -13532,11 +13532,11 @@ function renderDesgloseDiario(estId) {
   const ultimoIdx   = dias.indexOf(ultimoDia);
   const nivelUltimo = nivelDia[ultimoIdx] || 0;
   // ── Cadena de agotamientos estimados ────────────────────────────────
-  // Simula nivel encadenando vales pendientes hasta fin de mes
-  // Detecta cada punto de quiebre donde el tanque llega a 0
-  const agotamientos = []; // [{dia, nivel, esDoble, nPipa}]
+  // Regla: solo mostrar agotamiento N+1 si ya no quedan vales pendientes
+  // que puedan cubrir ese hueco. Si hay más vales, las líneas de simulación
+  // ya representan la cobertura — no amontonar marcas.
+  const agotamientos = [];
   if (promDiario > 0 && nivelUltimo > 0) {
-    // Recopilar vales pendientes/en surtimiento ordenados por volumen desc
     const _prodsAgot = combFilt ? [combFilt] : ['MAGNA','DIESEL'];
     const _valesAgot = [];
     _prodsAgot.forEach(prod => {
@@ -13547,38 +13547,36 @@ function renderDesgloseDiario(estId) {
       });
     });
 
-    // Simular encadenado
-    let _nivelSim = nivelUltimo;
-    let _diaSim   = ultimoDia;
-    let _pipasUsadas = 0;
-
-    // Primera iteración: agotamiento sin ninguna pipa
-    const _dias1 = promDiario > 0 ? Math.floor(_nivelSim / promDiario) : 999;
-    const _dia1  = _diaSim + _dias1;
+    // 1er agotamiento: sin ninguna pipa
+    const _dias1 = Math.floor(nivelUltimo / promDiario);
+    const _dia1  = ultimoDia + _dias1;
     if (_dia1 <= diasEnMes) {
-      agotamientos.push({ dia: _dia1, nivelAntes: _nivelSim, pipasUsadas: 0, esDoble: false });
-      // Aplicar pilas secuencialmente
-      let _nivelTras = _nivelSim - _dias1 * promDiario;
+      agotamientos.push({ dia: _dia1, nivelAntes: nivelUltimo, pipasUsadas: 0, esDoble: false });
+
+      // Solo seguir encadenando si hay vales pendientes
+      let _nivelTras = nivelUltimo - _dias1 * promDiario;
       for (let pi = 0; pi < _valesAgot.length; pi++) {
         const pipa = _valesAgot[pi];
         _nivelTras += pipa.vol || 0;
-        _pipasUsadas++;
-        const _diasExtra = promDiario > 0 ? Math.floor(_nivelTras / promDiario) : 999;
-        const _diaProx   = _dia1 + _diasExtra;
-        if (_diaProx <= diasEnMes) {
+        const _diasExtra = Math.floor(_nivelTras / promDiario);
+        const _diaProx   = agotamientos[agotamientos.length-1].dia + _diasExtra;
+
+        // Solo agregar agotamiento si es el ÚLTIMO vale (no quedan más después)
+        const esUltimoPipa = (pi === _valesAgot.length - 1);
+        if (_diaProx <= diasEnMes && esUltimoPipa) {
           agotamientos.push({
             dia: _diaProx,
             nivelAntes: _nivelTras,
-            pipasUsadas: _pipasUsadas,
-            esDoble: pi === 0,
-            folio: pipa.folio || ('Vale '+(_pipasUsadas))
+            pipasUsadas: pi + 1,
+            esDoble: true,
+            folio: pipa.folio || ('Vale '+(pi+1))
           });
-          _nivelTras = _nivelTras - _diasExtra * promDiario;
-        } else break; // La pipa cubre el resto del mes
+        }
+        _nivelTras -= _diasExtra * promDiario;
+        if (_diaProx > diasEnMes) break; // cubre el mes, no hay más agotamientos
       }
     }
   }
-  // Compatibilidad: primer agotamiento como diaAgotamiento
   let diaAgotamiento = agotamientos.length ? agotamientos[0].dia : null;
 
   // ── Episodios de préstamo ─────────────────────────────────────────────
