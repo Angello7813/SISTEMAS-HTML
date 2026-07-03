@@ -1673,6 +1673,27 @@ function renderMonitor() {
                   </div>
                 </div>`:''}
 
+                <!-- Vales CANCELADOS (informativos — excluidos de todos los cálculos) -->
+                ${(()=>{
+                  const cancelados = vblk.vales.filter(v=>v.estatus.toUpperCase().trim()==='CANCELADO');
+                  if (!cancelados.length) return '';
+                  return '<div style="margin-top:6px;padding:5px 8px;background:#f5f5f5;'
+                    +'border-radius:6px;border-left:2px solid #bbb;opacity:0.8;">'
+                    +'<div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;'
+                    +'letter-spacing:0.06em;color:#999;margin-bottom:4px;">🚫 Cancelados (no contabilizan)</div>'
+                    +'<div style="display:flex;flex-wrap:wrap;gap:4px;">'
+                    +cancelados.map(v=>
+                      '<span style="font-size:0.58rem;background:#eee;color:#999;'
+                      +'border-radius:4px;padding:2px 6px;font-weight:600;text-decoration:line-through;'
+                      +'display:inline-flex;align-items:center;gap:4px;">'
+                      +v.folio
+                      +'<span style="background:#ddd;border-radius:3px;padding:0 4px;font-size:0.6rem;font-weight:800;">'
+                      +(v.vol/1000).toFixed(0)+'K L</span>'
+                      +'</span>'
+                    ).join('')
+                    +'</div></div>';
+                })()}
+
                 <!-- Desglose INICIAL / AMPLIACIÓN -->
                 ${totProgAmp>0?`<div style="margin-top:3px;padding:5px 8px;
                   background:#f5f5f5;border-radius:6px;font-size:0.68rem;">
@@ -1914,7 +1935,7 @@ function autoAlimentarHoja5DesdHoja2() {
         .filter(v => {
           const est = v.estatus.toUpperCase().trim();
           // Incluir SURTIDO y EN SURTIMIENTO — ambos tienen fecha de surtimiento real
-          return (est === 'SURTIDO' || est.includes('EN SURTIMIENTO') || est.includes('EN SURT')) && v.vol > 0;
+          return (est === 'SURTIDO' || est.includes('EN SURTIMIENTO') || est.includes('EN SURT')) && v.vol > 0 && est !== 'CANCELADO';
         })
         .forEach(v => {
           // Usar fecha de surtimiento real si existe; si no, la fecha del vale
@@ -13510,13 +13531,55 @@ function renderDesgloseDiario(estId) {
   const ultimoDia   = dias.filter((_,i) => salDia[i]>0).slice(-1)[0] || dias[0];
   const ultimoIdx   = dias.indexOf(ultimoDia);
   const nivelUltimo = nivelDia[ultimoIdx] || 0;
-  // Días restantes antes de agotamiento
-  let diaAgotamiento = null;
+  // ── Cadena de agotamientos estimados ────────────────────────────────
+  // Simula nivel encadenando vales pendientes hasta fin de mes
+  // Detecta cada punto de quiebre donde el tanque llega a 0
+  const agotamientos = []; // [{dia, nivel, esDoble, nPipa}]
   if (promDiario > 0 && nivelUltimo > 0) {
-    const diasRestantes = Math.floor(nivelUltimo / promDiario);
-    const diaPronostico = ultimoDia + diasRestantes;
-    if (diaPronostico <= diasEnMes) diaAgotamiento = diaPronostico;
+    // Recopilar vales pendientes/en surtimiento ordenados por volumen desc
+    const _prodsAgot = combFilt ? [combFilt] : ['MAGNA','DIESEL'];
+    const _valesAgot = [];
+    _prodsAgot.forEach(prod => {
+      const _blkA = VALES_RETIRO[estId+'||'+prod]?.meses?.[mesNum];
+      _blkA?.vales?.forEach(v => {
+        const _esA = String(v.estatus||'').toUpperCase().trim();
+        if (_esA !== 'SURTIDO' && _esA !== 'CANCELADO') _valesAgot.push({...v, prod});
+      });
+    });
+
+    // Simular encadenado
+    let _nivelSim = nivelUltimo;
+    let _diaSim   = ultimoDia;
+    let _pipasUsadas = 0;
+
+    // Primera iteración: agotamiento sin ninguna pipa
+    const _dias1 = promDiario > 0 ? Math.floor(_nivelSim / promDiario) : 999;
+    const _dia1  = _diaSim + _dias1;
+    if (_dia1 <= diasEnMes) {
+      agotamientos.push({ dia: _dia1, nivelAntes: _nivelSim, pipasUsadas: 0, esDoble: false });
+      // Aplicar pilas secuencialmente
+      let _nivelTras = _nivelSim - _dias1 * promDiario;
+      for (let pi = 0; pi < _valesAgot.length; pi++) {
+        const pipa = _valesAgot[pi];
+        _nivelTras += pipa.vol || 0;
+        _pipasUsadas++;
+        const _diasExtra = promDiario > 0 ? Math.floor(_nivelTras / promDiario) : 999;
+        const _diaProx   = _dia1 + _diasExtra;
+        if (_diaProx <= diasEnMes) {
+          agotamientos.push({
+            dia: _diaProx,
+            nivelAntes: _nivelTras,
+            pipasUsadas: _pipasUsadas,
+            esDoble: pi === 0,
+            folio: pipa.folio || ('Vale '+(_pipasUsadas))
+          });
+          _nivelTras = _nivelTras - _diasExtra * promDiario;
+        } else break; // La pipa cubre el resto del mes
+      }
+    }
   }
+  // Compatibilidad: primer agotamiento como diaAgotamiento
+  let diaAgotamiento = agotamientos.length ? agotamientos[0].dia : null;
 
   // ── Episodios de préstamo ─────────────────────────────────────────────
   const episodios = [];
@@ -13590,21 +13653,49 @@ function renderDesgloseDiario(estId) {
               return n<0?'⚠ Gasolinero prestando':n<invInicial*0.2?'⚠ Nivel bajo':'Al cierre del último día';})()}
           </div>
         </div>
-        ${diaAgotamiento ? `
+        ${agotamientos.length ? `
         <div style="background:#fde8e8;border-radius:10px;padding:10px 14px;border-left:3px solid #b71c1c;">
-          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#b71c1c;margin-bottom:3px;">🏁 Agotamiento estimado</div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.35rem;font-weight:900;color:#b71c1c;">Día ${diaAgotamiento}</div>
+          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#b71c1c;margin-bottom:3px;">
+            🏁 Agotamiento estimado${agotamientos.length>1?' ('+agotamientos.length+' puntos)':''}
+          </div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.35rem;font-weight:900;color:#b71c1c;">
+            Día ${agotamientos[0].dia}
+          </div>
           <div style="font-size:0.65rem;color:#888;margin-top:1px;">${Math.floor(nivelUltimo/promDiario)} días restantes</div>
+          ${agotamientos.length>1 ? `
+          <div style="margin-top:6px;padding-top:5px;border-top:1px solid rgba(192,57,43,0.2);">
+            ${agotamientos.slice(1).map((a,i)=>`
+            <div style="display:flex;align-items:center;gap:5px;margin-top:2px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:#7b1fa2;flex-shrink:0;"></span>
+              <span style="font-size:0.62rem;color:#7b1fa2;font-weight:700;">
+                ${i===0?'⚠ 2º':'⚠ '+(i+2)+'º'} agotamiento: Día ${a.dia}
+                ${a.folio?'<span style="color:#aaa;font-weight:400;">tras '+a.folio+'</span>':''}
+              </span>
+            </div>`).join('')}
+          </div>` : ''}
         </div>` : ''}
         ${(()=>{
           const hoy        = new Date().getDate();
           const esFindeMes = hoy >= diasEnMes;
+
+          // Sumar vales PENDIENTE + EN SURTIMIENTO que entrarán al tanque este mes
+          const _prods3 = combFilt ? [combFilt] : ['MAGNA','DIESEL'];
+          let _volPend = 0;
+          _prods3.forEach(prod => {
+            const _blkP = VALES_RETIRO[estId+'||'+prod]?.meses?.[mesNum];
+            _blkP?.vales?.forEach(v => {
+              const _es = String(v.estatus||'').toUpperCase().trim();
+              if ((_es === 'PENDIENTE' || _es.includes('EN SURT')) && _es !== 'CANCELADO') _volPend += v.vol||0;
+            });
+          });
+
           let saldoProximo;
           if (esFindeMes) {
             saldoProximo = nivelDia[nivelDia.length-1] || 0;
           } else {
             const diasRestantesMes = diasEnMes - ultimoDia;
-            saldoProximo = nivelUltimo - (promDiario * diasRestantesMes);
+            // Proyección = nivel actual + vales comprometidos que llegarán − consumo restante
+            saldoProximo = nivelUltimo + _volPend - (promDiario * diasRestantesMes);
           }
           const sProxFmt = fmt(Math.abs(Math.round(saldoProximo)));
           const esDeuda  = saldoProximo < 0;
@@ -13612,7 +13703,9 @@ function renderDesgloseDiario(estId) {
           const bdColP   = esDeuda ? '#c0392b' : '#27ae60';
           const txColP   = esDeuda ? '#c0392b' : '#1e5b4f';
           const labelP   = esDeuda ? '\u26A0 Inicia con deuda' : '\u2705 Saldo inicial est.';
-          const subP     = esFindeMes ? 'Dato real al cierre' : 'Proyecci\u00F3n al d\u00EDa ' + diasEnMes;
+          const subP     = esFindeMes ? 'Dato real al cierre'
+            : 'Proyecci\u00F3n al d\u00EDa ' + diasEnMes
+              + (_volPend>0 ? ' (+' + fmt(_volPend) + ' L comprometidos)' : '');
           const signo    = esDeuda ? '\u2212' : '+';
           return '<div style="background:' + bgColP + ';border-radius:10px;padding:10px 14px;border-left:3px solid ' + bdColP + ';">' +
             '<div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:' + txColP + ';margin-bottom:3px;">' + labelP + ' pr\u00F3x. mes</div>' +
@@ -13734,7 +13827,7 @@ function renderDesgloseDiario(estId) {
       if (!_blkSim?.vales?.length) return;
       _blkSim.vales.forEach(v => {
         const _es = String(v.estatus||'').toUpperCase().trim();
-        if (_es !== 'SURTIDO') _valesSim.push({...v, prod});
+        if (_es !== 'SURTIDO' && _es !== 'CANCELADO') _valesSim.push({...v, prod});
       });
     });
 
@@ -13785,28 +13878,45 @@ function renderDesgloseDiario(estId) {
     }
   }
 
-  // ── Flecha / marca de agotamiento estimado ───────────────────────────
-  if (diaAgotamiento) {
-    const idxAgot = dias.indexOf(diaAgotamiento);
-    if (idxAgot >= 0) {
-      const cxA = PAD.left + idxAgot*cW + cW/2;
-      // Línea vertical naranja
-      svg += `<line x1="${cxA.toFixed(1)}" y1="${PAD.top+2}" x2="${cxA.toFixed(1)}" y2="${y0}"
-        stroke="#b71c1c" stroke-width="2.5" stroke-dasharray="6,3" opacity="0.95"/>`;
-      // Flecha hacia abajo (triángulo)
-      const ax = cxA, ay = PAD.top + 8;
-      svg += `<polygon points="${ax},${ay+14} ${ax-7},${ay} ${ax+7},${ay}"
-        fill="#b71c1c" opacity="1"/>`;
-      // Badge "🏁 Agotamiento día X"
-      const aLabel = `🏁 Agotamiento día ${diaAgotamiento}`;
-      const aW = Math.min(aLabel.length*6.8+16, 200);
-      const aX = Math.min(cxA - aW/2, W-PAD.right-aW-4);
-      svg += `<rect x="${aX.toFixed(1)}" y="${(PAD.top+26).toFixed(1)}"
-        width="${aW.toFixed(1)}" height="20" rx="5" fill="#b71c1c" opacity="1"/>`;
-      svg += `<text x="${(aX+aW/2).toFixed(1)}" y="${(PAD.top+40).toFixed(1)}"
-        text-anchor="middle" font-size="10.5" font-weight="800" fill="#fff">${aLabel}</text>`;
+  // ── Marcas de agotamiento estimado (cadena completa) ─────────────────
+  agotamientos.forEach((agot, ai) => {
+    const idxAgot = dias.indexOf(agot.dia);
+    if (idxAgot < 0) return;
+    const cxA   = PAD.left + idxAgot*cW + cW/2;
+    const esDoble = ai > 0; // 2do, 3er agotamiento = con pipa de por medio
+    const colAgot = esDoble ? '#7b1fa2' : '#b71c1c'; // morado para doble, rojo para primero
+    const colBadge= esDoble ? '#6a1b9a' : '#b71c1c';
+
+    // Línea vertical
+    svg += `<line x1="${cxA.toFixed(1)}" y1="${PAD.top+2}" x2="${cxA.toFixed(1)}" y2="${y0}"
+      stroke="${colAgot}" stroke-width="${esDoble?'1.8':'2.5'}" stroke-dasharray="${esDoble?'4,4':'6,3'}"
+      opacity="${esDoble?'0.75':'0.95'}"/>`;
+
+    // Flecha hacia abajo
+    const ay = PAD.top + (esDoble ? 12 : 8);
+    svg += `<polygon points="${cxA},${ay+12} ${cxA-6},${ay} ${cxA+6},${ay}"
+      fill="${colAgot}" opacity="${esDoble?'0.85':'1'}"/>`;
+
+    // Badge
+    const icon  = esDoble ? '⚠' : '🏁';
+    const num   = ai===0?'':'#'+(ai+1)+' ';
+    const aLabel = `${icon} ${num}Agotamiento día ${agot.dia}`;
+    const aW    = Math.min(aLabel.length*6.5+16, 210);
+    const aY    = PAD.top + (esDoble ? 28 + (ai-1)*22 : 26);
+    const aX    = Math.max(PAD.left+2, Math.min(cxA - aW/2, W-PAD.right-aW-4));
+    svg += `<rect x="${aX.toFixed(1)}" y="${aY.toFixed(1)}"
+      width="${aW.toFixed(1)}" height="18" rx="4"
+      fill="${colBadge}" opacity="${esDoble?'0.85':'1'}"/>`;
+    svg += `<text x="${(aX+aW/2).toFixed(1)}" y="${(aY+13).toFixed(1)}"
+      text-anchor="middle" font-size="9.5" font-weight="800" fill="#fff">${aLabel}</text>`;
+
+    // Si es doble/múltiple: nota del vale que lo originó
+    if (esDoble && agot.folio) {
+      const nLabel = `↑ tras ${agot.folio}`;
+      svg += `<text x="${cxA.toFixed(1)}" y="${(aY+32).toFixed(1)}"
+        text-anchor="middle" font-size="8" fill="${colAgot}" opacity="0.8">${nLabel}</text>`;
     }
-  }
+  });
 
   // ── Barras por día ─────────────────────────────────────────────────────
   const barra = (bx,by,bw,bh,col,titulo) => {
@@ -13913,6 +14023,8 @@ function renderDesgloseDiario(estId) {
     leyItems.push({tipo:'dash', col:'#c0392b', label:'Episodio préstamo', labelCol:'#c0392b'});
   if (diaAgotamiento)
     leyItems.push({tipo:'dash', col:'#b71c1c', label:'Agotamiento estimado', labelCol:'#b71c1c'});
+    if (agotamientos.length > 1)
+      leyItems.push({tipo:'dash', col:'#7b1fa2', label:'2º+ agotamiento', labelCol:'#7b1fa2'});
 
   const LEY_ITEM_W = 140;
   const leyTotalW  = leyItems.length*LEY_ITEM_W;
@@ -13985,7 +14097,7 @@ function renderSimPanel(estId) {
     if (!blk?.vales?.length) return;
     blk.vales.forEach(v => {
       const es = String(v.estatus||'').toUpperCase().trim();
-      if (es === 'SURTIDO') return; // ya llegó, no simular
+      if (es === 'SURTIDO' || es === 'CANCELADO') return; // ya llegó o fue cancelado
       valesPend.push({ ...v, prod, est: estId });
     });
   });
@@ -17454,11 +17566,11 @@ function renderCvp() {
           _vblkVR.vales.forEach(v => {
             if (!v.vol || v.vol<=0) return;
             const _es2 = String(v.estatus||'').toUpperCase().trim();
-            if (_es2==='SURTIDO') _surtReal += v.vol;
+            if (_es2==='SURTIDO' && _es2!=='CANCELADO') _surtReal += v.vol;
           });
           // Programado total = Math.max por tipo (inicial) + Math.max por tipo (ampliación)
-          const _iniV = _vblkVR.vales.filter(v=>String(v.program||'').toUpperCase().includes('INICIAL'));
-          const _ampV = _vblkVR.vales.filter(v=>String(v.program||'').toUpperCase().includes('AMPLI'));
+          const _iniV = _vblkVR.vales.filter(v=>String(v.program||'').toUpperCase().includes('INICIAL') && String(v.estatus||'').toUpperCase().trim()!=='CANCELADO');
+          const _ampV = _vblkVR.vales.filter(v=>String(v.program||'').toUpperCase().includes('AMPLI') && String(v.estatus||'').toUpperCase().trim()!=='CANCELADO');
           // volProg puede venir inconsistente o vacío en el Excel origen.
           // El programado real confiable = suma de vol (volumen de retiro real)
           // de TODOS los vales de ese tipo, ya que cada vale representa
@@ -18094,7 +18206,7 @@ function renderPronostico() {
         _vblkComp.vales.forEach(v => {
           if (!v.vol || v.vol<=0) return;
           const _es3 = String(v.estatus||'').toUpperCase().trim();
-          if (_es3==='PENDIENTE' || _es3.includes('EN SURT')) valesPendientes += v.vol;
+          if ((_es3==='PENDIENTE' || _es3.includes('EN SURT')) && _es3!=='CANCELADO') valesPendientes += v.vol;
         });
       }
 
