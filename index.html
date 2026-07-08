@@ -969,34 +969,36 @@ function renderMonitor() {
 
   // Consumo diario desde RAW
   // Precalcular estaciones disponibles para debug
+  const EST_IDS_MON = ['7394','9602','9851','10885'];
   const consMap = {};
   RAW.forEach(r => {
-    // Intentar todos los campos posibles de estación
     const estRaw = r.estacion || r.estacionPemex || r.estacionpemex || '';
     const est  = String(estRaw).trim().replace(/\.0$/,'').replace(/^E0*/,'');
-    if (!est || est==='0' || est==='') return;
+    // HOMOLOGADO: solo las 4 estaciones reconocidas, igual que la Super Gráfica
+    if (!EST_IDS_MON.includes(est)) return;
     const mes  = Number(r.mes);
+    if (!mes) return;
     const prod = String(r.producto||'').toUpperCase().trim();
-    const lit  = r.litros||0;
-    // Parsear fecha — puede ser Date, string o serial numérico Excel
-    let fDate = null;
-    if (r.fecha) {
+    const lit  = Number(r.litros||0);
+    if (!lit) return;
+    // Parsear fecha con mismo criterio que Super Gráfica
+    let diaNum = 0;
+    const fechaStr = String(r.fecha||'').trim();
+    if (fechaStr) {
       if (r.fecha instanceof Date && !isNaN(r.fecha)) {
-        fDate = r.fecha;
+        diaNum = r.fecha.getDate();
       } else if (typeof r.fecha === 'number') {
-        // Serial Excel: días desde 1/1/1900
-        fDate = new Date(Math.round((r.fecha - 25569) * 86400 * 1000));
+        const d = new Date(Math.round((r.fecha - 25569) * 86400 * 1000));
+        if (!isNaN(d)) diaNum = d.getDate();
       } else {
-        const fs = String(r.fecha).trim();
-        if (fs.includes('/')) { const p=fs.split('/'); fDate=new Date(+p[2],+p[1]-1,+p[0]); }
-        else fDate = new Date(fs);
+        const p = fechaStr.includes('-') ? fechaStr.split('-') : fechaStr.split('/');
+        if (p.length === 3) diaNum = p[0].length===4 ? parseInt(p[2]) : parseInt(p[0]);
       }
-      if (fDate && isNaN(fDate)) fDate = null;
     }
-    const key  = `${est}||${prod}`;
-    if (!consMap[key]) consMap[key]={};
-    if (!consMap[key][mes]) consMap[key][mes]={total:0,dias:new Set()};
-    if (fDate) consMap[key][mes].dias.add(fDate.getDate());
+    const key = `${est}||${prod}`;
+    if (!consMap[key]) consMap[key] = {};
+    if (!consMap[key][mes]) consMap[key][mes] = { total:0, dias:new Set() };
+    if (diaNum > 0) consMap[key][mes].dias.add(diaNum);
     consMap[key][mes].total += lit;
   });
   const getCons = (est, prod, mes) => {
@@ -1008,8 +1010,8 @@ function renderMonitor() {
     // 1. Intentar mes actual con días transcurridos reales
     const bAct = consMap[key]?.[mesActualCal];
     if (bAct && bAct.total > 0 && diaHoy > 0) {
-      // Usar días con datos reales si hay más de 3, si no usar diaHoy
-      const diasReales = bAct.dias.size >= 3 ? bAct.dias.size : diaHoy;
+      // HOMOLOGADO a Super Gráfica: dividir entre días con despacho real (no diaHoy)
+      const diasReales = bAct.dias.size > 0 ? bAct.dias.size : diaHoy;
       return Math.round(bAct.total / diasReales);
     }
 
@@ -1022,8 +1024,8 @@ function renderMonitor() {
     if (mesesDisp.length > 0) {
       const mesRef  = mesesDisp[0];
       const bRef    = consMap[key][mesRef];
-      // Días del mes de referencia: usar días con datos o 30
-      const diasRef = bRef.dias.size >= 3 ? bRef.dias.size : 30;
+      // HOMOLOGADO: siempre usar días con despacho real
+      const diasRef = bRef.dias.size > 0 ? bRef.dias.size : 30;
       return Math.round(bRef.total / diasRef);
     }
 
@@ -1038,7 +1040,8 @@ function renderMonitor() {
     const diaHoy       = new Date().getDate();
     const bAct = consMap[key]?.[mesActualCal];
     if (bAct && bAct.total > 0) {
-      const diasUsados = bAct.dias.size >= 3 ? bAct.dias.size : diaHoy;
+      // HOMOLOGADO: siempre días con despacho real
+      const diasUsados = bAct.dias.size > 0 ? bAct.dias.size : diaHoy;
       return { cons: Math.round(bAct.total/diasUsados), diasUsados, esActual: true };
     }
     const mesesDisp = Object.keys(consMap[key]||{}).map(Number)
@@ -1046,7 +1049,8 @@ function renderMonitor() {
     if (mesesDisp.length > 0) {
       const mesRef = mesesDisp[0];
       const bRef   = consMap[key][mesRef];
-      const diasUsados = bRef.dias.size >= 3 ? bRef.dias.size : 30;
+      // HOMOLOGADO: siempre días con despacho real
+      const diasUsados = bRef.dias.size > 0 ? bRef.dias.size : 30;
       return { cons: Math.round(bRef.total/diasUsados), diasUsados, esActual: false, mesRef };
     }
     return { cons: 0, diasUsados: 0, esActual: false };
@@ -1108,7 +1112,7 @@ function renderMonitor() {
     // ── PASO 2: _balPrelim y pct (usa acumEntradasReal) ─────────────────
     const _balPrelim = blk.invInicial + acumEntradasReal - Math.round(cons*dia);
     const pct  = cap>0 ? Math.min(100,Math.max(0,Math.round(_balPrelim/cap*100))) : 0;
-    const dias30 = cons>0 ? Math.round(_balPrelim/cons) : 99;
+    const dias30 = cons>0 ? Math.floor(_balPrelim/cons) : 99;
 
     // ── PASO 3: simularNivel (para el SVG del tanque) ───────────────────
     const nivel = simularNivel(cap,blk.invInicial,cons,blk.surtimientos,dia);
@@ -3936,12 +3940,30 @@ function renderRendDiario(rows, mes) {
   .exec-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
   /* Tabla ranking */
   .exec-table-wrap{overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);}
-  .exec-table{width:100%;border-collapse:collapse;font-size:0.81rem;background:#fff;}
+  .exec-table{width:100%;border-collapse:collapse;font-family:Inter,sans-serif;font-size:0.72rem;background:#fff;}
   .exec-table thead tr{background:var(--green-dark);}
-  .exec-table thead th{color:#fff;padding:10px 13px;font-family:'Barlow Condensed',sans-serif;font-size:0.69rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;text-align:left;border-right:1px solid rgba(255,255,255,0.1);white-space:nowrap;}
+  .exec-table thead th{color:#fff;padding:10px 13px;font-family:'Barlow Condensed',sans-serif;font-size:0.72rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;text-align:left;border-right:1px solid rgba(255,255,255,0.1);white-space:nowrap;}
   .exec-table tbody tr{border-bottom:1px solid var(--border);transition:background 0.12s;}
   .exec-table tbody tr:nth-child(even){background:#f7faf9;}
   .exec-table tbody tr:hover{background:#eaf3f0;}
+  /* Celdas estándar — todo Inter 0.72rem */
+  .exec-table td{font-family:Inter,sans-serif;font-size:0.72rem;font-weight:400;color:#333;padding:9px 13px;vertical-align:middle;}
+  /* Variantes semánticas — solo peso/color, misma fuente y tamaño */
+  .exec-table td.tc{text-align:center;}
+  .exec-table td.tr{text-align:right;font-variant-numeric:tabular-nums;}
+  .exec-table td.bold{font-weight:700;color:var(--green-dark);}
+  .exec-table td.muted{color:#777;}
+  .exec-table td.accent{color:var(--green-mid);font-weight:600;}
+  .exec-table td.mono{font-variant-numeric:tabular-nums;}
+  /* Chips inline — misma base */
+  .exec-table .chip{display:inline-block;border-radius:5px;padding:2px 8px;font-family:Inter,sans-serif;font-size:0.72rem;font-weight:700;line-height:1.4;}
+  .exec-table .chip-magna{background:#e8f5f0;color:var(--green-dark);}
+  .exec-table .chip-diesel{background:#e8eaf6;color:#1565c0;}
+  .exec-table .chip-arr{background:#fff3e0;color:#e65100;}
+  .exec-table .chip-prop{background:#e8f5e9;color:#2e7d32;}
+  .exec-table .chip-rend-ok{background:#e8f5e922;color:#27ae60;}
+  .exec-table .chip-rend-med{background:#fff3e022;color:#e67e22;}
+  .exec-table .chip-rend-bad{background:#fde8e822;color:#c0392b;}
   .exec-table tbody td{padding:9px 13px;color:#333;white-space:nowrap;}
   .exec-table tbody td.r{text-align:right;font-variant-numeric:tabular-nums;}
   .exec-table tbody td.tc{text-align:center;}
@@ -5595,6 +5617,50 @@ function renderRendDiario(rows, mes) {
             </div>
           </div>
 
+        </div>
+
+        <!-- Separador -->
+        <div style="width:100%;height:1px;
+          background:linear-gradient(90deg,transparent,rgba(17,205,120,0.3),transparent);">
+        </div>
+
+        <!-- Experiencia Laboral -->
+        <div style="width:100%;text-align:left;">
+          <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);
+            text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px;
+            display:flex;align-items:center;gap:6px;">
+            <svg width="11" height="11" fill="none" stroke="#11CD78" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <path d="M8 21h8M12 17v4"/>
+            </svg>
+            Experiencia Laboral
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Supervisión de Obra y Adm. de Contratos</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Analista de Presupuestos</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Enlace Financiero</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Cartera de Proyectos</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Prog. de Servicios y Costos a Intervenciones a Pozos</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Gestión de Adquisiciones y Compra de Bienes y Servicios</span>
+            </div>
+          </div>
         </div>
 
         <!-- Footer de la tarjeta -->
@@ -12341,17 +12407,15 @@ function renderExecRanking(rows) {
     return `<tr>
       <td class="tc"><span class="exec-rank-badge ${cls}">${i+1}</span></td>
       <td class="bold">${u}</td>
-      <td class="tc" style="font-weight:700;color:var(--green-mid);cursor:pointer;text-decoration:underline;"
+      <td class="tc bold" style="cursor:pointer;text-decoration:underline;color:var(--green-mid);"
         onclick="event.stopPropagation();abrirRankDet('${u.replace(/'/g,"\\'")}')"
-        title="Ver detalle de tarjetas">
-        ${v.tarjetas.size} 🔍
-      </td>
-      <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--green-dark);font-size:0.88rem;">${v.dir||'—'}</td>
-      <td style="font-family:'Barlow Condensed',sans-serif;color:#2d6b5a;font-size:0.85rem;">${v.sub||'—'}</td>
-      <td style="font-size:0.82rem;color:#555;">${v.ger||'—'}</td>
-      <td style="font-size:0.82rem;color:#1a4a8a;font-weight:600;">${v.area||'—'}</td>
-      <td class="r" style="font-weight:700;color:var(--green-dark);">${v.litros.toLocaleString('es-MX',{minimumFractionDigits:1})} L</td>
-      <td class="r" style="color:#2d6b5a;">${promMes.toLocaleString('es-MX',{minimumFractionDigits:1})} L</td>
+        title="Ver detalle de tarjetas">${v.tarjetas.size} 🔍</td>
+      <td class="accent">${v.dir||'—'}</td>
+      <td class="accent">${v.sub||'—'}</td>
+      <td class="muted">${v.ger||'—'}</td>
+      <td class="bold">${v.area||'—'}</td>
+      <td class="tr bold">${v.litros.toLocaleString('es-MX',{minimumFractionDigits:1})} L</td>
+      <td class="tr muted">${promMes.toLocaleString('es-MX',{minimumFractionDigits:1})} L</td>
       <td class="tc">${v.cargas}</td>
     </tr>`;
   }).join('');
@@ -12689,9 +12753,9 @@ function renderTrazabilidad(tarjeta, rows) {
           <!-- Badge tipo unidad -->
           <div style="background:rgba(255,255,255,0.18);border:1.5px solid rgba(255,255,255,0.35);
             border-radius:10px;padding:6px 14px;text-align:center;">
-            <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
               letter-spacing:0.1em;color:rgba(255,255,255,0.6);margin-bottom:2px;">Tipo</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.9rem;
+            <div style="font-family:Inter,sans-serif;font-size:0.85rem;
               font-weight:700;color:#fff;">${r0.tipoVehiculo||'—'}</div>
           </div>
         </div>
@@ -12699,30 +12763,30 @@ function renderTrazabilidad(tarjeta, rows) {
         <div style="display:grid;grid-template-columns:repeat(4,auto);gap:10px;align-items:start;flex-wrap:wrap;">
           <div style="background:rgba(255,255,255,0.14);border:1.5px solid rgba(255,255,255,0.28);
             border-radius:10px;padding:10px 16px;min-width:100px;">
-            <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
               letter-spacing:0.1em;color:rgba(255,255,255,0.6);margin-bottom:4px;">Marca</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.0rem;
               font-weight:700;color:#fff;">${r0.marca||'—'}</div>
           </div>
           <div style="background:rgba(255,255,255,0.14);border:1.5px solid rgba(255,255,255,0.28);
             border-radius:10px;padding:10px 16px;min-width:100px;">
-            <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
               letter-spacing:0.1em;color:rgba(255,255,255,0.6);margin-bottom:4px;">SubMarca</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.0rem;
               font-weight:700;color:#fff;">${r0.subMarca||'—'}</div>
           </div>
           <div style="background:rgba(255,255,255,0.14);border:1.5px solid rgba(255,255,255,0.28);
             border-radius:10px;padding:10px 16px;min-width:80px;">
-            <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
               letter-spacing:0.1em;color:rgba(255,255,255,0.6);margin-bottom:4px;">Modelo</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.0rem;
               font-weight:700;color:#fff;">${r0.modelo||'—'}</div>
           </div>
           <div style="background:rgba(255,255,255,0.9);border-radius:10px;
             padding:10px 16px;min-width:100px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
-            <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;
+            <div style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
               letter-spacing:0.1em;color:var(--green-mid);margin-bottom:4px;">🔖 Placa</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.15rem;
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;
               font-weight:800;color:var(--green-dark);letter-spacing:0.08em;">${r0.placa||'—'}</div>
           </div>
         </div>
@@ -12736,13 +12800,13 @@ function renderTrazabilidad(tarjeta, rows) {
         </div>
         <div style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.3);
           border-radius:12px;padding:14px 20px;text-align:center;">
-          <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;
+          <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;
             letter-spacing:0.1em;color:rgba(255,255,255,0.6);margin-bottom:4px;">Total Consumido 2026</div>
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.8rem;
             font-weight:700;color:#fff;line-height:1;">
             ${totalLitros.toLocaleString('es-MX',{minimumFractionDigits:1})}
           </div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.0rem;
             color:rgba(255,255,255,0.75);">Litros</div>
         </div>
       </div>
@@ -12801,7 +12865,7 @@ function renderTrazabilidad(tarjeta, rows) {
           <div class="traz-event-header">
             <div>
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;
+                <span style="font-family:Inter,sans-serif;font-size:0.65rem;
                   font-weight:700;text-transform:uppercase;letter-spacing:0.1em;
                   color:#aaa;">Periodo ${idx+1}</span>
                 <span class="traz-event-badge ${badgeCls}">${badgeTxt}</span>
@@ -12820,9 +12884,9 @@ function renderTrazabilidad(tarjeta, rows) {
                   <line x1="12" y1="12" x2="12" y2="16"/>
                   <line x1="10" y1="14" x2="14" y2="14"/>
                 </svg>
-                <span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;
+                <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;
                   letter-spacing:0.08em;color:rgba(255,255,255,0.65);">Ficha:</span>
-                <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.0rem;
                   font-weight:800;color:#fff;letter-spacing:0.05em;">${seg.ficha}</span>
               </div>` : ''}
             </div>
@@ -12888,8 +12952,8 @@ function renderTrazabilidad(tarjeta, rows) {
           const mesesList = [...seg.meses].sort((a,b)=>a-b).map(m=>MESES_N[m]||('Mes '+m)).join(', ');
           return `<tr>
             <td style="text-align:center;font-weight:700;color:#2d9e7e;">${i+1}</td>
-            <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--green-dark);">${seg.usuario}</td>
-            <td style="font-size:0.8rem;color:var(--green-mid);">${mesesList}</td>
+            <td style="font-family:Inter,sans-serif;font-weight:700;color:var(--green-dark);">${seg.usuario}</td>
+            <td style="font-size:0.82rem;color:var(--green-mid);">${mesesList}</td>
             <td class="r" style="font-weight:700;color:var(--green-dark);">${seg.litros.toLocaleString('es-MX',{minimumFractionDigits:1})} L</td>
             <td class="r">${seg.distancia.toLocaleString('es-MX')} km</td>
             <td class="r">${rend}</td>
@@ -12917,7 +12981,7 @@ function renderTrazabilidad(tarjeta, rows) {
   }
 
   // Watermark
-  html += `<div style="text-align:center;font-size:0.6rem;font-weight:700;text-transform:uppercase;
+  html += `<div style="text-align:center;font-size:0.68rem;font-weight:700;text-transform:uppercase;
     letter-spacing:0.12em;color:#ccc;margin-top:24px;padding-top:16px;border-top:1px solid #e8f5f0;">
     TRAZABILIDAD GENERADA — SACISC · Módulo Combustibles · PEMEX URCS Sur
   </div>`;
@@ -13104,17 +13168,17 @@ function renderCambiosModal() {
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;
       background:var(--off-white);border:1.5px solid var(--border);
       border-radius:10px;padding:12px 16px;margin-bottom:14px;">
-      <span style="font-size:0.62rem;font-weight:700;text-transform:uppercase;
+      <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;
         letter-spacing:0.1em;color:var(--green-mid);">Filtrar por Área Usuaria</span>
       <select id="cambiosFiltroArea" onchange="filtrarTablaCambios()"
         style="border:1.5px solid var(--border);border-radius:7px;padding:7px 12px;
-          font-family:'Barlow Condensed',sans-serif;font-size:0.9rem;font-weight:600;
+          font-family:Inter,sans-serif;font-size:0.85rem;font-weight:600;
           color:var(--green-dark);background:#fff;cursor:pointer;outline:none;min-width:180px;">
         <option value="">Todas las Áreas</option>
         ${[...new Set(tarjetasCambio.map(t=>t.areaUsuaria).filter(Boolean))].sort()
           .map(a=>`<option value="${a}">${a}</option>`).join('')}
       </select>
-      <span id="cambiosFiltroCount" style="font-family:'Barlow Condensed',sans-serif;
+      <span id="cambiosFiltroCount" style="font-family:Inter,sans-serif;
         font-size:0.82rem;font-weight:700;color:var(--green-mid);">
         ${tarjetasCambio.length} tarjetas
       </span>
@@ -13144,21 +13208,21 @@ function renderCambiosModal() {
               <td style="text-align:center;font-weight:700;color:var(--green-mid);">${i+1}</td>
               <td class="bold">${t.tarjeta}</td>
               <td style="font-weight:600;">${t.placa||'—'}</td>
-              <td style="font-size:0.8rem;color:#555;">${t.marca} ${t.subMarca} · ${t.tipo}</td>
-              <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;
-                color:var(--green-dark);font-size:0.88rem;">${t.areaUsuaria||'—'}</td>
-              <td style="font-size:0.8rem;color:#685860;font-weight:600;">
+              <td style="font-size:0.82rem;color:#555;">${t.marca} ${t.subMarca} · ${t.tipo}</td>
+              <td style="font-family:Inter,sans-serif;font-weight:700;
+                color:var(--green-dark);font-size:0.85rem;">${t.areaUsuaria||'—'}</td>
+              <td style="font-size:0.82rem;color:#685860;font-weight:600;">
                 ${t.usuarioAnterior}
-                ${t.tipoCambio==='ficha' ? `<div style="font-size:0.7rem;color:#888;font-weight:400;">Ficha: ${t.fichaAnterior||'—'}</div>` : ''}
+                ${t.tipoCambio==='ficha' ? `<div style="font-size:0.72rem;color:#888;font-weight:400;">Ficha: ${t.fichaAnterior||'—'}</div>` : ''}
               </td>
               <td style="text-align:center;color:var(--green-mid);font-size:1.1rem;font-weight:700;">→</td>
-              <td style="font-size:0.8rem;color:var(--green-dark);font-weight:700;">
+              <td style="font-size:0.82rem;color:var(--green-dark);font-weight:700;">
                 ${t.usuarioActual}
-                ${t.tipoCambio==='ficha' ? `<div style="font-size:0.7rem;color:var(--green-mid);font-weight:600;">Ficha: ${t.fichaActual||'—'}</div>` : ''}
+                ${t.tipoCambio==='ficha' ? `<div style="font-size:0.72rem;color:var(--green-mid);font-weight:600;">Ficha: ${t.fichaActual||'—'}</div>` : ''}
               </td>
               <td style="text-align:center;">
                 <span style="background:#e8f5f0;color:var(--green-dark);border-radius:10px;
-                  padding:3px 10px;font-size:0.75rem;font-weight:700;font-family:'Barlow Condensed',sans-serif;">
+                  padding:3px 10px;font-size:0.75rem;font-weight:700;font-family:Inter,sans-serif;">
                   ${MESES_N[t.mesUltimoCambio]||'—'} 2026
                 </span>
               </td>
@@ -13176,7 +13240,7 @@ function renderCambiosModal() {
         </tbody>
       </table>
     </div>
-    <div style="text-align:center;font-size:0.62rem;font-weight:700;text-transform:uppercase;
+    <div style="text-align:center;font-size:0.68rem;font-weight:700;text-transform:uppercase;
       letter-spacing:0.1em;color:#ccc;margin-top:20px;padding-top:14px;border-top:1px solid var(--border);">
       ALERTA DE TRAZABILIDAD — SACISC · Módulo Combustibles · PEMEX URCS Sur
     </div>`;
@@ -13332,7 +13396,7 @@ function abrirTransaccionesTarjeta(tarjeta) {
           </div>
           <button onclick="document.getElementById('txTarjetaModal').style.display='none'"
             style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50%;
-              width:30px;height:30px;cursor:pointer;font-size:1rem;flex-shrink:0;">✕</button>
+              width:30px;height:30px;cursor:pointer;font-size:1.0rem;flex-shrink:0;">✕</button>
         </div>
         <!-- KPIs -->
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
@@ -13342,8 +13406,8 @@ function abrirTransaccionesTarjeta(tarjeta) {
              promRend>0?['Rend. Prom.',promRend.toFixed(2)+' km/L']:null]
             .filter(Boolean).map(([l,v])=>`
             <div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:5px 12px;text-align:center;">
-              <div style="font-size:0.55rem;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.06em;">${l}</div>
-              <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;font-weight:900;color:#fff;">${v}</div>
+              <div style="font-size:0.65rem;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.06em;">${l}</div>
+              <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.0rem;font-weight:900;color:#fff;">${v}</div>
             </div>`).join('')}
         </div>
       </div>
@@ -13354,7 +13418,7 @@ function abrirTransaccionesTarjeta(tarjeta) {
           <input id="txTarjetaFiltro" type="text" placeholder="Filtrar por fecha, hora, estación..."
             oninput="filtrarTxTarjeta(this.value)"
             style="width:100%;padding:7px 70px 7px 32px;border:1.5px solid #c8ddd8;border-radius:8px;
-              font-size:0.8rem;outline:none;box-sizing:border-box;font-family:inherit;background:#fff;"
+              font-size:0.82rem;outline:none;box-sizing:border-box;font-family:Inter,sans-serif;background:#fff;"
             onfocus="this.style.borderColor='#2d9e7e'" onblur="this.style.borderColor='#c8ddd8'">
           <span id="txTarjetaCount" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
             font-size:0.68rem;color:#888;pointer-events:none;"></span>
@@ -13367,7 +13431,7 @@ function abrirTransaccionesTarjeta(tarjeta) {
             <tr style="background:#f0f7f4;position:sticky;top:0;z-index:1;">
               ${['Mes','Fecha','Hora','Estación','Producto','Litros','Km','Rendimiento']
                 .map((h,i)=>`<th style="padding:8px 10px;text-align:${i>=5?'right':'left'};
-                  font-size:0.63rem;font-weight:800;color:#555;text-transform:uppercase;
+                  font-size:0.68rem;font-weight:800;color:#555;text-transform:uppercase;
                   letter-spacing:0.06em;border-bottom:2px solid #c8ddd8;">${h}</th>`).join('')}
             </tr>
           </thead>
@@ -13376,7 +13440,7 @@ function abrirTransaccionesTarjeta(tarjeta) {
               const mesLts = regs.reduce((s,r)=>s+r.litros,0);
               const hdr = `<tr class="tx-mes-hdr">
                 <td colspan="8" style="padding:5px 10px;background:#1e5b4f;
-                  font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;
+                  font-family:Inter,sans-serif;font-size:0.82rem;
                   font-weight:800;color:#fff;letter-spacing:0.04em;">
                   ${MESES_N[mes]||mes} · ${regs.length} carga${regs.length!==1?'s':''} · ${fmt(mesLts)} L
                 </td></tr>`;
@@ -13391,11 +13455,11 @@ function abrirTransaccionesTarjeta(tarjeta) {
                 return `<tr class="tx-tarjeta-row" data-search="${srch}" style="background:${bg};">
                   <td style="padding:6px 10px;border-bottom:1px solid #eee;">
                     <span style="background:#e8f5f0;color:#1e5b4f;border-radius:4px;
-                      padding:1px 6px;font-size:0.7rem;font-weight:700;">${MESES_C[mes]||mes}</span></td>
-                  <td style="padding:6px 10px;border-bottom:1px solid #eee;color:#555;font-size:0.8rem;">
+                      padding:1px 6px;font-size:0.72rem;font-weight:700;">${MESES_C[mes]||mes}</span></td>
+                  <td style="padding:6px 10px;border-bottom:1px solid #eee;color:#555;font-size:0.82rem;">
                     ${String(r.fecha||'—').substring(0,10)}</td>
                   <td style="padding:6px 10px;border-bottom:1px solid #eee;">
-                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.0rem;
                       font-weight:800;color:#1e5b4f;">${String(r.hora||'—').substring(0,5)}</span></td>
                   <td style="padding:6px 10px;border-bottom:1px solid #eee;">
                     <span style="font-size:0.75rem;font-weight:700;">${estNom}</span>
@@ -13404,7 +13468,7 @@ function abrirTransaccionesTarjeta(tarjeta) {
                     <span style="background:#e8f5f0;color:#1e5b4f;border-radius:6px;
                       padding:2px 7px;font-size:0.72rem;font-weight:700;">${r.producto||'—'}</span></td>
                   <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;">
-                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.0rem;
                       font-weight:900;color:#1e5b4f;">${fmt(r.litros)}</span>
                     <span style="font-size:0.68rem;color:#aaa;"> L</span></td>
                   <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;
@@ -13421,7 +13485,7 @@ function abrirTransaccionesTarjeta(tarjeta) {
               <td colspan="5" style="padding:8px 10px;font-size:0.72rem;font-weight:800;
                 color:#555;text-transform:uppercase;letter-spacing:0.06em;">TOTAL</td>
               <td style="padding:8px 10px;text-align:right;">
-                <span style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:1.0rem;
                   font-weight:900;color:#1e5b4f;">${fmt(totLts)}</span>
                 <span style="font-size:0.72rem;color:#aaa;"> L</span></td>
               <td style="padding:8px 10px;text-align:right;color:#666;font-size:0.78rem;">
@@ -13538,7 +13602,7 @@ function renderRankDet(usuario, rows) {
           style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;
             background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.35);
             color:#fff;border-radius:8px;padding:7px 14px;cursor:pointer;
-            font-family:'Barlow Condensed',sans-serif;font-size:0.82rem;font-weight:800;
+            font-family:Inter,sans-serif;font-size:0.82rem;font-weight:800;
             letter-spacing:0.06em;text-transform:uppercase;
             transition:background 0.2s;"
           onmouseover="this.style.background='rgba(255,255,255,0.25)'"
@@ -13617,7 +13681,7 @@ function renderRankDet(usuario, rows) {
         </tr></tfoot>
       </table>
     </div>
-    <div style="text-align:center;font-size:0.6rem;font-weight:700;text-transform:uppercase;
+    <div style="text-align:center;font-size:0.68rem;font-weight:700;text-transform:uppercase;
       letter-spacing:0.1em;color:#ccc;margin-top:20px;padding-top:14px;
       border-top:1px solid var(--border);">
       DETALLE DE TARJETAS — SACISC · Módulo Combustibles · PEMEX URCS Sur
@@ -13774,47 +13838,46 @@ function renderExecDesglosado(rows) {
 
   // Tbody
   document.getElementById('desgTableBody').innerHTML = lista.map((t,i) => {
-    const rend    = t.cargas ? (t.rendSum/t.cargas).toFixed(2) : '—';
-    const rendNum = t.cargas ? t.rendSum/t.cargas : 0;
-    const rendColor = rendNum >= 10 ? '#27ae60' : rendNum >= 6 ? '#e67e22' : '#c0392b';
-    const mesesList = [...t.meses].sort((a,b)=>a-b).map(m=>MESES_SHORT_D[m]||m).join(', ');
-    const rowBg = i%2===0 ? '' : 'background:#f7faf9;';
-    return `<tr style="${rowBg}">
-      <td style="text-align:center;font-weight:700;color:var(--green-mid);font-family:'Barlow Condensed',sans-serif;">${i+1}</td>
-      <td style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--green-dark);">${t.tarjeta}</td>
-      <td style="font-weight:600;">${t.placa||'—'}</td>
-      <td style="font-size:0.81rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;" title="${t.usuario}">${t.usuario||'—'}</td>
-      <td style="font-size:0.72rem;color:#555;font-family:'Barlow Condensed',sans-serif;font-weight:600;">${t.clasificacion||'—'}</td>
-      <td style="font-size:0.76rem;color:#444;">${t.marca||'—'}</td>
-      <td style="font-size:0.76rem;color:#666;">${t.modelo||'—'}</td>
-      <td style="text-align:center;">${t.tenencia==='ARRENDADO'
-        ? '<span style="background:#fff3e0;color:#e65100;border-radius:6px;padding:2px 7px;font-size:0.68rem;font-weight:700;">🔶 Arr.</span>'
+    const rend     = t.cargas ? (t.rendSum/t.cargas).toFixed(2) : '—';
+    const rendNum  = t.cargas ? t.rendSum/t.cargas : 0;
+    const rendCls  = rendNum >= 10 ? 'chip-rend-ok' : rendNum >= 6 ? 'chip-rend-med' : 'chip-rend-bad';
+    const mesesList= [...t.meses].sort((a,b)=>a-b).map(m=>MESES_SHORT_D[m]||m).join(', ');
+    const esEquipo = TIPOS_EQUIPO.has((t.clasificacion||'').toUpperCase());
+    return `<tr>
+      <td class="tc bold" style="color:var(--green-mid);">${i+1}</td>
+      <td class="bold">${t.tarjeta}</td>
+      <td class="mono">${t.placa||'—'}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${t.usuario}">${t.usuario||'—'}</td>
+      <td class="muted">${t.clasificacion||'—'}</td>
+      <td class="muted">${t.marca||'—'}</td>
+      <td class="muted">${t.modelo||'—'}</td>
+      <td class="tc">${t.tenencia==='ARRENDADO'
+        ? '<span class="chip chip-arr">◆ Arr.</span>'
         : t.tenencia==='PROPIO'
-          ? '<span style="background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:2px 7px;font-size:0.68rem;font-weight:700;">🟢 Prop.</span>'
+          ? '<span class="chip chip-prop">● Prop.</span>'
           : '—'
       }</td>
-      <td><span style="background:#e8f5f0;color:var(--green-dark);border-radius:6px;padding:2px 7px;font-size:0.72rem;font-weight:700;">${t.producto||'—'}</span></td>
-      <td style="font-size:0.78rem;color:#2d6b5a;font-family:'Barlow Condensed',sans-serif;font-weight:600;">${t.sub||'—'}</td>
-      <td style="font-size:0.78rem;color:#555;font-family:'Barlow Condensed',sans-serif;">${t.gerencia||'—'}</td>
-      <td style="font-size:0.78rem;color:var(--green-dark);font-family:'Barlow Condensed',sans-serif;font-weight:600;">${t.area||'—'}</td>
-      <td style="text-align:right;font-weight:700;color:var(--green-dark);font-variant-numeric:tabular-nums;">${t.litros.toLocaleString('es-MX',{minimumFractionDigits:1})} L</td>
-      <td style="text-align:right;font-variant-numeric:tabular-nums;color:#555;">${!TIPOS_EQUIPO.has((t.clasificacion||'').toUpperCase()) ? t.distancia.toLocaleString('es-MX')+' km' : '—'}</td>
-      <td style="text-align:right;"><span style="background:${rendColor}22;color:${rendColor};border-radius:6px;padding:2px 8px;font-size:0.76rem;font-weight:700;font-family:'Barlow Condensed',sans-serif;">${!TIPOS_EQUIPO.has((t.clasificacion||'').toUpperCase()) ? rend+' km/L' : '—'}</span></td>
-      <td style="text-align:center;font-size:0.76rem;color:#666;">${mesesList}</td>
-      <td style="text-align:center;">${t.cargas}</td>
+      <td class="tc"><span class="chip ${t.producto==='DIESEL'?'chip-diesel':'chip-magna'}">${t.producto||'—'}</span></td>
+      <td class="accent">${t.sub||'—'}</td>
+      <td class="muted">${t.gerencia||'—'}</td>
+      <td class="bold">${t.area||'—'}</td>
+      <td class="tr bold">${t.litros.toLocaleString('es-MX',{minimumFractionDigits:1})} L</td>
+      <td class="tr muted">${!esEquipo ? t.distancia.toLocaleString('es-MX')+' km' : '—'}</td>
+      <td class="tc"><span class="chip ${rendCls}">${!esEquipo ? rend+' km/L' : '—'}</span></td>
+      <td class="tc muted">${mesesList}</td>
+      <td class="tc">${t.cargas}</td>
     </tr>`;
   }).join('');
 
   // Tfoot
   document.getElementById('desgTableFoot').innerHTML = `<tr style="background:#e3f0ec;border-top:2px solid var(--green-mid);">
-    <td colspan="12" style="text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:0.88rem;font-weight:800;color:var(--green-dark);letter-spacing:0.05em;">
+    <td colspan="12" class="tc" style="font-weight:800;color:var(--green-dark);letter-spacing:0.05em;">
       TOTAL — ${lista.length} tarjetas
     </td>
-    <td style="text-align:right;font-weight:800;color:var(--green-dark);">${totalLitros.toLocaleString('es-MX',{minimumFractionDigits:1})} L</td>
-    <td style="text-align:right;font-weight:800;color:#555;">${totalDist.toLocaleString('es-MX')} km</td>
-    <td></td>
-    <td></td>
-    <td style="text-align:center;font-weight:800;color:var(--green-dark);">${totalCargas}</td>
+    <td class="tr bold">${totalLitros.toLocaleString('es-MX',{minimumFractionDigits:1})} L</td>
+    <td class="tr muted">${totalDist.toLocaleString('es-MX')} km</td>
+    <td></td><td></td>
+    <td class="tc bold">${totalCargas}</td>
   </tr>`;
 }
 
@@ -14495,9 +14558,10 @@ function renderDesgloseDiario(estId) {
   // que puedan cubrir ese hueco. Si hay más vales, las líneas de simulación
   // ya representan la cobertura — no amontonar marcas.
   const agotamientos = [];
+  let _valesAgotExp  = []; // scope externo para exponer a simData
   if (promDiario > 0 && nivelUltimo > 0) {
     const _prodsAgot = combFilt ? [combFilt] : ['MAGNA','DIESEL'];
-    const _valesAgot = [];
+    let _valesAgot = [];
     _prodsAgot.forEach(prod => {
       const _blkA = VALES_RETIRO[estId+'||'+prod]?.meses?.[mesNum];
       _blkA?.vales?.forEach(v => {
@@ -14535,6 +14599,7 @@ function renderDesgloseDiario(estId) {
         if (_diaProx > diasEnMes) break; // cubre el mes, no hay más agotamientos
       }
     }
+    _valesAgotExp = _valesAgot; // exponer al scope externo
   }
   let diaAgotamiento = agotamientos.length ? agotamientos[0].dia : null;
 
@@ -15017,6 +15082,12 @@ function renderDesgloseDiario(estId) {
   svg += '</svg>';
   document.getElementById('ddChartWrap').innerHTML = svg;
 
+  // Exponer al panel de simulación los datos ya calculados por la Super Gráfica
+  _DD.simData = {
+    promDiario, nivelUltimo, ultimoDia, diasEnMes,
+    agotamientos, _valesAgot: _valesAgotExp
+  };
+
   // Renderizar panel de simulación de abastecimiento
   if (estId && estId !== '_total') renderSimPanel(estId);
   else { const p = document.getElementById('ddSimPanel'); if(p) p.style.display='none'; }
@@ -15042,228 +15113,229 @@ function toggleSimPanel() {
 
 function renderSimPanel(estId) {
   const { mesNum, anioNum, combFilt } = _DD;
-  const fmt  = n => Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1});
+  const fmt       = n => Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1});
   const diasEnMes = new Date(anioNum, mesNum, 0).getDate();
-  const MES_N = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const MES_N2    = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const mesSig    = mesNum===12?1:mesNum+1;
+  const anioSig   = mesNum===12?anioNum+1:anioNum;
+  const CAPS_SIM  = {'7394':{MAGNA:20000,DIESEL:0},'9602':{MAGNA:20000,DIESEL:30000},'9851':{MAGNA:20000,DIESEL:30000},'10885':{MAGNA:20000,DIESEL:20000}};
+  const panel     = document.getElementById('ddSimPanel');
+  const badge     = document.getElementById('ddSimBadge');
+  const body      = document.getElementById('ddSimBody');
 
-  // Obtener vales pendientes/en surtimiento de la estación activa
-  const prods = combFilt ? [combFilt] : ['MAGNA','DIESEL'];
+  // ── Obtener vales pendientes ─────────────────────────────────────────
+  const prods = combFilt?[combFilt]:['MAGNA','DIESEL'];
   let valesPend = [];
-  prods.forEach(prod => {
-    const blk = VALES_RETIRO[estId+'||'+prod]?.meses?.[mesNum];
-    if (!blk?.vales?.length) return;
-    blk.vales.forEach(v => {
-      const es = String(v.estatus||'').toUpperCase().trim();
-      if (es === 'SURTIDO' || es === 'CANCELADO') return; // ya llegó o fue cancelado
-      valesPend.push({ ...v, prod, est: estId });
+  prods.forEach(prod=>{
+    const blk=VALES_RETIRO[estId+'||'+prod]?.meses?.[mesNum];
+    if(!blk?.vales?.length) return;
+    blk.vales.forEach(v=>{
+      const es=String(v.estatus||'').toUpperCase().trim();
+      if(es==='SURTIDO'||es==='CANCELADO') return;
+      valesPend.push({...v,prod,est:estId});
     });
   });
 
-  // Consumo promedio diario — estructura real: byEst[id].litros = {dia: litros}
-  const byEstData     = _DD.byEst[estId] || {};
-  const litrosPorDia  = byEstData.litros || {};
-  const diasConConsL  = Object.values(litrosPorDia).filter(v=>v>0).length;
-  const totalLitros   = Object.values(litrosPorDia).reduce((s,v)=>s+(v||0),0);
-  const consDiario    = diasConConsL>0 ? totalLitros/diasConConsL : 0;
+  const sim        = _DD.simData||{};
+  const promDiario = sim.promDiario||0;
+  const nivelAct   = sim.nivelUltimo||0;
+  const ultimoDia  = sim.ultimoDia||0;
+  const valesOrd   = sim._valesAgot||valesPend;
+  const capTanque  = CAPS_SIM[estId]?.[combFilt||valesOrd[0]?.prod||'MAGNA']||20000;
 
-  // Último día con consumo registrado
-  const diasConDatos  = Object.keys(litrosPorDia).map(Number)
-    .filter(d=>litrosPorDia[d]>0).sort((a,b)=>a-b);
-  const ultimoDia     = diasConDatos.length ? diasConDatos[diasConDatos.length-1] : 0;
-
-  // Nivel actual = invIni + entradas surtidas − consumo real acumulado
-  const prod0  = combFilt || prods[0] || 'MAGNA';
-  const invIni = INVENTARIO_TANQUES[estId+'||'+prod0]?.meses?.[mesNum]?.invInicial || 0;
-  let entSurt  = 0;
-  prods.forEach(prod => {
-    const blk = VALES_RETIRO[estId+'||'+prod]?.meses?.[mesNum];
-    blk?.vales?.forEach(v => {
-      if (String(v.estatus||'').toUpperCase().trim()==='SURTIDO') entSurt += v.vol||0;
-    });
-  });
-  const nivelActual = Math.max(0, invIni + entSurt - totalLitros);
-
-  const panel   = document.getElementById('ddSimPanel');
-  const badge   = document.getElementById('ddSimBadge');
-  const body    = document.getElementById('ddSimBody');
-
-  if (!valesPend.length) {
-    panel.style.display = 'block';
-    badge.textContent   = 'Sin vales pendientes';
-    badge.style.background = '#aaa';
-    body.innerHTML = `<div style="text-align:center;padding:20px;color:#aaa;font-size:0.8rem;">
-      No hay vales pendientes de surtir para esta estación en ${MES_N[mesNum]}.</div>`;
+  panel.style.display='block';
+  if(!valesPend.length){
+    badge.textContent='Sin vales pendientes'; badge.style.background='#aaa';
+    body.innerHTML='<div style="text-align:center;padding:20px;color:#aaa;font-size:0.8rem;">Sin vales pendientes.</div>';
     return;
   }
+  badge.textContent=valesPend.length+' vale'+(valesPend.length>1?'s':'')+' pendiente'+(valesPend.length>1?'s':'');
+  badge.style.background='#ff9800'; badge.style.color='#fff';
 
-  panel.style.display   = 'block';
-  badge.textContent     = valesPend.length + ' vale' + (valesPend.length>1?'s':'') + ' pendiente' + (valesPend.length>1?'s':'');
-  badge.style.background = '#ff9800';
-  badge.style.color      = '#fff';
+  // ── Cadena secuencial con lógica de cierre de mes ────────────────────
+  // REGLA: Un vale no ejercido en su mes = vale quemado.
+  // Si el agotamiento cae en mes siguiente, el último vale DEBE ejercerse
+  // el día 31 (aunque haya volumen en tanque). Los vales posteriores se cancelan.
+  const valesCalc = [];
+  if(promDiario>0 && nivelAct>0){
+    let nivelSim = nivelAct;
+    const dias1   = Math.floor(nivelSim/promDiario);
+    let diaAgotPrev = ultimoDia+dias1;  // día en que se agota el nivel actual
+    nivelSim -= dias1*promDiario;
 
-  // Calcular escenarios por cada vale pendiente
-  const cards = valesPend.map((v, idx) => {
-    const vol   = v.vol || 0;
-    const prod  = v.prod;
-    const folio = v.folio || ('Vale '+(idx+1));
-    const es    = String(v.estatus||'').toUpperCase().trim();
-    const esBadge = es.includes('EN SURT')
-      ? '<span style="background:#ff9800;color:#fff;border-radius:4px;padding:1px 6px;font-size:0.65rem;font-weight:800;">En Surtimiento</span>'
-      : '<span style="background:#c0392b;color:#fff;border-radius:4px;padding:1px 6px;font-size:0.65rem;font-weight:800;">Pendiente</span>';
+    valesOrd.forEach((v,i)=>{
+      const vol         = v.vol||0;
+      // Fecha en que SE NECESITA este vale (cuando se agota el anterior)
+      let diaSurt       = i===0 ? diaAgotPrev : valesCalc[i-1].diaAgot;
 
-    // Slider: día estimado de llegada — siempre de día 1 a fin de mes
-    // Default: día siguiente al último con datos (o día 1 si no hay datos)
-    const diaMin     = 1;
-    const diaDefault = ultimoDia>0 ? Math.min(ultimoDia+1, diasEnMes) : 1;
+      // ── REGLA DE CIERRE DE MES ───────────────────────────────────────
+      // Si el vale anterior cubre más allá del fin de mes, este vale ya no
+      // puede esperar — debe ejercerse el día 31 o se quema.
+      const anteriorCubreMesSig = i>0 && valesCalc[i-1].diaAgot > diasEnMes;
+      // Este vale debe ejercerse el día 31 cuando:
+      // - El anterior cubre más allá del mes (hay volumen pero el vale vence)
+      // - O su fecha natural de surtimiento ya cayó en mes siguiente
+      const debeEjercerseDia31  = anteriorCubreMesSig && !valesCalc[i-1]?.accion?.includes('quemado');
 
-    // Función de simulación inline
-    const simId = 'sim_'+idx;
+      // Este vale se quema (cancelar) cuando:
+      // - El anterior fue ejercido forzosamente el día 31 Y ya cubre más allá del mes
+      // - O el anterior ya fue marcado como quemado (cadena rota)
+      const anteriorFueDetDia31 = i>0 && valesCalc[i-1].accion==='ejercer_dia31';
+      const anteriorSeQuema     = i>0 && valesCalc[i-1].accion==='cancelar_quemado';
+      const esteSeQuema         = anteriorSeQuema
+        || (anteriorFueDetDia31 && valesCalc[i-1].diaAgot > diasEnMes);
 
-    return `
-    <div style="border:1.5px solid #c8ddd8;border-radius:10px;background:#fff;
-      overflow:hidden;break-inside:avoid;page-break-inside:avoid;">
-      <!-- Card header -->
-      <div style="background:linear-gradient(135deg,#1e5b4f,#2d9e7e);
-        padding:8px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-        <div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:0.9rem;
-            font-weight:900;color:#fff;letter-spacing:0.04em;">${folio}</div>
-          <div style="font-size:0.62rem;color:rgba(255,255,255,0.75);margin-top:1px;">
-            ${fmt(vol)} L · ${prod} ${esBadge}</div>
-        </div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1.3rem;
-          font-weight:900;color:#11CD78;">${fmt(vol)} L</div>
-      </div>
-      <!-- Slider de día estimado de llegada -->
-      <div style="padding:10px 14px 6px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;
-          margin-bottom:4px;">
-          <span style="font-size:0.65rem;font-weight:700;text-transform:uppercase;
-            letter-spacing:0.06em;color:#888;">📅 Día estimado de llegada</span>
-          <span id="${simId}_dia" style="font-family:'Barlow Condensed',sans-serif;
-            font-size:1rem;font-weight:900;color:#1e5b4f;">Día ${diaDefault}</span>
-        </div>
-        <input type="range" min="1" max="${diasEnMes}" value="${diaDefault}" step="1"
-          style="width:100%;accent-color:#1e5b4f;"
-          oninput="actualizarSimVale(${idx}, this.value, ${nivelActual}, ${consDiario}, ${vol}, ${diasEnMes}, ${ultimoDia})">
-        <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:#ccc;">
-          <span>Día 1</span><span>Día ${diasEnMes}</span>
-        </div>
-      </div>
-      <!-- Resultado simulación -->
-      <div id="${simId}_result" style="padding:0 14px 12px;"></div>
-    </div>`;
+      const excedeCap  = (nivelSim+vol)>capTanque;
+      const excedente  = excedeCap?(nivelSim+vol)-capTanque:0;
+      const empalme    = i>0 && diaSurt===valesCalc[i-1].diaSurt;
+
+      let accion  = 'normal';   // normal | ejercer_dia31 | cancelar_quemado | empalme_cancelar
+      let sugerencia = null;
+
+      if(esteSeQuema){
+        // Este vale nunca podrá ejercerse — se quema
+        accion = 'cancelar_quemado';
+        sugerencia = {
+          tipo:'cancelar_quemado',
+          msg:'Este vale <strong>no podrá ejercerse</strong> porque el folio anterior ya cubre más allá del cierre del mes. '
+             +'Los vales no se transfieren al mes siguiente. '
+             +'<strong>Se recomienda cancelar este folio</strong> y programar nuevos vales para '+MES_N2[mesSig]+' '+anioSig+'.'
+        };
+        // Nivel simulado: este vale no se surte, no modifica el nivel
+        diaSurt = null;
+        valesCalc.push({folio:v.folio,vol,prod:v.prod,estatus:v.estatus,
+          diaSurt,nivelAlLlegar:null,nivelAlSurtir:null,diasAut:null,
+          diaAgot:null,accion,sugerencia});
+        return; // no continúa la cadena
+      }
+
+      if(debeEjercerseDia31){
+        // Este vale DEBE ejercerse el día 31 aunque haya volumen
+        accion  = 'ejercer_dia31';
+        diaSurt = diasEnMes; // forzar al último día del mes
+        sugerencia = {
+          tipo:'ejercer_dia31',
+          msg:'El folio anterior cubre más allá del cierre del mes. '
+             +'<strong>Detonar este vale el día '+diasEnMes+' de '+MES_N2[mesNum]+'</strong> aunque haya volumen en tanque. '
+             +'Si no se ejerce hoy, el vale se quemará al cierre del mes y recibirá un llamado de atención.'
+        };
+      } else if(empalme && excedeCap){
+        accion='empalme_cancelar';
+        sugerencia={tipo:'cancelar',msg:'Empalme en el mismo día + sobrecapacidad de <strong>'+fmt(excedente)+' L</strong>. <strong>Cancelar este folio</strong> — el tanque no puede recibir dos pipas simultáneamente.'};
+      } else if(empalme){
+        accion='empalme';
+        sugerencia={tipo:'advertencia',msg:'Empalme: mismo día que el folio anterior. La estación no puede recibir dos pipas simultáneamente. Reprogramar o cancelar.'};
+      } else if(excedeCap){
+        accion='exceso';
+        sugerencia={tipo:'exceso',msg:'El volumen excede la capacidad del tanque en <strong>'+fmt(excedente)+' L</strong>. Revisar programación.'};
+      }
+
+      const nivelAlLlegar = Math.max(0,nivelSim);
+      nivelSim += vol;
+      const nivelAlSurtir = nivelSim;
+      const diasAut       = Math.floor(nivelSim/promDiario);
+      const diaAgot       = diaSurt+diasAut;
+
+      valesCalc.push({folio:v.folio,vol,prod:v.prod,estatus:v.estatus,
+        diaSurt,nivelAlLlegar,nivelAlSurtir,diasAut,diaAgot,
+        excedeCap,excedente,empalme,accion,sugerencia});
+      nivelSim -= diasAut*promDiario;
+      diaAgotPrev = diaAgot;
+    });
+  }
+
+  // ── Info bar ──────────────────────────────────────────────────────────
+  const diaAgot1 = valesCalc.length>0?valesCalc[0].diaSurt:null;
+  const fmtDia = d => {
+    if (!d && d !== 0) return '—';
+    if (d <= diasEnMes) return 'Día ' + d + ' ' + MES_N2[mesNum];
+    // Calcular fecha real: d días desde el inicio del mes actual
+    const fechaBase = new Date(anioNum, mesNum - 1, 1); // 1 del mes actual
+    fechaBase.setDate(fechaBase.getDate() + d - 1);     // sumar d-1 días
+    const diaReal  = fechaBase.getDate();
+    const mesReal  = fechaBase.getMonth() + 1;
+    const anioReal = fechaBase.getFullYear();
+    return 'Día ' + diaReal + ' ' + MES_N2[mesReal] + (anioReal !== anioNum ? ' ' + anioReal : '');
+  };
+
+  const infoBar = '<div style="background:#f0f7f4;border-radius:8px;padding:10px 16px;margin-bottom:14px;border-left:3px solid #2d9e7e;">'
+    +'<div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.75rem;">'
+    +'<div><span style="color:#888;">Nivel actual:</span> <b style="color:#1e5b4f;">'+fmt(nivelAct)+' L</b></div>'
+    +'<div><span style="color:#888;">Consumo prom./día:</span> <b style="color:#1e5b4f;">'+fmt(promDiario)+' L/día</b></div>'
+    +'<div><span style="color:#888;">Sin surtimiento se agota el:</span> <b style="color:#c0392b;">'+(diaAgot1?fmtDia(diaAgot1):'—')+'</b></div>'
+    +'<div><span style="color:#888;">Cap. tanque:</span> <b style="color:#555;">'+fmt(capTanque)+' L</b></div>'
+    +'</div></div>';
+
+  // ── Estilos por tipo de sugerencia ───────────────────────────────────
+  const SUG_EST = {
+    ejercer_dia31:   {bg:'#fff8e1',border:'#f39c12',icon:'⚡',label:'ACCIÓN URGENTE: DETONAR HOY DÍA '+diasEnMes, color:'#e67e22'},
+    cancelar_quemado:{bg:'#fff0f0',border:'#c0392b',icon:'🚫',label:'CANCELAR — VALE SE QUEMARÍA',              color:'#c0392b'},
+    cancelar:        {bg:'#fff0f0',border:'#c0392b',icon:'🚫',label:'ACCIÓN SUGERIDA: CANCELAR',                color:'#c0392b'},
+    advertencia:     {bg:'#fff8e1',border:'#e67e22',icon:'⚠️',label:'ADVERTENCIA: EMPALME',                     color:'#e67e22'},
+    exceso:          {bg:'#fff3cd',border:'#f39c12',icon:'⚡',label:'ADVERTENCIA: SOBRECAPACIDAD',              color:'#e67e22'},
+    acumulacion:     {bg:'#f3e5f5',border:'#8e44ad',icon:'📋',label:'AVISO: PROGRAMACIÓN EXCEDIDA',            color:'#8e44ad'},
+  };
+
+  // ── Cards ─────────────────────────────────────────────────────────────
+  const cards = valesPend.map((v,idx)=>{
+    const c   = valesCalc[idx]||{};
+    const es  = String(v.estatus||'').toUpperCase().trim();
+    const esB = es.includes('EN SURT')
+      ? '<span style="background:#ff9800;color:#fff;border-radius:4px;padding:1px 7px;font-size:0.6rem;font-weight:800;">En Surtimiento</span>'
+      : '<span style="background:#c0392b;color:#fff;border-radius:4px;padding:1px 7px;font-size:0.6rem;font-weight:800;">Pendiente</span>';
+
+    const esQuemado    = c.accion==='cancelar_quemado';
+    const esDetDia31   = c.accion==='ejercer_dia31';
+    const agotEnMes    = c.diaAgot && c.diaAgot<=diasEnMes;
+    const agotCol      = !c.diaAgot?'#aaa':agotEnMes?'#c0392b':'#27ae60';
+    const agotLbl      = !c.diaAgot?'No aplica':agotEnMes?'⚠ Se agota: '+fmtDia(c.diaAgot):'✅ Cubre hasta '+fmtDia(c.diaAgot);
+    const bdrCol       = esQuemado?'#c0392b':esDetDia31?'#f39c12':c.sugerencia?'#f39c12':'#c8ddd8';
+    const headerBg     = esQuemado?'linear-gradient(135deg,#7f1d1d,#c0392b)':esDetDia31?'linear-gradient(135deg,#7a4100,#e67e22)':'linear-gradient(135deg,#1e5b4f,#2d9e7e)';
+
+    const kpis = esQuemado
+      ? '<div style="padding:12px 14px;text-align:center;color:#c0392b;font-size:0.8rem;font-weight:700;">Este folio no tiene proyección de surtimiento en el mes actual.</div>'
+      : [
+          {icon:'📅',label:'Fecha est. surtimiento', val:fmtDia(c.diaSurt),                color: esDetDia31?'#e67e22':'#1e5b4f'},
+          {icon:'📉',label:'Nivel al llegar',         val:fmt(c.nivelAlLlegar||0)+' L',    color:'#e67e22'},
+          {icon:'📈',label:'Nivel al surtir',         val:fmt(c.nivelAlSurtir||0)+' L',    color:'#27ae60'},
+          {icon:'⏱', label:'Días de autonomía +pipa', val:(c.diasAut||0)+' días',          color:'#1565c0'},
+          {icon:'🔴',label:'Agotamiento estimado',    val:fmtDia(c.diaAgot),               color:agotCol},
+        ].map(k=>
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0;">'
+          +'<span style="font-size:0.68rem;color:#888;">'+k.icon+' '+k.label+'</span>'
+          +'<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:0.9rem;font-weight:800;color:'+k.color+';">'+k.val+'</span>'
+          +'</div>'
+        ).join('');
+
+    const sugHTML = c.sugerencia?(()=>{
+      const tipo_sug = c.sugerencia.tipo==='ejercer_dia31'?'ejercer_dia31'
+                     : c.sugerencia.tipo==='cancelar_quemado'?'cancelar_quemado'
+                     : c.sugerencia.tipo;
+      const s = SUG_EST[tipo_sug]||SUG_EST.advertencia;
+      return '<div style="margin:8px 14px 12px;padding:9px 12px;border-radius:6px;background:'+s.bg+';border-left:3px solid '+s.border+';">'
+        +'<div style="font-size:0.65rem;font-weight:800;text-transform:uppercase;color:'+s.color+';letter-spacing:0.05em;margin-bottom:4px;">'+s.icon+' '+s.label+'</div>'
+        +'<div style="font-size:0.7rem;color:#444;line-height:1.5;">'+c.sugerencia.msg+'</div></div>';
+    })():'';
+
+    const resultBar = !esQuemado
+      ? '<div style="margin:8px 14px;padding:7px 12px;border-radius:6px;background:'+(agotEnMes?'#fff3f3':'#e8f5e9')+';border-left:3px solid '+agotCol+';font-family:\'Barlow Condensed\',sans-serif;font-size:0.82rem;font-weight:800;color:'+agotCol+';">'+agotLbl+'</div>'
+      : '';
+
+    return '<div style="border:1.5px solid '+bdrCol+';border-radius:10px;background:#fff;overflow:hidden;">'
+      +'<div style="background:'+headerBg+';padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+      +'<div><div style="font-family:\'Barlow Condensed\',sans-serif;font-size:0.95rem;font-weight:900;color:#fff;">'+(v.folio||'Vale '+(idx+1))+'</div>'
+      +'<div style="font-size:0.62rem;color:rgba(255,255,255,0.75);margin-top:2px;">'+v.prod+' · '+esB+'</div></div>'
+      +'<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:1.3rem;font-weight:900;color:#11CD78;">'+fmt(v.vol||0)+' L</div>'
+      +'</div>'
+      +'<div style="padding:8px 14px 4px;">'+kpis+'</div>'
+      +resultBar
+      +sugHTML
+      +'</div>';
   }).join('');
 
-  body.innerHTML = `
-    <!-- Info del estado actual -->
-    <div style="background:#f0f7f4;border-radius:8px;padding:10px 14px;
-      margin-bottom:12px;border-left:3px solid #2d9e7e;font-size:0.75rem;">
-      <div style="display:flex;gap:24px;flex-wrap:wrap;">
-        <div><span style="color:#888;">Nivel actual estimado:</span>
-          <b style="color:#1e5b4f;margin-left:4px;">${fmt(nivelActual)} L</b></div>
-        <div><span style="color:#888;">Consumo prom./día:</span>
-          <b style="color:#1e5b4f;margin-left:4px;">${fmt(consDiario)} L/día</b></div>
-        <div><span style="color:#888;">Días restantes sin pipa:</span>
-          <b style="color:${consDiario>0&&nivelActual/consDiario<7?'#c0392b':'#1e5b4f'};margin-left:4px;">
-            ${consDiario>0?Math.floor(nivelActual/consDiario)+' días':'—'}</b></div>
-        <div><span style="color:#888;">Días en mes:</span>
-          <b style="color:#555;margin-left:4px;">${diasEnMes} días</b></div>
-      </div>
-    </div>
-    <!-- Cards de vales -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">
-      ${cards}
-    </div>`;
-
-  // Inicializar todos los sliders con su valor default
-  valesPend.forEach((v, idx) => {
-    const diasEnMesL = new Date(anioNum, mesNum, 0).getDate();
-    const diaMin     = Math.max(1, ultimoDia);
-    const diaDefault = Math.min(diaMin+1, diasEnMesL);
-    actualizarSimVale(idx, diaDefault, nivelActual, consDiario, v.vol||0, diasEnMesL, ultimoDia);
-  });
+  body.innerHTML = infoBar+'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">'+cards+'</div>';
 }
 
-function actualizarSimVale(idx, diaLlegada, nivelActual, consDiario, volPipa, diasEnMes, ultimoDia) {
-  const simId = 'sim_'+idx;
-  const diaEl = document.getElementById(simId+'_dia');
-  const resEl = document.getElementById(simId+'_result');
-  if (!diaEl || !resEl) return;
-
-  diaLlegada = parseInt(diaLlegada);
-  diaEl.textContent = 'Día ' + diaLlegada;
-  const fmt = n => Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1});
-
-  // Nivel proyectado al día de llegada (sin la pipa)
-  const diasTranscurridos = Math.max(0, diaLlegada - ultimoDia);
-  const nivelAlLlegar     = Math.max(0, nivelActual - consDiario * diasTranscurridos);
-  // Nivel después de la pipa
-  const nivelConPipa      = nivelAlLlegar + volPipa;
-  // Días adicionales que da la pipa
-  const diasConPipa       = consDiario>0 ? Math.floor(nivelConPipa / consDiario) : diasEnMes;
-  // Día de agotamiento con la pipa
-  const diaAgotamiento    = diaLlegada + diasConPipa;
-  // ¿Alcanza hasta fin de mes?
-  const alcanzaMes        = diaAgotamiento >= diasEnMes;
-  // Consumo que falta en el mes después de la pipa
-  const diasRestantesMes  = diasEnMes - diaLlegada;
-  const consumoRestante   = diasRestantesMes * consDiario;
-  const saldoFinMes       = nivelConPipa - consumoRestante;
-
-  const col   = alcanzaMes ? '#27ae60' : '#c0392b';
-  const icon  = alcanzaMes ? '✅' : '⚠️';
-  const msg   = alcanzaMes
-    ? `Cubre hasta el fin de mes con <b style="color:#27ae60">${fmt(Math.max(0,saldoFinMes))} L</b> de saldo`
-    : `Se agota estimado el <b style="color:#c0392b">día ${Math.min(diaAgotamiento, diasEnMes)}</b> — faltan ${fmt(Math.abs(saldoFinMes))} L`;
-
-  resEl.innerHTML = `
-    <div style="display:grid;gap:5px;">
-      <div style="display:flex;gap:8px;align-items:stretch;">
-        <div style="flex:1;background:#f0f7f4;border-radius:6px;padding:7px 10px;text-align:center;">
-          <div style="font-size:0.58rem;color:#888;text-transform:uppercase;letter-spacing:0.06em;">
-            Nivel al llegar</div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;
-            font-weight:900;color:#e67e22;">${fmt(nivelAlLlegar)} L</div>
-        </div>
-        <div style="flex:1;background:#e8f5e9;border-radius:6px;padding:7px 10px;text-align:center;">
-          <div style="font-size:0.58rem;color:#888;text-transform:uppercase;letter-spacing:0.06em;">
-            Nivel con pipa</div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;
-            font-weight:900;color:#1e5b4f;">${fmt(nivelConPipa)} L</div>
-        </div>
-        <div style="flex:1;background:#e8f0fb;border-radius:6px;padding:7px 10px;text-align:center;">
-          <div style="font-size:0.58rem;color:#888;text-transform:uppercase;letter-spacing:0.06em;">
-            Autonomía +pipa</div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;
-            font-weight:900;color:#1565c0;">${diasConPipa} días</div>
-        </div>
-      </div>
-      <!-- Diagnóstico -->
-      <div style="background:${alcanzaMes?'#e8f5e9':'#fde8e8'};border-radius:6px;
-        padding:7px 12px;font-size:0.72rem;color:#555;border-left:3px solid ${col};">
-        ${icon} ${msg}
-      </div>
-      <!-- Mini barra de progreso del mes -->
-      <div style="background:#eee;border-radius:4px;height:6px;overflow:hidden;position:relative;">
-        <!-- Consumido hasta hoy -->
-        <div style="position:absolute;left:0;top:0;height:100%;
-          background:#c8ddd8;width:${Math.min(100,(ultimoDia/diasEnMes)*100).toFixed(1)}%;"></div>
-        <!-- Llegada pipa -->
-        <div style="position:absolute;top:0;height:100%;width:2px;background:#1e5b4f;
-          left:${Math.min(100,(diaLlegada/diasEnMes)*100).toFixed(1)}%;"></div>
-        <!-- Agotamiento -->
-        ${!alcanzaMes?`<div style="position:absolute;top:0;height:100%;width:2px;background:#c0392b;
-          left:${Math.min(100,(Math.min(diaAgotamiento,diasEnMes)/diasEnMes)*100).toFixed(1)}%;"></div>`:''}
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:0.58rem;color:#aaa;">
-        <span>Día 1</span>
-        <span style="color:#1e5b4f;font-weight:700;">📦 Día ${diaLlegada}</span>
-        ${!alcanzaMes?`<span style="color:#c0392b;font-weight:700;">⚠ Día ${Math.min(diaAgotamiento,diasEnMes)}</span>`:'<span style="color:#27ae60;font-weight:700;">✅ Fin mes</span>'}
-        <span>Día ${diasEnMes}</span>
-      </div>
-    </div>`;
-}
 
 function cerrarDesgloseDiario() {
   document.getElementById('desgDiarioModal').style.display = 'none';
