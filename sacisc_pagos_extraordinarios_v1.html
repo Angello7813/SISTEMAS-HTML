@@ -2493,6 +2493,13 @@ async function vaciarCatalogoSupabase(cat) {
 // Supabase (generar-formato7-trigger) lo esconde del lado del servidor.
 const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/generar-formato7-trigger`;
 
+// Igual que slugificar() del lado de Python: quita acentos/caracteres especiales
+// del nombre de archivo, para que ambos lados calculen el mismo nombre exacto.
+function slugificarNombreArchivo(texto) {
+  const sinAcentos = texto.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+  return sinAcentos.replace(/[^A-Za-z0-9_.-]/g, '_');
+}
+
 async function generarFormato7(folioId, btnEl) {
   const originalText = btnEl.textContent;
   btnEl.disabled = true;
@@ -2516,7 +2523,7 @@ async function generarFormato7(folioId, btnEl) {
 
     // 2. Buscar el folio para armar el nombre de archivo esperado
     const folio = ultimosFoliosCrudos.find(f => f.id === folioId);
-    const base = `FORMATO7_${folio.area}_${folio.subarea}_${folio.anio}_${folio.folio}`.replace(/ /g, '_');
+    const base = slugificarNombreArchivo(`FORMATO7_${folio.area}_${folio.subarea}_${folio.anio}_${folio.folio}`.replace(/ /g, '_'));
 
     // 3. Sondear Supabase Storage hasta que aparezca el archivo (maximo ~2 minutos)
     btnEl.textContent = '⏳ Esperando archivo...';
