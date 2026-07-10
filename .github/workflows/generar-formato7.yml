@@ -1,0 +1,32 @@
+name: Generar Formato 7
+
+on:
+  repository_dispatch:
+    types: [generar-formato7]
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar LibreOffice (para convertir a PDF)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libreoffice-calc
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias de Python
+        run: pip install openpyxl requests
+
+      - name: Generar Formato 7
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          FOLIO_ID: ${{ github.event.client_payload.folio_id }}
+        run: python .github/scripts/generar_formato7.py
