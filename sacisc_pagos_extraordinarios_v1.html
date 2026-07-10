@@ -1248,11 +1248,21 @@ function validarArea() {
   }
 }
 
+// Lista maestra de TODAS las pantallas del sistema. Cualquier navegacion
+// pasa por aqui, garantizando que nunca queden dos pantallas visibles a la vez
+// (por ejemplo, si el usuario usa "Cambiar de Area" estando dentro de un submodulo).
+const TODAS_LAS_PANTALLAS = ['pantallaAcceso','pantallaPrincipal','pantallaCatalogos','pantallaCaptura','pantallaFolios','pantallaDashboard','pantallaImportar'];
+function mostrarPantalla(idVisible) {
+  TODAS_LAS_PANTALLAS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden', id !== idVisible);
+  });
+}
+
 function accederArea(area) {
   areaValidada = area;
 
-  document.getElementById('pantallaAcceso').classList.add('hidden');
-  document.getElementById('pantallaPrincipal').classList.remove('hidden');
+  mostrarPantalla('pantallaPrincipal');
 
   document.getElementById('headerAreaBadge').textContent = area;
   document.getElementById('headerAreaBadge').classList.remove('hidden');
@@ -1283,10 +1293,16 @@ function accederArea(area) {
 
 function cambiarArea() {
   areaValidada = null;
-  document.getElementById('pantallaPrincipal').classList.add('hidden');
-  document.getElementById('pantallaAcceso').classList.remove('hidden');
+  mostrarPantalla('pantallaAcceso');
   document.getElementById('headerAreaBadge').classList.add('hidden');
   document.getElementById('btnCambiarArea').classList.add('hidden');
+
+  // Limpia estados residuales de otras pantallas para que la siguiente sesion
+  // nunca herede filtros ni resultados de la sesion anterior.
+  ultimosFoliosResultado = [];
+  ultimosFoliosCrudos = [];
+  subareaActual = null;
+  tipoSubareaActual = null;
 }
 
 
@@ -1354,8 +1370,7 @@ const HORARIOS_PRECARGA = [
 ];
 
 async function abrirCatalogos() {
-  document.getElementById('pantallaPrincipal').classList.add('hidden');
-  document.getElementById('pantallaCatalogos').classList.remove('hidden');
+  mostrarPantalla('pantallaCatalogos');
   document.getElementById('catAreaNombre').textContent = AREA_NOMBRES[areaValidada] || '';
   poblarSelectorSubarea();
   await cargarTodosLosCatalogosGuardados();
@@ -1418,8 +1433,7 @@ async function onSubareaSelect() {
 }
 
 function cerrarCatalogos() {
-  document.getElementById('pantallaCatalogos').classList.add('hidden');
-  document.getElementById('pantallaPrincipal').classList.remove('hidden');
+  mostrarPantalla('pantallaPrincipal');
 }
 
 function cambiarTab(nombre) {
@@ -1700,8 +1714,7 @@ async function abrirCaptura() {
     abrirCatalogos();
     return;
   }
-  document.getElementById('pantallaPrincipal').classList.add('hidden');
-  document.getElementById('pantallaCaptura').classList.remove('hidden');
+  mostrarPantalla('pantallaCaptura');
   document.getElementById('subareaCapturaNombre').textContent = subareaActual;
   resetCaptura();
   renderTipoPagoCards();
@@ -1709,8 +1722,7 @@ async function abrirCaptura() {
 }
 
 function cerrarCaptura() {
-  document.getElementById('pantallaCaptura').classList.add('hidden');
-  document.getElementById('pantallaPrincipal').classList.remove('hidden');
+  mostrarPantalla('pantallaPrincipal');
 }
 
 function resetCaptura() {
@@ -2047,8 +2059,7 @@ async function siguienteFolioDisponible() {
 let editandoFolioId = null;
 
 async function editarFolio(folioId) {
-  document.getElementById('pantallaFolios').classList.add('hidden');
-  document.getElementById('pantallaCaptura').classList.remove('hidden');
+  mostrarPantalla('pantallaCaptura');
   resetCaptura();
   editandoFolioId = folioId;
 
@@ -2227,8 +2238,20 @@ let ultimosFoliosCrudos = []; // folios sin aplanar (con id), para generar Forma
 
 async function abrirFolios() {
   try {
-    document.getElementById('pantallaPrincipal').classList.add('hidden');
-    document.getElementById('pantallaFolios').classList.remove('hidden');
+    mostrarPantalla('pantallaFolios');
+
+    // Siempre arranca limpio: limpia filtros y resultados de cualquier
+    // sesion/area anterior, para nunca mostrar datos que ya no aplican.
+    limpiarFiltrosFolios();
+    ultimosFoliosResultado = [];
+    ultimosFoliosCrudos = [];
+    document.getElementById('btnExportarFolios').disabled = true;
+    document.getElementById('foliosStatsWrap').innerHTML = '';
+    document.getElementById('foliosResultWrap').innerHTML = `
+      <div class="empty">
+        <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <p>Usa los filtros y da clic en Buscar para ver los folios capturados.</p>
+      </div>`;
 
     const selSub = document.getElementById('folSubarea');
     const lista = SUBAREAS[areaValidada] || [];
@@ -2252,8 +2275,7 @@ async function abrirFolios() {
 }
 
 function cerrarFolios() {
-  document.getElementById('pantallaFolios').classList.add('hidden');
-  document.getElementById('pantallaPrincipal').classList.remove('hidden');
+  mostrarPantalla('pantallaPrincipal');
 }
 
 function limpiarFiltrosFolios() {
@@ -2532,8 +2554,7 @@ function abrirDashboard() {
     alert('Esta función es exclusiva del administrador (acceso "Todas las Áreas").');
     return;
   }
-  document.getElementById('pantallaPrincipal').classList.add('hidden');
-  document.getElementById('pantallaDashboard').classList.remove('hidden');
+  mostrarPantalla('pantallaDashboard');
 
   const selArea = document.getElementById('dashArea');
   const areasDisponibles = areaValidada === 'TODOS' ? ['SCAD','SCEP','SCCO','SCCUI'] : [areaValidada];
@@ -2545,8 +2566,7 @@ function abrirDashboard() {
 }
 
 function cerrarDashboard() {
-  document.getElementById('pantallaDashboard').classList.add('hidden');
-  document.getElementById('pantallaPrincipal').classList.remove('hidden');
+  mostrarPantalla('pantallaPrincipal');
 }
 
 function onDashAreaChange() {
@@ -2752,8 +2772,7 @@ function abrirImportarSemana() {
     alert('Esta función es exclusiva del administrador (acceso "Todas las Áreas").');
     return;
   }
-  document.getElementById('pantallaPrincipal').classList.add('hidden');
-  document.getElementById('pantallaImportar').classList.remove('hidden');
+  mostrarPantalla('pantallaImportar');
   const sel = document.getElementById('impSubarea');
   const lista = SUBAREAS[areaValidada] || [];
   sel.innerHTML = '<option value="">— Selecciona sub-área —</option>' +
@@ -2763,8 +2782,7 @@ function abrirImportarSemana() {
 }
 
 function cerrarImportarSemana() {
-  document.getElementById('pantallaImportar').classList.add('hidden');
-  document.getElementById('pantallaPrincipal').classList.remove('hidden');
+  mostrarPantalla('pantallaPrincipal');
 }
 
 const DIA_MAP_JS = ['D','L','M1','M2','J','V','S']; // getDay(): 0=Domingo
