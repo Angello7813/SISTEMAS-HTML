@@ -459,6 +459,54 @@
   .cat-loading { font-size:0.8rem; color:var(--gray); font-style:italic; padding:10px 0; }
   .cat-badge-db { background:#eaf3f0; color:var(--green-mid); border:1px solid #c3ddd7; padding:1px 8px; border-radius:10px; font-size:0.65rem; font-weight:700; margin-left:6px; }
 
+
+  /* DASHBOARD DE SUPERVISION */
+  .dash-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; margin-bottom:24px; }
+  .dash-kpi-card {
+    background:linear-gradient(155deg,var(--white) 0%,#f7faf9 100%);
+    border:1px solid var(--border); border-radius:14px; padding:20px 18px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.04); position:relative; overflow:hidden;
+  }
+  .dash-kpi-card::before {
+    content:''; position:absolute; top:0; left:0; width:4px; height:100%;
+    background:linear-gradient(180deg,var(--green-mid),var(--green-light));
+  }
+  .dash-kpi-icon { font-size:1.3rem; margin-bottom:8px; opacity:0.85; }
+  .dash-kpi-value { font-family:'Barlow Condensed',sans-serif; font-size:2.1rem; font-weight:700; color:var(--green-dark); line-height:1; }
+  .dash-kpi-label { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--gray); margin-top:6px; }
+
+  .dash-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:20px; margin-bottom:20px; }
+  @media (max-width:900px) { .dash-grid { grid-template-columns:1fr; } }
+  .dash-panel {
+    background:var(--white); border:1px solid var(--border); border-radius:14px;
+    padding:20px 22px; box-shadow:0 1px 4px rgba(0,0,0,0.04);
+  }
+  .dash-panel-title {
+    font-family:'Barlow Condensed',sans-serif; font-size:0.92rem; font-weight:700;
+    color:var(--green-dark); text-transform:uppercase; letter-spacing:0.05em;
+    margin-bottom:16px; display:flex; align-items:center; gap:8px;
+  }
+  .dash-chart-wrap { position:relative; height:280px; }
+
+  .ranking-list { display:flex; flex-direction:column; gap:10px; }
+  .ranking-item { display:flex; align-items:center; gap:12px; }
+  .ranking-pos {
+    width:26px; height:26px; border-radius:50%; background:var(--off-white);
+    border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:0.8rem; color:var(--gray);
+    flex-shrink:0;
+  }
+  .ranking-item:nth-child(1) .ranking-pos { background:#f7d774; border-color:#e0b846; color:#5c4400; }
+  .ranking-item:nth-child(2) .ranking-pos { background:#dbe1e6; border-color:#b8c2cb; color:#3d4750; }
+  .ranking-item:nth-child(3) .ranking-pos { background:#e6c199; border-color:#c99a5f; color:#5c3d10; }
+  .ranking-info { flex:1; min-width:0; }
+  .ranking-name { font-size:0.85rem; font-weight:600; color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ranking-bar-wrap { background:var(--off-white); border-radius:6px; height:6px; margin-top:4px; overflow:hidden; }
+  .ranking-bar { height:100%; background:linear-gradient(90deg,var(--green-mid),var(--green-light)); border-radius:6px; }
+  .ranking-value { font-family:'Barlow Condensed',sans-serif; font-weight:700; color:var(--green-dark); font-size:0.95rem; flex-shrink:0; }
+
+  .dash-empty { text-align:center; padding:40px 20px; color:var(--gray); font-size:0.85rem; }
+
   .hidden { display: none !important; }
 </style>
 </head>
@@ -561,6 +609,14 @@
           <div class="modo-card" onclick="abrirFolios()">
             <h3>🔎 Folios Capturados</h3>
             <p>Consulta, filtra y exporta a Excel todos los folios ya registrados.</p>
+          </div>
+          <div class="modo-card" id="tarjetaDashboard" onclick="abrirDashboard()">
+            <h3>📊 Dashboard de Supervisión</h3>
+            <p>Solo Administrador. Indicadores clave: dobletes, tiempo extra, insalubre, rankings y evolución histórica.</p>
+          </div>
+          <div class="modo-card" id="tarjetaImportarSemana" onclick="abrirImportarSemana()">
+            <h3>🔄 Importar Semana (Transición)</h3>
+            <p>Solo Administrador. Pega cada lunes los renglones de tu Excel de la semana recién cerrada, mientras dura la transición.</p>
           </div>
         </div>
       </div>
@@ -880,6 +936,118 @@
     </div>
   </div>
 
+  <!-- ═══════ PANTALLA DE DASHBOARD DE SUPERVISION ═══════ -->
+  <div id="pantallaDashboard" class="hidden">
+    <span class="back-link" onclick="cerrarDashboard()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Volver al módulo
+    </span>
+
+    <div class="panel">
+      <div class="panel-header">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/></svg>
+        Dashboard de Supervisión
+      </div>
+      <div class="panel-body">
+
+        <div class="filters-grid" style="margin-bottom:18px;">
+          <div class="field">
+            <label>Tipo de Pago</label>
+            <select id="dashTipoPago">
+              <option value="">Todos</option>
+              <option value="DOBLETE">Doblete</option>
+              <option value="TIEMPO_EXTRA">Tiempo Extra</option>
+              <option value="INSALUBRE">Insalubre</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Área Usuaria</label>
+            <select id="dashArea" onchange="onDashAreaChange()"></select>
+          </div>
+          <div class="field">
+            <label>Sub-área (para evolución histórica)</label>
+            <select id="dashSubarea">
+              <option value="">Todas (comparar por área)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Año</label>
+            <select id="dashAnio"><option value="">Todos</option></select>
+          </div>
+        </div>
+        <div style="margin-bottom:22px;">
+          <button class="btn-search" onclick="analizarDashboard()">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path d="M3 3v18h18M18 17V9M13 17V5M8 17v-3"/></svg>
+            Analizar
+          </button>
+        </div>
+
+        <div id="dashContent">
+          <div class="dash-empty">Selecciona tus filtros y da clic en Analizar para ver los indicadores.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ PANTALLA DE IMPORTAR SEMANA (TRANSICION) ═══════ -->
+  <div id="pantallaImportar" class="hidden">
+    <span class="back-link" onclick="cerrarImportarSemana()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Volver al módulo
+    </span>
+
+    <div class="panel">
+      <div class="panel-header">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+        Importar Semana desde Excel (Transición)
+      </div>
+      <div class="panel-body">
+
+        <p class="paste-hint" style="margin-bottom:18px;">
+          Herramienta temporal mientras dura la transición al sistema oficial. Cada lunes, copia de tu Excel
+          la semana que se acaba de cerrar y pégala aquí — el sistema crea o actualiza los folios automáticamente.
+        </p>
+
+        <div class="field" style="max-width:400px;margin-bottom:20px;">
+          <label>Sub-área a la que pertenecen estos renglones</label>
+          <select id="impSubarea"></select>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <p class="paste-hint">
+            <strong>Bloque principal</strong> — copia de tu Excel (hoja BD) el rango completo de columnas
+            <strong>Folio hasta Labores Desarrolladas</strong> (columnas A:T), todas las filas de la semana.
+          </p>
+          <textarea class="paste-box" id="pasteImportarPrincipal" style="min-height:130px;" placeholder="1	1	2026	1	4	VIGILANCIA AGUA DULCE	976763	FERNANDO SANCHEZ ALEJANDRO	1	182.74	11	16	2025-12-29	00-08			1	1	DOBLA POR AUSENCIA DE..."></textarea>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <p class="paste-hint">
+            <strong>Bloque de ausentes (opcional)</strong> — copia las columnas <strong>Ficha ausente 1 hasta Tipo de ausencia 1</strong>
+            (columnas AE:AL), las mismas filas en el mismo orden que el bloque principal.
+          </p>
+          <textarea class="paste-box" id="pasteImportarAusentes" style="min-height:100px;" placeholder="586047	ARTEMIO MIJANGOS ARAGÓN				AUSENCIA"></textarea>
+        </div>
+
+        <div class="cat-toolbar">
+          <button class="btn-secondary" onclick="parsearImportarSemana()">Vista previa</button>
+          <button class="btn-primary" onclick="guardarImportarSemana()">Guardar semana en Supabase</button>
+          <span class="cat-count" id="count-importar">0</span>
+          <span class="cat-status" id="status-importar"></span>
+        </div>
+
+        <div class="cat-table-wrap" style="margin-top:16px;">
+          <table class="cat-table">
+            <thead><tr><th>Folio</th><th>Semana</th><th>Ficha</th><th>Trabajador</th><th>Fecha</th><th>Horario</th><th>Dob.</th><th>Com.</th><th>Ausente 1</th><th>Labores</th></tr></thead>
+            <tbody id="body-importar"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <footer>
@@ -1099,6 +1267,18 @@ function accederArea(area) {
     return `<span class="subarea-tag" title="${icon}${pre}">${s.nombre}</span>`;
   }).join('');
   document.getElementById('subareasList').innerHTML = subareasHtml;
+
+  // La Importacion Semanal (transicion) y el Dashboard de Supervision son
+  // funciones EXCLUSIVAS del administrador (acceso "Todas las Areas").
+  // Los capturistas de cada area no las ven.
+  const tarjetaImportar = document.getElementById('tarjetaImportarSemana');
+  if (tarjetaImportar) {
+    tarjetaImportar.style.display = (area === 'TODOS') ? '' : 'none';
+  }
+  const tarjetaDash = document.getElementById('tarjetaDashboard');
+  if (tarjetaDash) {
+    tarjetaDash.style.display = (area === 'TODOS') ? '' : 'none';
+  }
 }
 
 function cambiarArea() {
@@ -1534,6 +1714,7 @@ function cerrarCaptura() {
 }
 
 function resetCaptura() {
+  editandoFolioId = null;
   capturaState = { tipoPago:null, anio:null, semana:null, trabajador:null, dias:{}, horariosCat:[], semanasCat:[], trabajadoresCat:[], firmantesCat:[], ausenciasCat:[] };
   for (let i=1;i<=5;i++) {
     document.getElementById('wpanel-'+i).classList.add('hidden');
@@ -1858,13 +2039,88 @@ async function siguienteFolioDisponible() {
   return res.length > 0 ? res[0].folio + 1 : 1;
 }
 
+
+
+// ═══════════════════════════════════════════════════════════════
+//  EDICION DE FOLIOS MANUALES (los MIGRADOS son historia intocable)
+// ═══════════════════════════════════════════════════════════════
+let editandoFolioId = null;
+
+async function editarFolio(folioId) {
+  document.getElementById('pantallaFolios').classList.add('hidden');
+  document.getElementById('pantallaCaptura').classList.remove('hidden');
+  resetCaptura();
+  editandoFolioId = folioId;
+
+  const res = await sbGet('pe_folios', `select=*,pe_folio_dias(*)&id=eq.${folioId}`);
+  if (res.length === 0) { alert('No se encontró el folio.'); cerrarCaptura(); return; }
+  const folio = res[0];
+
+  if (folio.origen === 'MIGRADO') {
+    alert('Este folio es histórico (migrado) y no se puede editar. Solo es información de referencia para el Dashboard.');
+    cerrarCaptura();
+    return;
+  }
+
+  // Precargar catalogos necesarios para los selects (igual que en abrirCaptura)
+  subareaActual = folio.subarea;
+  tipoSubareaActual = folio.tipo_subarea;
+  await Promise.all([cargarHorariosCat(), cargarSemanasCat(), cargarTrabajadoresCat(), cargarFirmantesCat(), cargarAusenciasCat()]);
+
+  // Precargar el estado de captura con los datos del folio existente
+  capturaState.tipoPago = folio.tipo_pago;
+  capturaState.anio = folio.anio;
+  capturaState.semana = { anio: folio.anio, num_semana: folio.num_semana, fecha_termino: folio.fecha_termino_semana, fecha_inicio: null };
+  capturaState.trabajador = capturaState.trabajadoresCat.find(t => String(t.ficha) === String(folio.ficha)) ||
+    { ficha: folio.ficha, nombre: folio.nombre_trabajador, regimen: folio.regimen, sociedad: folio.sociedad, nivel: folio.nivel, salario: folio.salario, jornada: folio.jornada };
+
+  DIAS_SEMANA.forEach(d => {
+    const diaGuardado = (folio.pe_folio_dias || []).find(x => x.dia_semana === d.clave);
+    capturaState.dias[d.clave] = diaGuardado ? {
+      fecha: diaGuardado.fecha, horario: diaGuardado.horario || '',
+      dobletes: diaGuardado.dobletes || 0, comidas: diaGuardado.comidas || 0,
+      horas: diaGuardado.horas || 0, minutos: diaGuardado.minutos || 0,
+      ausente1: { ficha: diaGuardado.ausente1_ficha || '', nombre: diaGuardado.ausente1_nombre || '', motivo: diaGuardado.ausente1_motivo || '', horario: diaGuardado.ausente1_horario || diaGuardado.horario || '' },
+      ausente2: { ficha: diaGuardado.ausente2_ficha || '', nombre: diaGuardado.ausente2_nombre || '', motivo: '', horario: diaGuardado.ausente2_horario || diaGuardado.horario || '' },
+      labores: diaGuardado.labores_desarrolladas || ''
+    } : { fecha: '', horario: '', dobletes: 0, comidas: 0, horas: 0, minutos: 0,
+      ausente1: {ficha:'',nombre:'',motivo:'',horario:''}, ausente2: {ficha:'',nombre:'',motivo:'',horario:''}, labores: '' };
+  });
+
+  // Saltar directo al paso 4 (dias) para editar, con opcion de avanzar/regresar a los demas
+  renderTipoPagoCards();
+  document.querySelectorAll('.radio-card').forEach(c => c.classList.remove('selected'));
+  const tpCard = document.getElementById('tpc-' + folio.tipo_pago);
+  if (tpCard) tpCard.classList.add('selected');
+  document.getElementById('btnPaso1Next').disabled = false;
+
+  document.getElementById('selAnio').innerHTML = `<option value="${folio.anio}" selected>${folio.anio}</option>`;
+  document.getElementById('selSemana').innerHTML = `<option value="${folio.num_semana}" selected>Semana ${folio.num_semana}</option>`;
+  document.getElementById('btnPaso2Next').disabled = false;
+
+  document.getElementById('subareaCapturaNombre').textContent = subareaActual;
+  document.getElementById('selTrabajador').innerHTML =
+    capturaState.trabajadoresCat.map(t => `<option value="${t.ficha}" ${String(t.ficha)===String(folio.ficha)?'selected':''}>${t.ficha} — ${t.nombre}</option>`).join('');
+  onTrabajadorChange();
+
+  irPaso(4);
+
+  // Aviso visual de que esta en modo edicion
+  const aviso = document.createElement('div');
+  aviso.style.cssText = 'background:#fff3cd;border:1px solid #ffe08a;border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:0.85rem;color:#7a5c00;';
+  aviso.innerHTML = `✏️ <strong>Editando Folio Nº ${folio.folio}</strong> — los cambios que hagas van a actualizar este folio existente, no van a crear uno nuevo.`;
+  document.getElementById('diasContainer').parentElement.insertBefore(aviso, document.getElementById('diasContainer'));
+}
+
+
 async function guardarFolio() {
   const statusEl = document.getElementById('statusFolio');
   statusEl.className = 'cat-status';
-  statusEl.textContent = 'Guardando folio...';
+  statusEl.textContent = editandoFolioId ? 'Actualizando folio...' : 'Guardando folio...';
 
   const t = capturaState.trabajador;
-  const folio = await siguienteFolioDisponible();
+  const esEdicion = !!editandoFolioId;
+  const folio = esEdicion ? null : await siguienteFolioDisponible();
   const regimen = (t.regimen || '').toUpperCase();
   const partida = regimen === 'PS' ? '10' : (regimen === 'TS' ? '16' : null);
 
@@ -1874,7 +2130,7 @@ async function guardarFolio() {
 
   const folioObj = {
     area: areaValidada, subarea: subareaActual, tipo_subarea: tipoSubareaActual,
-    tipo_pago: capturaState.tipoPago, anio: capturaState.anio, folio,
+    tipo_pago: capturaState.tipoPago, anio: capturaState.anio,
     num_semana: capturaState.semana.num_semana, fecha_termino_semana: capturaState.semana.fecha_termino,
     ficha: t.ficha, nombre_trabajador: t.nombre, regimen: t.regimen, sociedad: t.sociedad || 'PMXC',
     nivel: t.nivel, salario: t.salario, jornada: t.jornada, partida_presupuestal: partida,
@@ -1883,15 +2139,34 @@ async function guardarFolio() {
     vobo_nombre: voboVal[0] || null, vobo_puesto: voboVal[1] || null,
     autoriza_nombre: autorizaVal[0] || null, autoriza_puesto: autorizaVal[1] || null
   };
+  if (!esEdicion) folioObj.folio = folio;
 
   try {
-    const respFolio = await fetch(`${SUPABASE_URL}/rest/v1/pe_folios`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type':'application/json', 'Prefer':'return=representation' },
-      body: JSON.stringify(folioObj)
-    });
-    if (!respFolio.ok) { statusEl.className='cat-status err'; statusEl.textContent = '❌ ' + (await respFolio.text()); return; }
-    const [folioGuardado] = await respFolio.json();
+    let folioGuardado;
+    if (esEdicion) {
+      const respFolio = await fetch(`${SUPABASE_URL}/rest/v1/pe_folios?id=eq.${editandoFolioId}`, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type':'application/json', 'Prefer':'return=representation' },
+        body: JSON.stringify(folioObj)
+      });
+      if (!respFolio.ok) { statusEl.className='cat-status err'; statusEl.textContent = '❌ ' + (await respFolio.text()); return; }
+      [folioGuardado] = await respFolio.json();
+
+      // Reemplazar por completo los dias existentes (borra los 7 y reinserta limpio)
+      const respDel = await fetch(`${SUPABASE_URL}/rest/v1/pe_folio_dias?folio_id=eq.${editandoFolioId}`, {
+        method: 'DELETE',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer':'return=minimal' }
+      });
+      if (!respDel.ok) { statusEl.className='cat-status err'; statusEl.textContent = '❌ ' + (await respDel.text()); return; }
+    } else {
+      const respFolio = await fetch(`${SUPABASE_URL}/rest/v1/pe_folios`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type':'application/json', 'Prefer':'return=representation' },
+        body: JSON.stringify(folioObj)
+      });
+      if (!respFolio.ok) { statusEl.className='cat-status err'; statusEl.textContent = '❌ ' + (await respFolio.text()); return; }
+      [folioGuardado] = await respFolio.json();
+    }
 
     const diasArr = DIAS_SEMANA.map(d => {
       const data = capturaState.dias[d.clave];
@@ -1915,7 +2190,9 @@ async function guardarFolio() {
     if (!respDias.ok) { statusEl.className='cat-status err'; statusEl.textContent = '❌ ' + (await respDias.text()); return; }
 
     statusEl.className = 'cat-status ok';
-    statusEl.textContent = `✅ Folio Nº ${folio} guardado correctamente para ${t.nombre}.`;
+    statusEl.textContent = esEdicion
+      ? `✅ Folio Nº ${folioGuardado.folio} actualizado correctamente para ${t.nombre}.`
+      : `✅ Folio Nº ${folio} guardado correctamente para ${t.nombre}.`;
     document.getElementById('btnNavPaso5').classList.add('hidden');
     document.getElementById('postGuardadoAcciones').classList.remove('hidden');
   } catch (e) {
@@ -1995,7 +2272,7 @@ async function buscarFolios() {
   statsWrap.innerHTML = '';
   document.getElementById('btnExportarFolios').disabled = true;
 
-  let q = `select=*,pe_folio_dias(*)&area=eq.${encodeURIComponent(areaValidada)}&order=folio.desc`;
+  let q = `select=*,pe_folio_dias(*)&area=eq.${encodeURIComponent(areaValidada)}&order=folio.desc`; // incluye 'origen' via select=*
 
   const subarea = document.getElementById('folSubarea').value;
   if (subarea) q += `&subarea=eq.${encodeURIComponent(subarea)}`;
@@ -2084,7 +2361,7 @@ async function buscarFolios() {
   const resumenHtml = `
     <div class="table-wrap" style="margin-bottom:22px;">
       <table class="data-table">
-        <thead><tr><th>Folio</th><th>Sub-área</th><th>Tipo</th><th>Año/Sem.</th><th>Trabajador</th><th>Generar Formato 7</th></tr></thead>
+        <thead><tr><th>Folio</th><th>Sub-área</th><th>Tipo</th><th>Año/Sem.</th><th>Trabajador</th><th>Origen</th><th>Acciones</th></tr></thead>
         <tbody>
           ${folios.map(f => `<tr>
             <td class="num">${f.folio}</td>
@@ -2092,7 +2369,11 @@ async function buscarFolios() {
             <td>${f.tipo_pago}</td>
             <td>${f.anio} / ${f.num_semana}</td>
             <td>${f.ficha} — ${f.nombre_trabajador}</td>
-            <td><button class="btn-secondary" style="padding:6px 14px;font-size:0.78rem;" onclick="generarFormato7(${f.id}, this)">📄 Generar</button></td>
+            <td>${f.origen === 'MIGRADO' ? '<span style="color:var(--gray);font-size:0.75rem;">📜 Histórico</span>' : '<span style="color:var(--green-mid);font-size:0.75rem;">✏️ Manual</span>'}</td>
+            <td style="white-space:nowrap;">
+              <button class="btn-secondary" style="padding:6px 14px;font-size:0.78rem;" onclick="generarFormato7(${f.id}, this)">📄 Generar</button>
+              ${f.origen !== 'MIGRADO' ? `<button class="btn-secondary" style="padding:6px 14px;font-size:0.78rem;margin-left:6px;" onclick="editarFolio(${f.id})">✏️ Editar</button>` : ''}
+            </td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -2217,7 +2498,7 @@ async function generarFormato7(folioId, btnEl) {
     let encontrado = null;
     for (let intento = 0; intento < 24; intento++) {
       await new Promise(r => setTimeout(r, 5000));
-      const check = await fetch(`${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.pdf`, { method: 'HEAD' });
+      const check = await fetch(`${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.xlsx`, { method: 'HEAD' });
       if (check.ok) { encontrado = base; break; }
     }
 
@@ -2227,7 +2508,10 @@ async function generarFormato7(folioId, btnEl) {
       return;
     }
 
-    btnEl.innerHTML = `<a href="${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.pdf" target="_blank" style="color:inherit;text-decoration:none;">📄 Ver PDF</a> · <a href="${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.xlsx" target="_blank" style="color:inherit;text-decoration:none;">📊 Excel</a>`;
+    // Abre el Excel en un visor dentro del navegador (para ver/imprimir), SIN descargarlo a la carpeta local
+    const xlsxUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.xlsx`;
+    const visorUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(xlsxUrl)}`;
+    btnEl.innerHTML = `<a href="${visorUrl}" target="_blank" style="color:inherit;text-decoration:none;">📄 Ver e Imprimir</a>`;
     btnEl.disabled = false;
   } catch (e) {
     btnEl.textContent = '❌ Error: ' + e.message;
@@ -2235,8 +2519,431 @@ async function generarFormato7(folioId, btnEl) {
   }
 }
 
+
+
+// ═══════════════════════════════════════════════════════════════
+//  DASHBOARD DE SUPERVISION
+// ═══════════════════════════════════════════════════════════════
+let dashChartEvolucion = null;
+let dashChartComparativo = null;
+
+function abrirDashboard() {
+  if (areaValidada !== 'TODOS') {
+    alert('Esta función es exclusiva del administrador (acceso "Todas las Áreas").');
+    return;
+  }
+  document.getElementById('pantallaPrincipal').classList.add('hidden');
+  document.getElementById('pantallaDashboard').classList.remove('hidden');
+
+  const selArea = document.getElementById('dashArea');
+  const areasDisponibles = areaValidada === 'TODOS' ? ['SCAD','SCEP','SCCO','SCCUI'] : [areaValidada];
+  selArea.innerHTML = (areaValidada === 'TODOS' ? '<option value="">Todas las áreas</option>' : '') +
+    areasDisponibles.map(a => `<option value="${a}">${AREA_NOMBRES[a]}</option>`).join('');
+  onDashAreaChange();
+
+  cargarAniosDashboard();
+}
+
+function cerrarDashboard() {
+  document.getElementById('pantallaDashboard').classList.add('hidden');
+  document.getElementById('pantallaPrincipal').classList.remove('hidden');
+}
+
+function onDashAreaChange() {
+  const area = document.getElementById('dashArea').value;
+  const selSub = document.getElementById('dashSubarea');
+  if (!area) {
+    selSub.innerHTML = '<option value="">Todas (comparar por área)</option>';
+    return;
+  }
+  const lista = SUBAREAS[area] || [];
+  selSub.innerHTML = '<option value="">Todas (comparar por sub-área)</option>' +
+    lista.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+}
+
+async function cargarAniosDashboard() {
+  const semanas = await sbGet('pe_semanas', 'select=anio&order=anio');
+  const anios = [...new Set(semanas.map(s => s.anio))];
+  document.getElementById('dashAnio').innerHTML = '<option value="">Todos</option>' +
+    anios.map(a => `<option value="${a}">${a}</option>`).join('');
+}
+
+async function analizarDashboard() {
+  const cont = document.getElementById('dashContent');
+  cont.innerHTML = '<div class="dash-empty">Calculando indicadores…</div>';
+
+  const tipoPago = document.getElementById('dashTipoPago').value;
+  const area = document.getElementById('dashArea').value;
+  const subarea = document.getElementById('dashSubarea').value;
+  const anio = document.getElementById('dashAnio').value;
+
+  let q = 'select=*,pe_folio_dias(*)';
+  if (areaValidada !== 'TODOS') q += `&area=eq.${encodeURIComponent(areaValidada)}`;
+  else if (area) q += `&area=eq.${encodeURIComponent(area)}`;
+  if (subarea) q += `&subarea=eq.${encodeURIComponent(subarea)}`;
+  if (tipoPago) q += `&tipo_pago=eq.${tipoPago}`;
+  if (anio) q += `&anio=eq.${anio}`;
+
+  let folios;
+  try {
+    folios = await sbGet('pe_folios', q);
+  } catch (e) {
+    cont.innerHTML = `<div class="dash-empty">❌ Error: ${e.message}</div>`;
+    return;
+  }
+
+  if (folios.length === 0) {
+    cont.innerHTML = '<div class="dash-empty">No hay datos con esos filtros.</div>';
+    return;
+  }
+
+  // ── Agregaciones base ──────────────────────────────────────
+  let totDobletes = 0, totHorasTE = 0, totHorasInsal = 0, totComidas = 0, totFolios = folios.length;
+  const porTrabajadorDobletes = {};   // ficha -> {nombre, total}
+  const porTrabajadorHoras = {};      // ficha -> {nombre, total, tipo}
+  const porAusente = {};              // nombre -> total veces cubierto
+  const porSemanaSubarea = {};        // 'anio-semana' -> total (para evolucion de 1 subarea)
+  const porArea = {};                 // area -> total (para comparativo)
+
+  folios.forEach(f => {
+    const dias = f.pe_folio_dias || [];
+    dias.forEach(d => {
+      const dob = d.dobletes || 0;
+      const horas = (d.horas || 0) + (d.minutos || 0) / 60;
+
+      totDobletes += dob;
+      totComidas += d.comidas || 0;
+      if (f.tipo_pago === 'TIEMPO_EXTRA') totHorasTE += horas;
+      if (f.tipo_pago === 'INSALUBRE') totHorasInsal += horas;
+
+      if (dob > 0) {
+        const key = f.ficha;
+        if (!porTrabajadorDobletes[key]) porTrabajadorDobletes[key] = { nombre: f.nombre_trabajador, total: 0 };
+        porTrabajadorDobletes[key].total += dob;
+      }
+      if (horas > 0 && f.tipo_pago !== 'DOBLETE') {
+        const key = f.ficha;
+        if (!porTrabajadorHoras[key]) porTrabajadorHoras[key] = { nombre: f.nombre_trabajador, total: 0 };
+        porTrabajadorHoras[key].total += horas;
+      }
+      [d.ausente1_nombre, d.ausente2_nombre].forEach(nombre => {
+        if (nombre && nombre.trim()) {
+          porAusente[nombre] = (porAusente[nombre] || 0) + 1;
+        }
+      });
+
+      const semKey = `${f.anio}-S${String(f.num_semana).padStart(2,'0')}`;
+      if (!porSemanaSubarea[semKey]) porSemanaSubarea[semKey] = 0;
+      porSemanaSubarea[semKey] += dob + horas;
+
+      if (!porArea[f.area]) porArea[f.area] = 0;
+      porArea[f.area] += dob + horas;
+    });
+  });
+
+  // ── Render KPIs ──────────────────────────────────────────────
+  let html = `
+    <div class="dash-kpis">
+      <div class="dash-kpi-card"><div class="dash-kpi-icon">📁</div><div class="dash-kpi-value">${totFolios}</div><div class="dash-kpi-label">Folios</div></div>
+      <div class="dash-kpi-card"><div class="dash-kpi-icon">👥</div><div class="dash-kpi-value">${totDobletes}</div><div class="dash-kpi-label">Dobletes</div></div>
+      <div class="dash-kpi-card"><div class="dash-kpi-icon">⏱️</div><div class="dash-kpi-value">${totHorasTE.toFixed(1)}</div><div class="dash-kpi-label">Hrs. Tiempo Extra</div></div>
+      <div class="dash-kpi-card"><div class="dash-kpi-icon">☣️</div><div class="dash-kpi-value">${totHorasInsal.toFixed(1)}</div><div class="dash-kpi-label">Hrs. Insalubre</div></div>
+      <div class="dash-kpi-card"><div class="dash-kpi-icon">🍽️</div><div class="dash-kpi-value">${totComidas}</div><div class="dash-kpi-label">Comidas</div></div>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-panel">
+        <div class="dash-panel-title">📈 ${subarea ? 'Evolución semanal — ' + subarea : (area ? 'Evolución semanal — ' + AREA_NOMBRES[area] : 'Comparativo por área')}</div>
+        <div class="dash-chart-wrap"><canvas id="dashChartCanvas"></canvas></div>
+      </div>
+      <div class="dash-panel">
+        <div class="dash-panel-title">🏆 Quiénes más han doblado</div>
+        <div class="ranking-list" id="rankingDobletes"></div>
+      </div>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-panel">
+        <div class="dash-panel-title">⏱️ Más horas Tiempo Extra / Insalubre</div>
+        <div class="ranking-list" id="rankingHoras"></div>
+      </div>
+      <div class="dash-panel">
+        <div class="dash-panel-title">🚫 Trabajadores más cubiertos (ausencias)</div>
+        <div class="ranking-list" id="rankingAusentes"></div>
+      </div>
+    </div>
+  `;
+  cont.innerHTML = html;
+
+  renderRanking('rankingDobletes', porTrabajadorDobletes, 'dobletes');
+  renderRanking('rankingHoras', porTrabajadorHoras, 'hrs', true);
+  renderRankingAusentes('rankingAusentes', porAusente);
+
+  // ── Grafica ──────────────────────────────────────────────────
+  if (typeof Chart === 'undefined') {
+    document.getElementById('dashChartCanvas').closest('.dash-chart-wrap').innerHTML =
+      '<div class="dash-empty">La librería de gráficas no cargó (puede estar bloqueada por el navegador). Los indicadores numéricos siguen siendo correctos.</div>';
+    return;
+  }
+
+  const ctx = document.getElementById('dashChartCanvas');
+  if (subarea || area) {
+    const labels = Object.keys(porSemanaSubarea).sort();
+    const data = labels.map(k => porSemanaSubarea[k]);
+    if (dashChartEvolucion) dashChartEvolucion.destroy();
+    dashChartEvolucion = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [{ label: 'Actividad (dobletes + horas)', data, borderColor: '#1e5b4f', backgroundColor: 'rgba(30,91,79,0.1)', fill: true, tension: 0.3 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+  } else {
+    const labels = Object.keys(porArea).map(a => AREA_NOMBRES[a] || a);
+    const data = Object.values(porArea);
+    if (dashChartComparativo) dashChartComparativo.destroy();
+    dashChartComparativo = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Actividad total', data, backgroundColor: '#2d9e7e' }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+  }
+}
+
+function renderRanking(elId, datosPorFicha, unidad, esHoras) {
+  const arr = Object.values(datosPorFicha).sort((a,b) => b.total - a.total).slice(0, 8);
+  const el = document.getElementById(elId);
+  if (arr.length === 0) { el.innerHTML = '<div class="dash-empty">Sin datos.</div>'; return; }
+  const max = arr[0].total;
+  el.innerHTML = arr.map((item, i) => `
+    <div class="ranking-item">
+      <div class="ranking-pos">${i+1}</div>
+      <div class="ranking-info">
+        <div class="ranking-name">${item.nombre}</div>
+        <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${(item.total/max*100).toFixed(0)}%"></div></div>
+      </div>
+      <div class="ranking-value">${esHoras ? item.total.toFixed(1) : item.total}</div>
+    </div>
+  `).join('');
+}
+
+function renderRankingAusentes(elId, porAusente) {
+  const arr = Object.entries(porAusente).map(([nombre, total]) => ({nombre, total})).sort((a,b) => b.total - a.total).slice(0, 8);
+  const el = document.getElementById(elId);
+  if (arr.length === 0) { el.innerHTML = '<div class="dash-empty">Sin ausencias registradas.</div>'; return; }
+  const max = arr[0].total;
+  el.innerHTML = arr.map((item, i) => `
+    <div class="ranking-item">
+      <div class="ranking-pos">${i+1}</div>
+      <div class="ranking-info">
+        <div class="ranking-name">${item.nombre}</div>
+        <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${(item.total/max*100).toFixed(0)}%; background:linear-gradient(90deg,#c0392b,#e07a5f);"></div></div>
+      </div>
+      <div class="ranking-value">${item.total}</div>
+    </div>
+  `).join('');
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════
+//  IMPORTAR SEMANA (TRANSICION) — pegado desde el Excel BD
+// ═══════════════════════════════════════════════════════════════
+let IMPORTAR_DATA = []; // filas parseadas listas para guardar
+
+function abrirImportarSemana() {
+  if (areaValidada !== 'TODOS') {
+    alert('Esta función es exclusiva del administrador (acceso "Todas las Áreas").');
+    return;
+  }
+  document.getElementById('pantallaPrincipal').classList.add('hidden');
+  document.getElementById('pantallaImportar').classList.remove('hidden');
+  const sel = document.getElementById('impSubarea');
+  const lista = SUBAREAS[areaValidada] || [];
+  sel.innerHTML = '<option value="">— Selecciona sub-área —</option>' +
+    lista.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+  IMPORTAR_DATA = [];
+  renderTablaImportar();
+}
+
+function cerrarImportarSemana() {
+  document.getElementById('pantallaImportar').classList.add('hidden');
+  document.getElementById('pantallaPrincipal').classList.remove('hidden');
+}
+
+const DIA_MAP_JS = ['D','L','M1','M2','J','V','S']; // getDay(): 0=Domingo
+
+function diaSemanaDeISO(fechaISO) {
+  const d = new Date(fechaISO + 'T00:00:00');
+  return DIA_MAP_JS[d.getDay()];
+}
+
+function normalizarFechaImportar(v) {
+  return normalizarFecha(v); // reutiliza la funcion ya existente de Catalogos
+}
+
+function parsearImportarSemana() {
+  const subarea = document.getElementById('impSubarea').value;
+  const statusEl = document.getElementById('status-importar');
+  if (!subarea) {
+    statusEl.className = 'cat-status err';
+    statusEl.textContent = '⚠️ Selecciona primero la sub-área.';
+    return;
+  }
+
+  const principalTxt = document.getElementById('pasteImportarPrincipal').value.trim();
+  const ausentesTxt = document.getElementById('pasteImportarAusentes').value.trim();
+  if (!principalTxt) { return; }
+
+  const filasPrincipal = principalTxt.split('\n').map(l => l.split('\t'));
+  const filasAusentes = ausentesTxt ? ausentesTxt.split('\n').map(l => l.split('\t')) : [];
+
+  // Indices del bloque principal (columnas A:T del Excel BD):
+  // 0 Folio, 1 Semana, 2 Año, 3 Mes, 4 Dia, 5 Area, 6 Ficha, 7 Nombre, 8 Jornada,
+  // 9 Salario, 10 Nivel, 11 Partida, 12 Fecha, 13 Horario, 14 Inicio, 15 Fin,
+  // 16 Descanso, 17 Dobletes, 18 Comidas, 19 Labores
+  const nuevasFilas = [];
+  filasPrincipal.forEach((f, idx) => {
+    if (f.length < 8 || !f[0] || !f[6]) return; // sin folio o sin ficha, se omite
+
+    const ausRow = filasAusentes[idx] || [];
+    // Bloque ausentes (columnas AE:AL): 0 FichaAus1, 1 Ausente1, 2 DIA3, 3 MES3, 4 AÑO3, 5 FichaAus2, 6 Ausente2, 7 TipoAusencia1
+
+    nuevasFilas.push({
+      folio: parseInt(f[0], 10),
+      semana: parseInt(f[1], 10) || null,
+      anio: parseInt(f[2], 10) || null,
+      ficha: parseInt(String(f[6]).trim(), 10) || null,
+      nombre: (f[7] || '').trim(),
+      jornada: parseInt(f[8], 10) || null,
+      salario: parseFloat(f[9]) || null,
+      nivel: parseInt(f[10], 10) || null,
+      partida: (f[11] || '').trim(),
+      fecha: normalizarFechaImportar(f[12]),
+      horario: (f[13] || '').trim(),
+      dobletes: parseInt(f[17], 10) || 0,
+      comidas: parseInt(f[18], 10) || 0,
+      labores: (f[19] || '').trim(),
+      ausente1_ficha: ausRow[0] ? parseInt(ausRow[0], 10) || null : null,
+      ausente1_nombre: ausRow[1] ? ausRow[1].trim() : null,
+      ausente2_ficha: ausRow[5] ? parseInt(ausRow[5], 10) || null : null,
+      ausente2_nombre: ausRow[6] ? ausRow[6].trim() : null,
+      motivo1: ausRow[7] ? ausRow[7].trim() : null,
+    });
+  });
+
+  IMPORTAR_DATA = nuevasFilas;
+  renderTablaImportar();
+  statusEl.className = 'cat-status ok';
+  statusEl.textContent = `Vista previa: ${nuevasFilas.length} renglón(es) listos.`;
+}
+
+function renderTablaImportar() {
+  const tbody = document.getElementById('body-importar');
+  tbody.innerHTML = IMPORTAR_DATA.map(f => `
+    <tr>
+      <td>${f.folio}</td><td>${f.semana ?? ''}</td><td>${f.ficha ?? ''}</td><td>${f.nombre}</td>
+      <td>${f.fecha ?? ''}</td><td>${f.horario}</td><td>${f.dobletes}</td><td>${f.comidas}</td>
+      <td>${f.ausente1_nombre || ''}</td><td>${(f.labores||'').slice(0,40)}</td>
+    </tr>`).join('');
+  document.getElementById('count-importar').textContent = IMPORTAR_DATA.length;
+}
+
+async function guardarImportarSemana() {
+  const statusEl = document.getElementById('status-importar');
+  const subarea = document.getElementById('impSubarea').value;
+  const tipoSub = (SUBAREAS[areaValidada] || []).find(s => s.nombre === subarea)?.tipo || null;
+
+  if (IMPORTAR_DATA.length === 0) {
+    statusEl.className = 'cat-status err';
+    statusEl.textContent = 'No hay renglones para guardar. Dale "Vista previa" primero.';
+    return;
+  }
+
+  statusEl.className = 'cat-status';
+  statusEl.textContent = 'Guardando folios…';
+
+  // Agrupar por folio (un folio = un trabajador + una semana, puede tener varios dias)
+  const folioMap = {};
+  IMPORTAR_DATA.forEach(f => {
+    const key = `${f.anio}-${f.folio}`;
+    if (!folioMap[key]) {
+      folioMap[key] = {
+        area: areaValidada, subarea, tipo_subarea: tipoSub, tipo_pago: 'DOBLETE',
+        anio: f.anio, folio: f.folio, num_semana: f.semana,
+        ficha: f.ficha, nombre_trabajador: f.nombre, jornada: f.jornada,
+        salario: f.salario, nivel: f.nivel, partida_presupuestal: f.partida, sociedad: 'PMXC',
+        dias: []
+      };
+    }
+    folioMap[key].dias.push(f);
+  });
+
+  const folios = Object.values(folioMap);
+
+  try {
+    // PASO 1: upsert de folios (encabezados), pidiendo que regrese los registros con su id
+    const folioRegistros = folios.map(f => ({
+      area: f.area, subarea: f.subarea, tipo_subarea: f.tipo_subarea, tipo_pago: f.tipo_pago,
+      anio: f.anio, folio: f.folio, num_semana: f.num_semana, ficha: f.ficha,
+      nombre_trabajador: f.nombre_trabajador, jornada: f.jornada, salario: f.salario,
+      nivel: f.nivel, partida_presupuestal: f.partida_presupuestal, sociedad: f.sociedad
+    }));
+
+    const respFolios = await fetch(`${SUPABASE_URL}/rest/v1/pe_folios?on_conflict=area,subarea,anio,folio`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=representation'
+      },
+      body: JSON.stringify(folioRegistros)
+    });
+    if (!respFolios.ok) throw new Error(await respFolios.text());
+    const foliosGuardados = await respFolios.json();
+
+    // Mapa folio_key -> id
+    const idPorKey = {};
+    foliosGuardados.forEach(fg => { idPorKey[`${fg.anio}-${fg.folio}`] = fg.id; });
+
+    // PASO 2: armar los dias, referenciando el folio_id correcto
+    const diasRegistros = [];
+    folios.forEach(f => {
+      const folioId = idPorKey[`${f.anio}-${f.folio}`];
+      if (!folioId) return;
+      f.dias.forEach(d => {
+        if (!d.fecha) return;
+        diasRegistros.push({
+          folio_id: folioId, dia_semana: diaSemanaDeISO(d.fecha), fecha: d.fecha,
+          horario: d.horario || null, dobletes: d.dobletes || 0, comidas: d.comidas || 0,
+          ausente1_ficha: d.ausente1_ficha, ausente1_nombre: d.ausente1_nombre, ausente1_motivo: d.motivo1,
+          ausente2_ficha: d.ausente2_ficha, ausente2_nombre: d.ausente2_nombre,
+          labores_desarrolladas: d.labores || null
+        });
+      });
+    });
+
+    statusEl.textContent = 'Guardando días…';
+    const respDias = await fetch(`${SUPABASE_URL}/rest/v1/pe_folio_dias?on_conflict=folio_id,dia_semana`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(diasRegistros)
+    });
+    if (!respDias.ok) throw new Error(await respDias.text());
+
+    statusEl.className = 'cat-status ok';
+    statusEl.textContent = `✅ ${folios.length} folio(s) y ${diasRegistros.length} día(s) guardados correctamente.`;
+    document.getElementById('pasteImportarPrincipal').value = '';
+    document.getElementById('pasteImportarAusentes').value = '';
+    IMPORTAR_DATA = [];
+    renderTablaImportar();
+  } catch (e) {
+    statusEl.className = 'cat-status err';
+    statusEl.textContent = '❌ ' + e.message;
+  }
+}
+
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer onerror="console.warn('No se pudo cargar la libreria de exportacion a Excel (bloqueada por el navegador). El resto del sistema funciona normal; solo Exportar a Excel no estara disponible hasta que se permita este script.')"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js" defer onerror="console.warn('No se pudo cargar la libreria de graficas.')"></script>
 </body>
 </html>
