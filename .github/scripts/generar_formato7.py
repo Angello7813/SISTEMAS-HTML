@@ -9,6 +9,8 @@ los bordes y todo el resto del archivo exactamente igual al original.
 """
 import os
 import json
+import re
+import unicodedata
 import requests
 from xlsx_patch import XlsxSheetPatcher
 
@@ -37,6 +39,14 @@ MESES = {
     1: "ENERO", 2: "FEBRERO", 3: "MARZO", 4: "ABRIL", 5: "MAYO", 6: "JUNIO",
     7: "JULIO", 8: "AGOSTO", 9: "SEPTIEMBRE", 10: "OCTUBRE", 11: "NOVIEMBRE", 12: "DICIEMBRE",
 }
+
+
+def slugificar(texto):
+    """Quita acentos y caracteres especiales para que el nombre de archivo
+    sea seguro en Supabase Storage (rechaza tildes/enies con error 400)."""
+    texto = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii')
+    texto = re.sub(r'[^A-Za-z0-9_.-]', '_', texto)
+    return texto
 
 
 def fetch_folio(folio_id):
@@ -140,7 +150,7 @@ def main():
     os.makedirs(WORKDIR, exist_ok=True)
     folio = fetch_folio(FOLIO_ID)
 
-    base = f"FORMATO7_{folio['area']}_{folio['subarea']}_{folio['anio']}_{folio['folio']}".replace(" ", "_")
+    base = slugificar(f"FORMATO7_{folio['area']}_{folio['subarea']}_{folio['anio']}_{folio['folio']}".replace(" ", "_"))
     xlsx_path = os.path.join(WORKDIR, f"{base}.xlsx")
     generar_excel(folio, xlsx_path)
 
