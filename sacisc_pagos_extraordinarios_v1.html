@@ -1727,6 +1727,8 @@ function cerrarCaptura() {
 
 function resetCaptura() {
   editandoFolioId = null;
+  const avisoViejo = document.getElementById('avisoModoEdicion');
+  if (avisoViejo) avisoViejo.remove();
   capturaState = { tipoPago:null, anio:null, semana:null, trabajador:null, dias:{}, horariosCat:[], semanasCat:[], trabajadoresCat:[], firmantesCat:[], ausenciasCat:[] };
   for (let i=1;i<=5;i++) {
     document.getElementById('wpanel-'+i).classList.add('hidden');
@@ -2105,14 +2107,19 @@ async function editarFolio(folioId) {
 
   DIAS_SEMANA.forEach(d => {
     const diaGuardado = (folio.pe_folio_dias || []).find(x => x.dia_semana === d.clave);
+    let iniRaw = '', finRaw = '';
+    if (diaGuardado && diaGuardado.horario && (folio.tipo_pago === 'TIEMPO_EXTRA' || folio.tipo_pago === 'INSALUBRE')) {
+      const partes = diaGuardado.horario.split('-');
+      if (partes.length === 2) { iniRaw = partes[0]; finRaw = partes[1]; }
+    }
     capturaState.dias[d.clave] = diaGuardado ? {
-      fecha: diaGuardado.fecha, horario: diaGuardado.horario || '',
+      fecha: diaGuardado.fecha, horario: diaGuardado.horario || '', iniRaw, finRaw,
       dobletes: diaGuardado.dobletes || 0, comidas: diaGuardado.comidas || 0,
       horas: diaGuardado.horas || 0, minutos: diaGuardado.minutos || 0,
       ausente1: { ficha: diaGuardado.ausente1_ficha || '', nombre: diaGuardado.ausente1_nombre || '', motivo: diaGuardado.ausente1_motivo || '', horario: diaGuardado.ausente1_horario || diaGuardado.horario || '' },
       ausente2: { ficha: diaGuardado.ausente2_ficha || '', nombre: diaGuardado.ausente2_nombre || '', motivo: '', horario: diaGuardado.ausente2_horario || diaGuardado.horario || '' },
       labores: diaGuardado.labores_desarrolladas || ''
-    } : { fecha: '', horario: '', dobletes: 0, comidas: 0, horas: 0, minutos: 0,
+    } : { fecha: '', horario: '', iniRaw: '', finRaw: '', dobletes: 0, comidas: 0, horas: 0, minutos: 0,
       ausente1: {ficha:'',nombre:'',motivo:'',horario:''}, ausente2: {ficha:'',nombre:'',motivo:'',horario:''}, labores: '' };
   });
 
@@ -2134,8 +2141,11 @@ async function editarFolio(folioId) {
 
   irPaso(4);
 
-  // Aviso visual de que esta en modo edicion
+  // Aviso visual de que esta en modo edicion (quita cualquier aviso anterior primero)
+  const avisoViejo = document.getElementById('avisoModoEdicion');
+  if (avisoViejo) avisoViejo.remove();
   const aviso = document.createElement('div');
+  aviso.id = 'avisoModoEdicion';
   aviso.style.cssText = 'background:#fff3cd;border:1px solid #ffe08a;border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:0.85rem;color:#7a5c00;';
   aviso.innerHTML = `✏️ <strong>Editando Folio Nº ${folio.folio}</strong> — los cambios que hagas van a actualizar este folio existente, no van a crear uno nuevo.`;
   document.getElementById('diasContainer').parentElement.insertBefore(aviso, document.getElementById('diasContainer'));
@@ -2199,9 +2209,14 @@ async function guardarFolio() {
 
     const diasArr = DIAS_SEMANA.map(d => {
       const data = capturaState.dias[d.clave];
+      // Para Tiempo Extra/Insalubre guardamos la hora cruda (ej. "12-15") en el
+      // mismo campo "horario" que usa Doblete, asi se conserva y se puede editar despues.
+      const horarioAGuardar = (capturaState.tipoPago === 'TIEMPO_EXTRA' || capturaState.tipoPago === 'INSALUBRE')
+        ? (data.iniRaw && data.finRaw ? `${data.iniRaw}-${data.finRaw}` : null)
+        : (data.horario || null);
       return {
         folio_id: folioGuardado.id, dia_semana: d.clave, fecha: data.fecha,
-        horario: data.horario || null, dobletes: data.dobletes||0, comidas: data.comidas||0,
+        horario: horarioAGuardar, dobletes: data.dobletes||0, comidas: data.comidas||0,
         horas: data.horas||0, minutos: data.minutos||0,
         ausente1_ficha: data.ausente1.ficha || null, ausente1_nombre: data.ausente1.nombre || null,
         ausente1_motivo: data.ausente1.motivo || null, ausente1_horario: data.ausente1.horario || null,
