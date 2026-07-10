@@ -30,7 +30,7 @@ CIUDAD_POR_AREA = {
     "SCAD": "AGUA DULCE, VER.",
     "SCEP": "LAS CHOAPAS, VER.",
     "SCCUI": "CUICHAPA, VER.",
-    "SCCO": "COATZACOALCOS, VER.",  # pendiente de confirmar con Angel
+    "SCCO": "COATZACOALCOS, VER.",
 }
 
 MESES = {
@@ -72,7 +72,8 @@ def generar_excel(folio, out_path):
         if not r:
             continue
         p.set_value(f"C{r}", dia.get("fecha"))
-        p.set_value(f"D{r}", folio.get("salario"))
+        salario = folio.get("salario")
+        p.set_value(f"D{r}", f"${salario:,.2f}" if salario is not None else None)  # texto formateado con $ y punto, evita coma por config regional
         p.set_value(f"E{r}", folio.get("jornada"))
         p.set_value(f"F{r}", folio.get("nivel"))
 
@@ -96,7 +97,7 @@ def generar_excel(folio, out_path):
             p.set_value(f"R{r}", dia.get("minutos") or None)
 
         p.set_value(f"U{r}", dia.get("comidas") or None)
-        p.set_value(f"W{r}", folio.get("sociedad") or "PMXC")
+        p.set_value(f"W{r}", "PMXC")  # dato institucional fijo, nunca variable
         p.set_value(f"X{r}", folio.get("partida_presupuestal"))
         p.set_value(f"Y{r}", dia.get("labores_desarrolladas") or "")
 
