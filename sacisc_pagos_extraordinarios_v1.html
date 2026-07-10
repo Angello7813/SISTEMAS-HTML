@@ -1338,7 +1338,7 @@ const CAT_CONFIG = {
     tabla: 'pe_firmantes',
     cols: ['rol','nombre','puesto'],
     tipos: ['text','text','text'],
-    global: false,
+    global: true,
     conflict: null
   },
   ausencias: {
@@ -1802,8 +1802,8 @@ async function cargarTrabajadoresCat() {
 }
 
 async function cargarFirmantesCat() {
-  const q = `select=*&area=eq.${encodeURIComponent(areaValidada)}&subarea=eq.${encodeURIComponent(subareaActual)}`;
-  capturaState.firmantesCat = await sbGet('pe_firmantes', q);
+  // Firmantes es catalogo GLOBAL: los mismos para las 4 areas
+  capturaState.firmantesCat = await sbGet('pe_firmantes', 'select=*&order=rol,nombre');
 }
 
 async function cargarAusenciasCat() {
