@@ -35,6 +35,7 @@ class XlsxSheetPatcher:
         for row_el in self.sheetdata.findall(f"{{{NS}}}row"):
             if int(row_el.get("r")) == row_num:
                 return row_el
+        # crear nueva fila en la posicion ordenada correcta
         new_row = etree.Element(f"{{{NS}}}row", r=str(row_num))
         inserted = False
         for row_el in self.sheetdata.findall(f"{{{NS}}}row"):
@@ -69,6 +70,7 @@ class XlsxSheetPatcher:
         cualquier formula previa. Preserva el estilo (atributo s) existente."""
         c_el = self._get_or_create_cell(coord)
 
+        # quitar formula previa si la habia
         f_el = c_el.find(f"{{{NS}}}f")
         if f_el is not None:
             c_el.remove(f_el)
@@ -80,6 +82,7 @@ class XlsxSheetPatcher:
             c_el.remove(is_el)
 
         if value is None or value == "":
+            # celda vacia: quitar el atributo t si estaba marcado como texto/formula
             if c_el.get("t") is not None:
                 del c_el.attrib["t"]
             return
@@ -96,9 +99,20 @@ class XlsxSheetPatcher:
             t_el.text = str(value)
             t_el.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
 
+    def quitar_formato_condicional(self):
+        """Elimina TODAS las reglas de formato condicional de la hoja.
+        Se encontro una regla accidental en la plantilla original (fila 22,
+        columnas K:R) que pinta el texto del color del fondo cuando la celda
+        tiene un valor, escondiendo datos validos como si estuvieran vacios.
+        Como es un artefacto no intencional del diseno, se quita siempre."""
+        for cf in self.tree.findall(f"{{{NS}}}conditionalFormatting"):
+            self.tree.remove(cf)
+
     def save(self, out_path):
+        self.quitar_formato_condicional()
         new_xml = etree.tostring(self.tree, xml_declaration=True, encoding="UTF-8", standalone=True)
         shutil.copy(self.path, out_path)
+        # reescribir SOLO la entrada del sheet dentro del zip, todo lo demas identico
         with zipfile.ZipFile(self.path) as zin:
             with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zout:
                 for item in zin.infolist():
