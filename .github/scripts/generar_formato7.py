@@ -78,6 +78,7 @@ def generar_excel(folio, out_path):
 
     tot_dobletes, tot_comidas = 0, 0
     for dia in folio.get("pe_folio_dias", []):
+        print(f"DEBUG dia={dia}")  # diagnostico temporal, quitar despues
         r = DIA_ROWS.get(dia["dia_semana"])
         if not r:
             continue
