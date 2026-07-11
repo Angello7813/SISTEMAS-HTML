@@ -2737,7 +2737,13 @@ async function buscarFolios() {
   statsWrap.innerHTML = '';
   document.getElementById('btnExportarFolios').disabled = true;
 
-  let q = `select=*,pe_folio_dias(*)&area=eq.${encodeURIComponent(areaValidada)}&order=folio.desc`; // incluye 'origen' via select=*
+  // 'TODOS' es solo el modo de acceso del supervisor, no un valor real de
+  // area en la base de datos -- si se filtrara por area=eq.TODOS nunca
+  // encontraria nada. El supervisor ve las 4 areas reales sin restriccion.
+  let q = `select=*,pe_folio_dias(*)&order=folio.desc`;
+  if (areaValidada !== 'TODOS') {
+    q += `&area=eq.${encodeURIComponent(areaValidada)}`;
+  }
 
   const subarea = document.getElementById('folSubarea').value;
   if (subarea) q += `&subarea=eq.${encodeURIComponent(subarea)}`;
@@ -3125,12 +3131,12 @@ async function analizarDashboard() {
 
       if (dob > 0) {
         const key = f.ficha;
-        if (!porTrabajadorDobletes[key]) porTrabajadorDobletes[key] = { nombre: f.nombre_trabajador, total: 0 };
+        if (!porTrabajadorDobletes[key]) porTrabajadorDobletes[key] = { nombre: f.nombre_trabajador, area: f.area, total: 0 };
         porTrabajadorDobletes[key].total += dob;
       }
       if (horas > 0 && f.tipo_pago !== 'DOBLETE') {
         const key = f.ficha;
-        if (!porTrabajadorHoras[key]) porTrabajadorHoras[key] = { nombre: f.nombre_trabajador, total: 0 };
+        if (!porTrabajadorHoras[key]) porTrabajadorHoras[key] = { nombre: f.nombre_trabajador, area: f.area, total: 0 };
         porTrabajadorHoras[key].total += horas;
       }
       [d.ausente1_nombre, d.ausente2_nombre].forEach(nombre => {
@@ -3222,7 +3228,7 @@ function renderRanking(elId, datosPorFicha, unidad, esHoras) {
     <div class="ranking-item">
       <div class="ranking-pos">${i+1}</div>
       <div class="ranking-info">
-        <div class="ranking-name">${item.nombre}</div>
+        <div class="ranking-name">${item.nombre} ${item.area ? `<span style="color:var(--gray);font-weight:400;">· ${item.area}</span>` : ''}</div>
         <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${(item.total/max*100).toFixed(0)}%"></div></div>
       </div>
       <div class="ranking-value">${esHoras ? item.total.toFixed(1) : item.total}</div>
