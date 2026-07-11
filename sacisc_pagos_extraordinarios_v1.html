@@ -360,8 +360,22 @@
   .cat-status { font-size:0.8rem; font-weight:600; margin-left:10px; }
   .cat-status.ok { color:#27ae60; }
   .cat-status.err { color:#c0392b; }
-  .back-link { display:inline-flex; align-items:center; gap:6px; color:var(--green-mid); font-size:0.85rem; font-weight:600; cursor:pointer; margin-bottom:18px; }
-  .back-link:hover { text-decoration:underline; }
+  .back-link {
+    display:inline-flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:22px;
+    background:var(--white); color:var(--green-mid);
+    border:1.5px solid var(--border); border-radius:24px;
+    padding:9px 20px 9px 14px;
+    font-family:'Barlow Condensed',sans-serif; font-size:0.85rem; font-weight:700;
+    letter-spacing:0.04em; text-transform:uppercase;
+    box-shadow:0 1px 3px rgba(0,0,0,0.05);
+    transition:all .2s cubic-bezier(.4,0,.2,1);
+  }
+  .back-link svg { transition:transform .2s; }
+  .back-link:hover {
+    background:var(--green-mid); color:#fff; border-color:var(--green-mid);
+    box-shadow:0 4px 14px rgba(30,91,79,0.25); transform:translateX(-2px);
+  }
+  .back-link:hover svg { transform:translateX(-3px); }
 
 
   /* CAPTURA — version elegante */
@@ -590,7 +604,7 @@
     <div class="panel">
       <div class="panel-header">
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        Pagos Extraordinarios — Vigilancia y Hospital
+        Pagos Extraordinarios
       </div>
       <div class="panel-body">
         <p style="color:var(--gray);font-size:0.85rem;margin-bottom:16px;">
@@ -842,6 +856,31 @@
         <!-- PASO 5: FIRMANTES Y GUARDAR -->
         <div class="wizard-panel hidden" id="wpanel-5">
           <div class="resumen-folio" id="resumenFolio"></div>
+
+          <div class="hidden" id="folioModoWrap" style="margin-bottom:20px;">
+            <label style="display:block;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--green-mid);margin-bottom:8px;">
+              Número de Folio
+            </label>
+            <div class="radio-cards" style="grid-template-columns:repeat(2,minmax(160px,1fr));margin-bottom:12px;">
+              <div class="radio-card selected" id="folioModoAuto" onclick="seleccionarModoFolio('auto')">
+                <div class="rc-icon">🔢</div>
+                <div class="rc-label" style="font-size:0.85rem;">Automático</div>
+              </div>
+              <div class="radio-card" id="folioModoManual" onclick="seleccionarModoFolio('manual')">
+                <div class="rc-icon">✍️</div>
+                <div class="rc-label" style="font-size:0.85rem;">Manual</div>
+              </div>
+            </div>
+            <div class="hidden field" id="folioManualInputWrap" style="max-width:220px;">
+              <label>Escribe el número de folio</label>
+              <input type="number" min="1" id="folioManualInput" placeholder="ej. 5">
+            </div>
+            <p style="font-size:0.75rem;color:var(--gray);margin-top:6px;">
+              Tiempo Extra e Insalubre no tienen un histórico automático como Doblete — usa "Manual" si necesitas
+              indicar tú mismo en qué número vas.
+            </p>
+          </div>
+
           <div class="filters-grid" style="margin-bottom:20px;">
             <div class="field"><label>Elaboró</label><select id="selElaboro"></select></div>
             <div class="field"><label>Visto Bueno</label><select id="selVoBo"></select></div>
@@ -1081,8 +1120,60 @@
             PEMEX · F.383573
           </div>
         </div>
+
         <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(17,205,120,0.3),transparent);"></div>
-        <div style="width:100%;padding-top:6px;font-size:0.6rem;color:rgba(255,255,255,0.25);letter-spacing:0.08em;text-transform:uppercase;text-align:center;">
+
+        <div style="width:100%;display:flex;flex-direction:column;gap:9px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;text-align:left;">
+            <div style="width:28px;height:28px;border-radius:8px;flex-shrink:0;background:rgba(17,205,120,0.12);border:1px solid rgba(17,205,120,0.2);display:flex;align-items:center;justify-content:center;">
+              <svg width="13" height="13" fill="none" stroke="#11CD78" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div>
+              <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1px;">Especialidad</div>
+              <div style="font-size:0.75rem;color:rgba(255,255,255,0.9);font-weight:500;line-height:1.3;">Análisis de Datos<br>& Programación</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;text-align:left;">
+            <div style="width:28px;height:28px;border-radius:8px;flex-shrink:0;background:rgba(17,205,120,0.12);border:1px solid rgba(17,205,120,0.2);display:flex;align-items:center;justify-content:center;">
+              <svg width="13" height="13" fill="none" stroke="#11CD78" stroke-width="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            </div>
+            <div>
+              <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1px;">Posgrado</div>
+              <div style="font-size:0.75rem;color:rgba(255,255,255,0.9);font-weight:500;line-height:1.3;">Mtr. Ing. Industrial<br>& Medio Ambiente</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;text-align:left;">
+            <div style="width:28px;height:28px;border-radius:8px;flex-shrink:0;background:rgba(17,205,120,0.12);border:1px solid rgba(17,205,120,0.2);display:flex;align-items:center;justify-content:center;">
+              <svg width="13" height="13" fill="none" stroke="#11CD78" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+            </div>
+            <div>
+              <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1px;">Trayectoria PEMEX</div>
+              <div style="font-size:0.75rem;color:rgba(255,255,255,0.9);font-weight:500;line-height:1.3;">
+                Desde enero 2002
+                <span style="display:block;font-size:0.68rem;color:#11CD78;font-weight:700;margin-top:1px;">+23 años de servicio</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(17,205,120,0.3),transparent);"></div>
+
+        <div style="width:100%;text-align:left;">
+          <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px;display:flex;align-items:center;gap:6px;">
+            <svg width="11" height="11" fill="none" stroke="#11CD78" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            Experiencia Laboral
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Supervisión de Obra y Adm. de Contratos</span></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Analista de Presupuestos</span></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Enlace Financiero</span></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Cartera de Proyectos</span></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Prog. de Servicios y Costos a Intervenciones a Pozos</span></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Gestión de Adquisiciones y Compra de Bienes y Servicios</span></div>
+          </div>
+        </div>
+
+        <div style="width:100%;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);font-size:0.6rem;color:rgba(255,255,255,0.25);letter-spacing:0.08em;text-transform:uppercase;text-align:center;">
           PEMEX · URCS Sur · Coatzacoalcos
         </div>
       </div>
@@ -1727,6 +1818,7 @@ function cerrarCaptura() {
 
 function resetCaptura() {
   editandoFolioId = null;
+  modoFolioActual = 'auto';
   const avisoViejo = document.getElementById('avisoModoEdicion');
   if (avisoViejo) avisoViejo.remove();
   capturaState = { tipoPago:null, anio:null, semana:null, trabajador:null, dias:{}, horariosCat:[], semanasCat:[], trabajadoresCat:[], firmantesCat:[], ausenciasCat:[] };
@@ -2030,10 +2122,34 @@ function sugerirLabores(diaClave) {
 
 // ── PASO 5: FIRMANTES Y GUARDAR ─────────────────────────────────
 function prepararPaso5() {
-  const elaboro = capturaState.firmantesCat.filter(f => f.rol === 'ELABORO');
-  const vobo = capturaState.firmantesCat.filter(f => f.rol === 'VOBO');
-  const autoriza = capturaState.firmantesCat.filter(f => f.rol === 'AUTORIZA');
-  const optHtml = arr => '<option value="">— Selecciona —</option>' + arr.map(f => `<option value="${f.nombre}|||${f.puesto||''}">${f.nombre}</option>`).join('');
+  // El selector de folio manual/automatico solo aplica a Tiempo Extra/Insalubre
+  // (Doblete ya tiene su historial migrado y sigue siendo siempre automatico).
+  const folioModoWrap = document.getElementById('folioModoWrap');
+  if (capturaState.tipoPago === 'DOBLETE') {
+    folioModoWrap.classList.add('hidden');
+    modoFolioActual = 'auto';
+  } else {
+    folioModoWrap.classList.remove('hidden');
+    seleccionarModoFolio('auto');
+  }
+
+  // Quita duplicados exactos (mismo nombre+puesto) que puedan existir en el catalogo
+  const dedupe = (arr) => {
+    const vistos = new Set();
+    return arr.filter(f => {
+      const key = `${f.nombre}|||${f.puesto || ''}`;
+      if (vistos.has(key)) return false;
+      vistos.add(key);
+      return true;
+    });
+  };
+
+  const elaboro = dedupe(capturaState.firmantesCat.filter(f => f.rol === 'ELABORO'));
+  const vobo = dedupe(capturaState.firmantesCat.filter(f => f.rol === 'VOBO'));
+  const autoriza = dedupe(capturaState.firmantesCat.filter(f => f.rol === 'AUTORIZA'));
+  const optHtml = arr => '<option value="">— Selecciona —</option>' + arr.map(f =>
+    `<option value="${f.nombre}|||${f.puesto||''}">${f.nombre}${f.puesto ? ' — ' + f.puesto : ''}</option>`
+  ).join('');
   document.getElementById('selElaboro').innerHTML = optHtml(elaboro);
   document.getElementById('selVoBo').innerHTML = optHtml(vobo);
   document.getElementById('selAutoriza').innerHTML = optHtml(autoriza);
@@ -2071,6 +2187,14 @@ async function siguienteFolioDisponible() {
 //  EDICION DE FOLIOS MANUALES (los MIGRADOS son historia intocable)
 // ═══════════════════════════════════════════════════════════════
 let editandoFolioId = null;
+let modoFolioActual = 'auto'; // 'auto' | 'manual' -- solo relevante para Tiempo Extra/Insalubre
+
+function seleccionarModoFolio(modo) {
+  modoFolioActual = modo;
+  document.getElementById('folioModoAuto').classList.toggle('selected', modo === 'auto');
+  document.getElementById('folioModoManual').classList.toggle('selected', modo === 'manual');
+  document.getElementById('folioManualInputWrap').classList.toggle('hidden', modo !== 'manual');
+}
 
 async function editarFolio(folioId) {
   mostrarPantalla('pantallaCaptura');
@@ -2159,7 +2283,20 @@ async function guardarFolio() {
 
   const t = capturaState.trabajador;
   const esEdicion = !!editandoFolioId;
-  const folio = esEdicion ? null : await siguienteFolioDisponible();
+  let folio = null;
+  if (!esEdicion) {
+    if (capturaState.tipoPago !== 'DOBLETE' && modoFolioActual === 'manual') {
+      const manual = parseInt(document.getElementById('folioManualInput').value, 10);
+      if (!manual || manual < 1) {
+        statusEl.className = 'cat-status err';
+        statusEl.textContent = '⚠️ Escribe un número de folio válido antes de guardar.';
+        return;
+      }
+      folio = manual;
+    } else {
+      folio = await siguienteFolioDisponible();
+    }
+  }
   const regimen = (t.regimen || '').toUpperCase();
   const partida = regimen === 'PS' ? '10' : (regimen === 'TS' ? '16' : null);
 
