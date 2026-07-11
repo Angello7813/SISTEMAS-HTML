@@ -2277,12 +2277,25 @@ function renderAusenteBox(diaClave, n, ausente) {
 
 function onAusenteFichaChange(diaClave, n, ficha) {
   const t = capturaState.trabajadoresCat.find(x => String(x.ficha) === ficha);
-  capturaState.dias[diaClave]['ausente'+n].ficha = ficha;
-  capturaState.dias[diaClave]['ausente'+n].nombre = t ? t.nombre : '';
-  // El horario que cubre siempre es el horario ya seleccionado para este dia
-  capturaState.dias[diaClave]['ausente'+n].horario = capturaState.dias[diaClave].horario;
+  const data = capturaState.dias[diaClave];
+  data['ausente'+n].ficha = ficha;
+  data['ausente'+n].nombre = t ? t.nombre : '';
+  // El horario que cubre este ausente es su tramo especifico (si el doblete
+  // se divide en 2), o el horario completo (si es un solo doblete).
+  const split = DOBLETE_SPLIT[data.horario];
+  data['ausente'+n].horario = split ? split[n - 1] : data.horario;
   renderDias();
 }
+
+// Cuando un doblete cubre 2 ausencias distintas, cada una corresponde a un
+// tramo especifico del horario (no el horario completo para ambas).
+const DOBLETE_SPLIT = {
+  '00-16': ['00-08', '08-16'],
+  '00-24': ['00-08', '16-24'],
+  '07-23': ['07-15', '15-23'],
+  '08-24': ['08-16', '16-24'],
+  '23-15': ['23-07', '07-15'],
+};
 
 function onHorarioDiaChange(diaClave, horarioClave) {
   const data = capturaState.dias[diaClave];
@@ -2290,9 +2303,17 @@ function onHorarioDiaChange(diaClave, horarioClave) {
   const h = capturaState.horariosCat.find(x => x.clave === horarioClave);
   data.dobletes = h ? h.dobletes : 0;
   data.comidas = h ? h.comidas : 0;
-  // El "horario que cubre" del ausente siempre refleja el horario del dia
-  data.ausente1.horario = horarioClave;
-  data.ausente2.horario = horarioClave;
+
+  const split = DOBLETE_SPLIT[horarioClave];
+  if (split) {
+    // Doblete de 2 ausencias: cada una cubre su propio tramo especifico.
+    data.ausente1.horario = split[0];
+    data.ausente2.horario = split[1];
+  } else {
+    // Doblete de 1 sola ausencia: cubre el horario completo tal cual.
+    data.ausente1.horario = horarioClave;
+    data.ausente2.horario = horarioClave;
+  }
   renderDias();
 }
 
@@ -2327,7 +2348,7 @@ function sugerirLabores(diaClave) {
   const data = capturaState.dias[diaClave];
   let texto = '';
   if (data.dobletes === 1) {
-    texto = `DOBLA POR LA AUSENCIA DE: F. ${data.ausente1.ficha} ${data.ausente1.nombre}`;
+    texto = `DOBLA POR LA AUSENCIA DE: F. ${data.ausente1.ficha} ${data.ausente1.nombre} DE: ${data.ausente1.horario}`;
   } else if (data.dobletes === 2) {
     texto = `DOBLA POR LA AUSENCIA DE: F. ${data.ausente1.ficha} ${data.ausente1.nombre} DE: ${data.ausente1.horario} Y LA AUSENCIA DE F. ${data.ausente2.ficha} ${data.ausente2.nombre} DE: ${data.ausente2.horario}`;
   }
