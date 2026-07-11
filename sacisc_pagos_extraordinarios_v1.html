@@ -2572,7 +2572,8 @@ async function generarFormato7(folioId, btnEl) {
 
     // Abre el Excel en un visor dentro del navegador (para ver/imprimir), SIN descargarlo a la carpeta local
     const xlsxUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.xlsx`;
-    const visorUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(xlsxUrl)}`;
+    const xlsxUrlSinCache = `${xlsxUrl}?t=${Date.now()}`; // evita que el visor muestre una version en cache
+    const visorUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(xlsxUrlSinCache)}`;
     btnEl.innerHTML = `<a href="${visorUrl}" target="_blank" style="color:inherit;text-decoration:none;">📄 Ver e Imprimir</a>`;
     btnEl.disabled = false;
   } catch (e) {
