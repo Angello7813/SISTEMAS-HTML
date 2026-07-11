@@ -1397,6 +1397,7 @@ let areaSeleccionadaPendiente = null;
 let areaValidada = null;
 
 function onAreaChange(area) {
+  console.log('DEBUG onAreaChange:', area);
   areaSeleccionadaPendiente = area;
   document.getElementById('areaModalNombre').textContent = AREA_NOMBRES[area];
   document.getElementById('areaPwd').value = '';
@@ -1426,6 +1427,7 @@ function validarArea() {
 
   const correcta = AREA_PASSWORDS[area];
 
+  console.log('DEBUG validarArea: area=', area, 'pwd correcta?', pwd === correcta);
   if (pwd === correcta) {
     inputEl.className = 'success';
     msgEl.className   = 'area-pwd-msg ok';
@@ -1458,6 +1460,7 @@ function mostrarPantalla(idVisible) {
 }
 
 function accederArea(area) {
+  console.log('DEBUG accederArea llamada con:', area);
   areaValidada = area;
 
   document.getElementById('headerAreaBadge').textContent = area;
@@ -1570,6 +1573,7 @@ function cambiarSubarea() {
 }
 
 function cambiarArea() {
+  console.log('DEBUG cambiarArea() ejecutada');
   areaValidada = null;
   mostrarPantalla('pantallaAcceso');
   document.getElementById('headerAreaBadge').classList.add('hidden');
