@@ -599,6 +599,30 @@
     </div>
   </div>
 
+  <!-- ═══════ PANTALLA DE ACCESO POR SUB-ÁREA (segundo nivel) ═══════ -->
+  <div id="pantallaSubareaAcceso" class="hidden acceso-wrap">
+    <h1>Selecciona tu Sub-área</h1>
+    <p class="desc">Cada sub-área tiene su propia clave de acceso, para que cada capturista solo vea y trabaje su información.</p>
+    <div class="area-grid" id="subareaTipoGrid">
+      <div class="area-card" onclick="onSubareaTipoChange('vigilancia')">
+        <div class="ac-code">🛡️ Vigilancia</div>
+      </div>
+      <div class="area-card" onclick="onSubareaTipoChange('hospital')">
+        <div class="ac-code">🏥 Hospital</div>
+      </div>
+      <div class="area-card" onclick="onSubareaTipoChange('areas_verdes')">
+        <div class="ac-code">🌳 Áreas Verdes</div>
+      </div>
+      <div class="area-card" onclick="onSubareaTipoChange('combustion_interna')">
+        <div class="ac-code">⚙️ Combustión Interna</div>
+      </div>
+    </div>
+    <span class="back-link" onclick="cambiarArea()" style="margin-top:8px;">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Cambiar de Área
+    </span>
+  </div>
+
   <!-- ═══════ PANTALLA PRINCIPAL (post-acceso) ═══════ -->
   <div id="pantallaPrincipal" class="hidden">
     <div class="panel">
@@ -607,7 +631,7 @@
         Pagos Extraordinarios
       </div>
       <div class="panel-body">
-        <p style="color:var(--gray);font-size:0.85rem;margin-bottom:16px;">
+        <p style="color:var(--gray);font-size:0.85rem;margin-bottom:16px;" id="infoAreaSubarea">
           Sub-áreas registradas para <strong id="areaActualNombre" style="color:var(--green-mid);"></strong>:
           <span id="subareasList"></span>
         </p>
@@ -678,8 +702,8 @@
           <div class="cat-toolbar">
             <button class="btn-secondary" onclick="parsearPegado('trabajadores')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('trabajadores')">+ Fila manual</button>
-            <button class="btn-primary" onclick="guardarCatalogo('trabajadores')">Guardar en Supabase</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('trabajadores')">🗑️ Vaciar catálogo en Supabase</button>
+            <button class="btn-primary" onclick="guardarCatalogo('trabajadores')">💾 Guardar</button>
+            <button class="btn-clear" onclick="vaciarCatalogoSupabase('trabajadores')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-trabajadores">0</span>
             <span class="cat-status" id="status-trabajadores"></span>
           </div>
@@ -700,8 +724,8 @@
           <div class="cat-toolbar">
             <button class="btn-secondary" onclick="parsearPegado('semanas')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('semanas')">+ Fila manual</button>
-            <button class="btn-primary" onclick="guardarCatalogo('semanas')">Guardar en Supabase</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('semanas')">🗑️ Vaciar catálogo en Supabase</button>
+            <button class="btn-primary" onclick="guardarCatalogo('semanas')">💾 Guardar</button>
+            <button class="btn-clear" onclick="vaciarCatalogoSupabase('semanas')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-semanas">0</span>
             <span class="cat-status" id="status-semanas"></span>
           </div>
@@ -719,8 +743,8 @@
             Regla de negocio precargada conforme a tu especificación. Solo aplica a subáreas de <strong>Vigilancia</strong> y <strong>Hospital</strong>. Editable si cambia alguna regla.
           </p>
           <div class="cat-toolbar">
-            <button class="btn-primary" onclick="guardarCatalogo('horarios')">Guardar en Supabase</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('horarios')">🗑️ Vaciar catálogo en Supabase</button>
+            <button class="btn-primary" onclick="guardarCatalogo('horarios')">💾 Guardar</button>
+            <button class="btn-clear" onclick="vaciarCatalogoSupabase('horarios')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-horarios">0</span>
             <span class="cat-status" id="status-horarios"></span>
           </div>
@@ -741,8 +765,8 @@
           <div class="cat-toolbar">
             <button class="btn-secondary" onclick="parsearPegado('firmantes')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('firmantes')">+ Fila manual</button>
-            <button class="btn-primary" onclick="guardarCatalogo('firmantes')">Guardar en Supabase</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('firmantes')">🗑️ Vaciar catálogo en Supabase</button>
+            <button class="btn-primary" onclick="guardarCatalogo('firmantes')">💾 Guardar</button>
+            <button class="btn-clear" onclick="vaciarCatalogoSupabase('firmantes')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-firmantes">0</span>
             <span class="cat-status" id="status-firmantes"></span>
           </div>
@@ -763,8 +787,8 @@
           <div class="cat-toolbar">
             <button class="btn-secondary" onclick="parsearPegado('ausencias')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('ausencias')">+ Fila manual</button>
-            <button class="btn-primary" onclick="guardarCatalogo('ausencias')">Guardar en Supabase</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('ausencias')">🗑️ Vaciar catálogo en Supabase</button>
+            <button class="btn-primary" onclick="guardarCatalogo('ausencias')">💾 Guardar</button>
+            <button class="btn-clear" onclick="vaciarCatalogoSupabase('ausencias')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-ausencias">0</span>
             <span class="cat-status" id="status-ausencias"></span>
           </div>
@@ -1071,7 +1095,7 @@
 
         <div class="cat-toolbar">
           <button class="btn-secondary" onclick="parsearImportarSemana()">Vista previa</button>
-          <button class="btn-primary" onclick="guardarImportarSemana()">Guardar semana en Supabase</button>
+          <button class="btn-primary" onclick="guardarImportarSemana()">💾 Guardar semana</button>
           <span class="cat-count" id="count-importar">0</span>
           <span class="cat-status" id="status-importar"></span>
         </div>
@@ -1231,6 +1255,40 @@
   </div>
 </div>
 
+<!-- ═══════ MODAL VALIDACIÓN SUB-ÁREA (PIN de 1 dígito) ═══════ -->
+<div id="subareaModal">
+  <div class="area-modal-card">
+    <div class="area-modal-header">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      Validación de Sub-área
+    </div>
+    <div class="area-modal-body">
+      <div class="area-modal-label">Sub-área seleccionada</div>
+      <div class="area-modal-area-name" id="subareaModalNombre">—</div>
+      <div class="area-modal-label">Clave de acceso (1 dígito)</div>
+      <div class="area-pwd-wrap">
+        <input type="password" id="subareaPin" maxlength="1" placeholder="•"
+          onkeydown="if(event.key==='Enter')validarSubareaPin()">
+        <button class="area-pwd-toggle" onclick="toggleSubareaPin()" tabindex="-1">
+          <svg id="eyeIconSubarea" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="area-pwd-msg" id="subareaPinMsg"></div>
+      <div class="area-modal-actions">
+        <button class="area-btn-cancel" onclick="cancelarSubareaPin()">CANCELAR</button>
+        <button class="area-btn-ok" onclick="validarSubareaPin()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="margin-right:6px;vertical-align:middle"><path d="M9 11l3 3L22 4"/></svg>
+          Validar Acceso
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════════════
 //  SISTEMA DE ACCESO POR ÁREA USUARIA — Módulo Pagos Extraordinarios
@@ -1342,7 +1400,7 @@ function validarArea() {
 // Lista maestra de TODAS las pantallas del sistema. Cualquier navegacion
 // pasa por aqui, garantizando que nunca queden dos pantallas visibles a la vez
 // (por ejemplo, si el usuario usa "Cambiar de Area" estando dentro de un submodulo).
-const TODAS_LAS_PANTALLAS = ['pantallaAcceso','pantallaPrincipal','pantallaCatalogos','pantallaCaptura','pantallaFolios','pantallaDashboard','pantallaImportar'];
+const TODAS_LAS_PANTALLAS = ['pantallaAcceso','pantallaSubareaAcceso','pantallaPrincipal','pantallaCatalogos','pantallaCaptura','pantallaFolios','pantallaDashboard','pantallaImportar'];
 function mostrarPantalla(idVisible) {
   TODAS_LAS_PANTALLAS.forEach(id => {
     const el = document.getElementById(id);
@@ -1353,8 +1411,6 @@ function mostrarPantalla(idVisible) {
 function accederArea(area) {
   areaValidada = area;
 
-  mostrarPantalla('pantallaPrincipal');
-
   document.getElementById('headerAreaBadge').textContent = area;
   document.getElementById('headerAreaBadge').classList.remove('hidden');
   document.getElementById('btnCambiarArea').classList.remove('hidden');
@@ -1362,16 +1418,17 @@ function accederArea(area) {
   document.getElementById('areaActualNombre').textContent = AREA_NOMBRES[area];
   document.getElementById('footerSubarea').textContent = AREA_NOMBRES[area];
 
-  const subareasHtml = SUBAREAS[area].map(s => {
-    const icon = s.doblete ? '🟢 Doblete' : '⚪ Sin doblete';
-    const pre = s.precargado ? ' · datos precargados' : '';
-    return `<span class="subarea-tag" title="${icon}${pre}">${s.nombre}</span>`;
-  }).join('');
-  document.getElementById('subareasList').innerHTML = subareasHtml;
+  if (area === 'TODOS') {
+    // El administrador entra directo, sin PIN de sub-area, con visibilidad total.
+    subareaActual = null;
+    tipoSubareaActual = null;
+    mostrarPantalla('pantallaPrincipal');
+    mostrarInfoAreaCompleta(area);
+  } else {
+    // Los capturistas de cada area deben elegir y validar su sub-area primero.
+    mostrarPantalla('pantallaSubareaAcceso');
+  }
 
-  // La Importacion Semanal (transicion) y el Dashboard de Supervision son
-  // funciones EXCLUSIVAS del administrador (acceso "Todas las Areas").
-  // Los capturistas de cada area no las ven.
   const tarjetaImportar = document.getElementById('tarjetaImportarSemana');
   if (tarjetaImportar) {
     tarjetaImportar.style.display = (area === 'TODOS') ? '' : 'none';
@@ -1380,6 +1437,87 @@ function accederArea(area) {
   if (tarjetaDash) {
     tarjetaDash.style.display = (area === 'TODOS') ? '' : 'none';
   }
+}
+
+function mostrarInfoAreaCompleta(area) {
+  const subareasHtml = SUBAREAS[area].map(s => {
+    const icon = s.doblete ? '🟢 Doblete' : '⚪ Sin doblete';
+    const pre = s.precargado ? ' · datos precargados' : '';
+    return `<span class="subarea-tag" title="${icon}${pre}">${s.nombre}</span>`;
+  }).join('');
+  document.getElementById('infoAreaSubarea').innerHTML =
+    `Sub-áreas registradas para <strong style="color:var(--green-mid);">${AREA_NOMBRES[area]}</strong>: <span>${subareasHtml}</span>`;
+}
+
+// ── PIN DE SUB-ÁREA (segundo nivel de acceso) ──────────────────
+const SUBAREA_PINS = { vigilancia: '1', hospital: '2', areas_verdes: '3', combustion_interna: '4' };
+const SUBAREA_TIPO_NOMBRE = { vigilancia: 'Vigilancia', hospital: 'Hospital', areas_verdes: 'Áreas Verdes', combustion_interna: 'Combustión Interna' };
+let subareaTipoPendiente = null;
+
+function onSubareaTipoChange(tipo) {
+  subareaTipoPendiente = tipo;
+  const subareaInfo = (SUBAREAS[areaValidada] || []).find(s => s.tipo === tipo);
+  document.getElementById('subareaModalNombre').textContent = subareaInfo ? subareaInfo.nombre : SUBAREA_TIPO_NOMBRE[tipo];
+  document.getElementById('subareaPin').value = '';
+  document.getElementById('subareaPinMsg').textContent = '';
+  document.getElementById('subareaPinMsg').className = 'area-pwd-msg';
+  document.getElementById('subareaPin').className = '';
+  document.getElementById('subareaModal').classList.add('active');
+  setTimeout(() => document.getElementById('subareaPin').focus(), 150);
+}
+
+function cancelarSubareaPin() {
+  document.getElementById('subareaModal').classList.remove('active');
+  subareaTipoPendiente = null;
+}
+
+function toggleSubareaPin() {
+  const inp = document.getElementById('subareaPin');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function validarSubareaPin() {
+  const pin = document.getElementById('subareaPin').value.trim();
+  const tipo = subareaTipoPendiente;
+  const msgEl = document.getElementById('subareaPinMsg');
+  const inputEl = document.getElementById('subareaPin');
+  if (!tipo) return;
+
+  if (pin === SUBAREA_PINS[tipo]) {
+    inputEl.className = 'success';
+    msgEl.className = 'area-pwd-msg ok';
+    msgEl.textContent = '✅ Acceso autorizado';
+    setTimeout(() => {
+      document.getElementById('subareaModal').classList.remove('active');
+      entrarConSubareaBloqueada(tipo);
+    }, 600);
+  } else {
+    inputEl.className = 'error';
+    inputEl.value = '';
+    msgEl.className = 'area-pwd-msg err';
+    msgEl.textContent = '❌ Clave incorrecta.';
+    setTimeout(() => { inputEl.className = ''; document.getElementById('subareaPin').focus(); }, 900);
+  }
+}
+
+function entrarConSubareaBloqueada(tipo) {
+  const subareaInfo = (SUBAREAS[areaValidada] || []).find(s => s.tipo === tipo);
+  tipoSubareaActual = tipo;
+  subareaActual = subareaInfo ? subareaInfo.nombre : null;
+
+  mostrarPantalla('pantallaPrincipal');
+
+  // Con la sub-area ya bloqueada, se muestra fija (sin lista de todas las demas)
+  document.getElementById('infoAreaSubarea').innerHTML =
+    `Sub-área activa: <strong style="color:var(--green-mid);">${subareaActual}</strong> ` +
+    `<span class="subarea-tag" style="margin-left:6px;">${subareaInfo && subareaInfo.doblete ? '🟢 Admite Doblete' : '⚪ Sin Doblete'}</span> ` +
+    `<span class="back-link" style="display:inline-flex;margin:0 0 0 10px;padding:4px 12px;font-size:0.72rem;" onclick="cambiarSubarea()">🔁 Cambiar sub-área</span>`;
+}
+
+function cambiarSubarea() {
+  subareaActual = null;
+  tipoSubareaActual = null;
+  mostrarPantalla('pantallaSubareaAcceso');
 }
 
 function cambiarArea() {
@@ -1508,6 +1646,19 @@ async function cargarCatalogoGuardado(cat) {
 
 function poblarSelectorSubarea() {
   const sel = document.getElementById('selSubarea');
+  const wrap = document.getElementById('subareaSelectorWrap');
+
+  if (areaValidada !== 'TODOS') {
+    // La sub-area ya quedo bloqueada desde el login (PIN de sub-area).
+    // Aqui solo se muestra, fija, para que el capturista nunca pueda
+    // cambiarla ni ver datos de otra sub-area por error.
+    sel.innerHTML = `<option value="${subareaActual}" data-tipo="${tipoSubareaActual}">🔒 ${subareaActual}</option>`;
+    sel.disabled = true;
+    if (wrap) wrap.title = 'Tu sub-área quedó fija desde el acceso inicial.';
+    return;
+  }
+
+  sel.disabled = false;
   const lista = SUBAREAS[areaValidada] || [];
   sel.innerHTML = '<option value="">— Selecciona una sub-área —</option>' +
     lista.map(s => `<option value="${s.nombre}" data-tipo="${s.tipo}">${s.nombre} ${s.doblete ? '(admite doblete)' : '(sin doblete)'}</option>`).join('');
@@ -2424,9 +2575,15 @@ async function abrirFolios() {
       </div>`;
 
     const selSub = document.getElementById('folSubarea');
-    const lista = SUBAREAS[areaValidada] || [];
-    selSub.innerHTML = '<option value="">Todas las sub-áreas</option>' +
-      lista.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+    if (areaValidada !== 'TODOS') {
+      selSub.innerHTML = `<option value="${subareaActual}">🔒 ${subareaActual}</option>`;
+      selSub.disabled = true;
+    } else {
+      selSub.disabled = false;
+      const lista = SUBAREAS[areaValidada] || [];
+      selSub.innerHTML = '<option value="">Todas las sub-áreas</option>' +
+        lista.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+    }
 
     const semanas = await sbGet('pe_semanas', 'select=*&order=anio,num_semana');
     const anios = [...new Set(semanas.map(s => s.anio))].sort();
@@ -2449,7 +2606,9 @@ function cerrarFolios() {
 }
 
 function limpiarFiltrosFolios() {
-  document.getElementById('folSubarea').value = '';
+  if (areaValidada === 'TODOS') {
+    document.getElementById('folSubarea').value = '';
+  }
   document.getElementById('folTipoPago').value = '';
   document.getElementById('folAnio').value = '';
   document.getElementById('folSemana').innerHTML = '<option value="">Todas</option>';
