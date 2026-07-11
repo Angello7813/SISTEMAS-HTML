@@ -124,6 +124,39 @@
   .area-card.todas { grid-column: 1 / -1; background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%); border:none; }
   .area-card.todas .ac-code, .area-card.todas .ac-name { color: #fff; }
 
+  /* Tarjetas de seleccion de sub-area (pantalla de PIN) */
+  .subarea-tipo-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr));
+    gap: 20px; margin-bottom: 12px; max-width: 700px; margin-left:auto; margin-right:auto;
+  }
+  .subarea-tipo-card {
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 18px;
+    padding: 28px 20px; cursor: pointer; transition: all .25s cubic-bezier(.4,0,.2,1);
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: relative; overflow: hidden;
+  }
+  .subarea-tipo-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:4px;
+    background: linear-gradient(90deg, var(--green-mid), var(--green-light));
+    transform: scaleX(0); transform-origin: left; transition: transform .25s;
+  }
+  .subarea-tipo-card:hover { border-color: var(--green-mid); box-shadow: 0 12px 30px rgba(30,91,79,0.16); transform: translateY(-4px); }
+  .subarea-tipo-card:hover::before { transform: scaleX(1); }
+  .stc-icon {
+    width: 62px; height: 62px; border-radius: 50%; display:flex; align-items:center; justify-content:center;
+    font-size: 1.8rem; box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  }
+  .stc-nombre {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 1.15rem; font-weight: 700;
+    color: var(--green-dark); letter-spacing: 0.02em; text-align: center;
+  }
+  .stc-tipos { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .stc-tag {
+    background: #f0f9f6; color: var(--green-mid); border: 1px solid #c3e0d6;
+    border-radius: 20px; padding: 3px 11px; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.03em; text-transform: uppercase;
+  }
+
   /* FOOTER (patron SACISC) */
   footer { background: var(--green-dark); color: rgba(255,255,255,0.7); padding: 28px 40px; margin-top: auto; }
   .footer-inner { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 24px; }
@@ -609,18 +642,26 @@
   <div id="pantallaSubareaAcceso" class="hidden acceso-wrap">
     <h1>Selecciona tu Sub-área</h1>
     <p class="desc">Cada sub-área tiene su propia clave de acceso, para que cada capturista solo vea y trabaje su información.</p>
-    <div class="area-grid" id="subareaTipoGrid">
-      <div class="area-card" onclick="onSubareaTipoChange('vigilancia')">
-        <div class="ac-code">🛡️ Vigilancia</div>
+    <div class="subarea-tipo-grid" id="subareaTipoGrid">
+      <div class="subarea-tipo-card" onclick="onSubareaTipoChange('vigilancia')">
+        <div class="stc-icon" style="background:linear-gradient(150deg,#1e5b4f,#2d9e7e);">🛡️</div>
+        <div class="stc-nombre">Vigilancia</div>
+        <div class="stc-tipos"><span class="stc-tag">Doblete</span></div>
       </div>
-      <div class="area-card" onclick="onSubareaTipoChange('hospital')">
-        <div class="ac-code">🏥 Hospital</div>
+      <div class="subarea-tipo-card" onclick="onSubareaTipoChange('hospital')">
+        <div class="stc-icon" style="background:linear-gradient(150deg,#a13d3d,#d46a6a);">🏥</div>
+        <div class="stc-nombre">Hospital</div>
+        <div class="stc-tipos"><span class="stc-tag">Doblete</span><span class="stc-tag">Insalubre</span></div>
       </div>
-      <div class="area-card" onclick="onSubareaTipoChange('areas_verdes')">
-        <div class="ac-code">🌳 Áreas Verdes</div>
+      <div class="subarea-tipo-card" onclick="onSubareaTipoChange('areas_verdes')">
+        <div class="stc-icon" style="background:linear-gradient(150deg,#2f7a3d,#5fae6d);">🌳</div>
+        <div class="stc-nombre">Áreas Verdes</div>
+        <div class="stc-tipos"><span class="stc-tag">Tiempo Extra</span><span class="stc-tag">Insalubre</span></div>
       </div>
-      <div class="area-card" onclick="onSubareaTipoChange('combustion_interna')">
-        <div class="ac-code">⚙️ Combustión Interna</div>
+      <div class="subarea-tipo-card" onclick="onSubareaTipoChange('combustion_interna')">
+        <div class="stc-icon" style="background:linear-gradient(150deg,#5a4a1e,#9c8342);">⚙️</div>
+        <div class="stc-nombre">Combustión Interna</div>
+        <div class="stc-tipos"><span class="stc-tag">Tiempo Extra</span></div>
       </div>
     </div>
     <span class="back-link" onclick="cambiarArea()" style="margin-top:8px;">
@@ -2003,12 +2044,20 @@ function irPaso(n) {
 }
 
 // ── PASO 1: TIPO DE PAGO ──────────────────────────────────────
+// Regla de negocio: que tipo de pago admite cada tipo de sub-area
+const TIPOS_PAGO_PERMITIDOS = {
+  vigilancia: ['DOBLETE'],
+  hospital: ['DOBLETE', 'INSALUBRE'],
+  areas_verdes: ['TIEMPO_EXTRA', 'INSALUBRE'],
+  combustion_interna: ['TIEMPO_EXTRA'],
+};
+
 function renderTipoPagoCards() {
-  const subareaTipo = (SUBAREAS[areaValidada] || []).find(s => s.nombre === subareaActual)?.tipo;
-  const admiteDoblete = subareaAdmiteDoblete(subareaTipo);
+  const subareaTipo = (SUBAREAS[areaValidada] || []).find(s => s.nombre === subareaActual)?.tipo || tipoSubareaActual;
+  const permitidos = TIPOS_PAGO_PERMITIDOS[subareaTipo] || ['DOBLETE', 'TIEMPO_EXTRA', 'INSALUBRE'];
   const cont = document.getElementById('tipoPagoCards');
   cont.innerHTML = TIPOS_PAGO.map(tp => {
-    const disabled = tp.soloVigHosp && !admiteDoblete;
+    const disabled = !permitidos.includes(tp.clave);
     return `<div class="radio-card ${disabled ? 'disabled' : ''}" ${disabled ? '' : `onclick="seleccionarTipoPago('${tp.clave}')"`} id="tpc-${tp.clave}">
       <div class="rc-icon">${tp.icon}</div>
       <div class="rc-label">${tp.label}</div>
@@ -2595,11 +2644,19 @@ async function abrirFolios() {
     const anios = [...new Set(semanas.map(s => s.anio))].sort();
     document.getElementById('folAnio').innerHTML = '<option value="">Todos</option>' + anios.map(a => `<option value="${a}">${a}</option>`).join('');
     document.getElementById('folAnio').dataset.semanas = JSON.stringify(semanas);
-    document.getElementById('folAnio').onchange = () => {
-      const anio = document.getElementById('folAnio').value;
-      const sems = semanas.filter(s => String(s.anio) === anio);
+
+    // Llena el desplegable de Semana con TODAS las semanas desde el inicio
+    // (antes solo se llenaba al cambiar Año, y si solo habia un año disponible
+    // ese cambio nunca se disparaba, dejando el filtro de semana vacio).
+    const pintarSemanas = (anioFiltro) => {
+      const sems = anioFiltro ? semanas.filter(s => String(s.anio) === anioFiltro) : semanas;
       document.getElementById('folSemana').innerHTML = '<option value="">Todas</option>' +
-        sems.map(s => `<option value="${s.num_semana}">Semana ${s.num_semana}</option>`).join('');
+        sems.map(s => `<option value="${s.num_semana}">Semana ${s.num_semana} (${s.anio})</option>`).join('');
+    };
+    pintarSemanas(null);
+
+    document.getElementById('folAnio').onchange = () => {
+      pintarSemanas(document.getElementById('folAnio').value);
     };
   } catch (e) {
     alert('Error al abrir Folios Capturados: ' + e.message + '\n\nCopia este mensaje y compártelo para revisarlo.');
@@ -2887,7 +2944,7 @@ async function generarFormato7(folioId, btnEl) {
 
     const xlsxUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.xlsx`; // para "descargar directo"
     const visorUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(xlsxUrlFirmada)}`;
-    btnEl.innerHTML = `<a href="${visorUrl}" target="_blank" style="color:inherit;text-decoration:none;">📄 Ver e Imprimir</a> · <a href="${xlsxUrl}" download style="color:inherit;text-decoration:none;font-size:0.75rem;">⬇️ Descargar directo</a>`;
+    btnEl.innerHTML = `<a href="${visorUrl}" target="_blank" style="color:inherit;text-decoration:none;">📄 Ver e Imprimir</a>`;
     btnEl.disabled = false;
   } catch (e) {
     btnEl.textContent = '❌ Error: ' + e.message;
