@@ -1065,7 +1065,7 @@
         <div class="filters-grid" style="margin-bottom:18px;">
           <div class="field">
             <label>Tipo de Pago</label>
-            <select id="dashTipoPago">
+            <select id="dashTipoPago" onchange="onDashTipoPagoChange()">
               <option value="">Todos</option>
               <option value="DOBLETE">Doblete</option>
               <option value="TIEMPO_EXTRA">Tiempo Extra</option>
@@ -1078,7 +1078,7 @@
           </div>
           <div class="field">
             <label>Sub-área (para evolución histórica)</label>
-            <select id="dashSubarea">
+            <select id="dashSubarea" onchange="onDashSubareaChange()">
               <option value="">Todas (comparar por área)</option>
             </select>
           </div>
@@ -1397,7 +1397,6 @@ let areaSeleccionadaPendiente = null;
 let areaValidada = null;
 
 function onAreaChange(area) {
-  console.log('DEBUG onAreaChange:', area);
   areaSeleccionadaPendiente = area;
   document.getElementById('areaModalNombre').textContent = AREA_NOMBRES[area];
   document.getElementById('areaPwd').value = '';
@@ -1427,7 +1426,6 @@ function validarArea() {
 
   const correcta = AREA_PASSWORDS[area];
 
-  console.log('DEBUG validarArea: area=', area, 'pwd correcta?', pwd === correcta);
   if (pwd === correcta) {
     inputEl.className = 'success';
     msgEl.className   = 'area-pwd-msg ok';
@@ -1460,14 +1458,12 @@ function mostrarPantalla(idVisible) {
 }
 
 function accederArea(area) {
-  console.log('DEBUG accederArea llamada con:', area);
   areaValidada = area;
 
   document.getElementById('headerAreaBadge').textContent = area;
   document.getElementById('headerAreaBadge').classList.remove('hidden');
   document.getElementById('btnCambiarArea').classList.remove('hidden');
 
-  document.getElementById('areaActualNombre').textContent = AREA_NOMBRES[area];
   document.getElementById('footerSubarea').textContent = AREA_NOMBRES[area];
 
   if (area === 'TODOS') {
@@ -1573,7 +1569,6 @@ function cambiarSubarea() {
 }
 
 function cambiarArea() {
-  console.log('DEBUG cambiarArea() ejecutada');
   areaValidada = null;
   mostrarPantalla('pantallaAcceso');
   document.getElementById('headerAreaBadge').classList.add('hidden');
@@ -3066,16 +3061,54 @@ function cerrarDashboard() {
   mostrarPantalla('pantallaPrincipal');
 }
 
+// Los 3 filtros (Area, Sub-area, Tipo de Pago) se retroalimentan entre si,
+// para que nunca se pueda armar una combinacion que no existe en la realidad
+// (ej. Vigilancia + Insalubre, que nunca sucede segun la regla de negocio).
+
 function onDashAreaChange() {
   const area = document.getElementById('dashArea').value;
-  const selSub = document.getElementById('dashSubarea');
-  if (!area) {
-    selSub.innerHTML = '<option value="">Todas (comparar por área)</option>';
+  poblarDashSubareas(area, document.getElementById('dashTipoPago').value);
+}
+
+function onDashSubareaChange() {
+  const area = document.getElementById('dashArea').value;
+  const subareaNombre = document.getElementById('dashSubarea').value;
+  if (!subareaNombre) {
+    poblarDashTiposPago(null);
     return;
   }
-  const lista = SUBAREAS[area] || [];
-  selSub.innerHTML = '<option value="">Todas (comparar por sub-área)</option>' +
-    lista.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+  const listaBase = area ? (SUBAREAS[area] || []) : (SUBAREAS['TODOS'] || []);
+  const info = listaBase.find(s => s.nombre === subareaNombre);
+  poblarDashTiposPago(info ? info.tipo : null);
+}
+
+function onDashTipoPagoChange() {
+  const tipoPago = document.getElementById('dashTipoPago').value;
+  const area = document.getElementById('dashArea').value;
+  poblarDashSubareas(area, tipoPago);
+}
+
+function poblarDashSubareas(area, tipoPagoFiltro) {
+  const selSub = document.getElementById('dashSubarea');
+  const listaBase = area ? (SUBAREAS[area] || []) : (SUBAREAS['TODOS'] || []);
+  const filtradas = tipoPagoFiltro
+    ? listaBase.filter(s => (TIPOS_PAGO_PERMITIDOS[s.tipo] || []).includes(tipoPagoFiltro))
+    : listaBase;
+  const valorActual = selSub.value;
+  selSub.innerHTML = '<option value="">Todas (comparar por área)</option>' +
+    filtradas.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+  if ([...selSub.options].some(o => o.value === valorActual)) selSub.value = valorActual;
+}
+
+function poblarDashTiposPago(tipoSubarea) {
+  const selTipo = document.getElementById('dashTipoPago');
+  const permitidos = tipoSubarea ? (TIPOS_PAGO_PERMITIDOS[tipoSubarea] || []) : ['DOBLETE','TIEMPO_EXTRA','INSALUBRE'];
+  const TODOS_TIPOS_DASH = [['DOBLETE','Doblete'], ['TIEMPO_EXTRA','Tiempo Extra'], ['INSALUBRE','Insalubre']];
+  const valorActual = selTipo.value;
+  selTipo.innerHTML = '<option value="">Todos</option>' +
+    TODOS_TIPOS_DASH.filter(([clave]) => permitidos.includes(clave))
+      .map(([clave, label]) => `<option value="${clave}">${label}</option>`).join('');
+  if ([...selTipo.options].some(o => o.value === valorActual)) selTipo.value = valorActual;
 }
 
 async function cargarAniosDashboard() {
