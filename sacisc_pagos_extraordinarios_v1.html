@@ -2570,10 +2570,21 @@ async function generarFormato7(folioId, btnEl) {
       return;
     }
 
-    // Abre el Excel en un visor dentro del navegador (para ver/imprimir), SIN descargarlo a la carpeta local
-    const xlsxUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.xlsx`;
-    const xlsxUrlSinCache = `${xlsxUrl}?t=${Date.now()}`; // evita que el visor muestre una version en cache
-    const visorUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(xlsxUrlSinCache)}`;
+    // Genera una URL FIRMADA nueva y unica (token criptografico distinto cada vez).
+    // Microsoft nunca ha visto esta URL exacta antes, asi que no tiene nada que
+    // reutilizar de cache -- a diferencia de solo agregar "?t=..." a la misma
+    // URL de siempre, que Microsoft puede seguir ignorando.
+    const signResp = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${bucket}/${base}.xlsx`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expiresIn: 3600 })
+    });
+    if (!signResp.ok) throw new Error('No se pudo generar la URL firmada: ' + (await signResp.text()));
+    const signData = await signResp.json();
+    const xlsxUrlFirmada = `${SUPABASE_URL}/storage/v1${signData.signedURL}`;
+
+    const xlsxUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.xlsx`; // para "descargar directo"
+    const visorUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(xlsxUrlFirmada)}`;
     btnEl.innerHTML = `<a href="${visorUrl}" target="_blank" style="color:inherit;text-decoration:none;">📄 Ver e Imprimir</a> · <a href="${xlsxUrl}" download style="color:inherit;text-decoration:none;font-size:0.75rem;">⬇️ Descargar directo</a>`;
     btnEl.disabled = false;
   } catch (e) {
