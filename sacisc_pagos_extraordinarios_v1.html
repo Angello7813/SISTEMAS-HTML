@@ -334,6 +334,8 @@
   table.data-table tbody tr:hover { background: #eaf3f0; }
   table.data-table tbody td { padding: 10px 14px; color: #333; white-space: nowrap; }
   table.data-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table tbody tr.fila-clickeable { cursor: pointer; }
+  table.data-table tbody tr.fila-seleccionada { background: #d8f0e8 !important; box-shadow: inset 3px 0 0 var(--green-mid); }
 
   .empty { text-align: center; padding: 60px 20px; color: var(--gray); }
   .empty svg { opacity: 0.3; margin-bottom: 14px; }
@@ -750,7 +752,7 @@
             <button class="btn-secondary" onclick="parsearPegado('trabajadores')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('trabajadores')">+ Fila manual</button>
             <button class="btn-primary" onclick="guardarCatalogo('trabajadores')">💾 Guardar</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('trabajadores')">🗑️ Vaciar catálogo</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('trabajadores')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-trabajadores">0</span>
             <span class="cat-status" id="status-trabajadores"></span>
           </div>
@@ -772,7 +774,7 @@
             <button class="btn-secondary" onclick="parsearPegado('semanas')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('semanas')">+ Fila manual</button>
             <button class="btn-primary" onclick="guardarCatalogo('semanas')">💾 Guardar</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('semanas')">🗑️ Vaciar catálogo</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('semanas')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-semanas">0</span>
             <span class="cat-status" id="status-semanas"></span>
           </div>
@@ -791,7 +793,7 @@
           </p>
           <div class="cat-toolbar">
             <button class="btn-primary" onclick="guardarCatalogo('horarios')">💾 Guardar</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('horarios')">🗑️ Vaciar catálogo</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('horarios')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-horarios">0</span>
             <span class="cat-status" id="status-horarios"></span>
           </div>
@@ -813,7 +815,7 @@
             <button class="btn-secondary" onclick="parsearPegado('firmantes')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('firmantes')">+ Fila manual</button>
             <button class="btn-primary" onclick="guardarCatalogo('firmantes')">💾 Guardar</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('firmantes')">🗑️ Vaciar catálogo</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('firmantes')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-firmantes">0</span>
             <span class="cat-status" id="status-firmantes"></span>
           </div>
@@ -835,7 +837,7 @@
             <button class="btn-secondary" onclick="parsearPegado('ausencias')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('ausencias')">+ Fila manual</button>
             <button class="btn-primary" onclick="guardarCatalogo('ausencias')">💾 Guardar</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('ausencias')">🗑️ Vaciar catálogo</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('ausencias')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-ausencias">0</span>
             <span class="cat-status" id="status-ausencias"></span>
           </div>
@@ -1649,6 +1651,13 @@ async function abrirCatalogos() {
   mostrarPantalla('pantallaCatalogos');
   document.getElementById('catAreaNombre').textContent = AREA_NOMBRES[areaValidada] || '';
   poblarSelectorSubarea();
+
+  // "Vaciar catálogo" borra datos de forma permanente e irreversible — es
+  // una accion de alto riesgo, asi que solo el administrador (TODOS) la ve.
+  document.querySelectorAll('.btn-solo-admin').forEach(btn => {
+    btn.style.display = (areaValidada === 'TODOS') ? '' : 'none';
+  });
+
   await cargarTodosLosCatalogosGuardados();
 }
 
@@ -2612,6 +2621,12 @@ function terminarCaptura() {
 let ultimosFoliosResultado = []; // filas planas (1 por dia) para exportar
 let ultimosFoliosCrudos = []; // folios sin aplanar (con id), para generar Formato 7
 
+function formatearFechaCorta(fechaISO) {
+  if (!fechaISO) return '?';
+  const [y, m, d] = fechaISO.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 async function abrirFolios() {
   try {
     mostrarPantalla('pantallaFolios');
@@ -2640,6 +2655,21 @@ async function abrirFolios() {
         lista.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
     }
 
+    // El filtro de Tipo de Pago tambien respeta la regla de negocio de la
+    // sub-area activa: un capturista de Vigilancia no debe poder ni buscar
+    // Tiempo Extra/Insalubre, ya que esa sub-area nunca los genera.
+    const selTipoPago = document.getElementById('folTipoPago');
+    const TODOS_TIPOS_PAGO = [['DOBLETE','Doblete'], ['TIEMPO_EXTRA','Tiempo Extra'], ['INSALUBRE','Insalubre']];
+    if (areaValidada !== 'TODOS') {
+      const permitidos = TIPOS_PAGO_PERMITIDOS[tipoSubareaActual] || [];
+      selTipoPago.innerHTML = '<option value="">Todos</option>' +
+        TODOS_TIPOS_PAGO.filter(([clave]) => permitidos.includes(clave))
+          .map(([clave, label]) => `<option value="${clave}">${label}</option>`).join('');
+    } else {
+      selTipoPago.innerHTML = '<option value="">Todos</option>' +
+        TODOS_TIPOS_PAGO.map(([clave, label]) => `<option value="${clave}">${label}</option>`).join('');
+    }
+
     const semanas = await sbGet('pe_semanas', 'select=*&order=anio,num_semana');
     const anios = [...new Set(semanas.map(s => s.anio))].sort();
     document.getElementById('folAnio').innerHTML = '<option value="">Todos</option>' + anios.map(a => `<option value="${a}">${a}</option>`).join('');
@@ -2651,7 +2681,7 @@ async function abrirFolios() {
     const pintarSemanas = (anioFiltro) => {
       const sems = anioFiltro ? semanas.filter(s => String(s.anio) === anioFiltro) : semanas;
       document.getElementById('folSemana').innerHTML = '<option value="">Todas</option>' +
-        sems.map(s => `<option value="${s.num_semana}">Semana ${s.num_semana} (${s.anio})</option>`).join('');
+        sems.map(s => `<option value="${s.num_semana}">Semana ${s.num_semana} (del ${formatearFechaCorta(s.fecha_inicio)} al ${formatearFechaCorta(s.fecha_termino)})</option>`).join('');
     };
     pintarSemanas(null);
 
@@ -2735,7 +2765,7 @@ async function buscarFolios() {
       if (sinHorario && sinDobletes && sinHoras && sinLabores) return;
 
       filas.push({
-        folio: f.folio, area: f.area, subarea: f.subarea, tipo_pago: f.tipo_pago,
+        folio_id: f.id, folio: f.folio, area: f.area, subarea: f.subarea, tipo_pago: f.tipo_pago,
         anio: f.anio, semana: f.num_semana,
         ficha: f.ficha, trabajador: f.nombre_trabajador, regimen: f.regimen, nivel: f.nivel, salario: f.salario, jornada: f.jornada,
         dia: DIA_LABEL[d.dia_semana] || d.dia_semana, fecha: d.fecha, horario: d.horario || '',
@@ -2773,37 +2803,62 @@ async function buscarFolios() {
   ];
 
   const resumenHtml = `
-    <div class="table-wrap" style="margin-bottom:22px;">
+    <div class="table-wrap" style="margin-bottom:14px;">
       <table class="data-table">
         <thead><tr><th>Folio</th><th>Sub-área</th><th>Tipo</th><th>Año/Sem.</th><th>Trabajador</th><th>Origen</th><th>Acciones</th></tr></thead>
         <tbody>
-          ${folios.map(f => `<tr>
+          ${folios.map(f => `<tr class="fila-clickeable" data-folio-id="${f.id}" onclick="filtrarPorFolio(${f.id}, this)">
             <td class="num">${f.folio}</td>
             <td>${f.subarea}</td>
             <td>${f.tipo_pago}</td>
             <td>${f.anio} / ${f.num_semana}</td>
             <td>${f.ficha} — ${f.nombre_trabajador}</td>
             <td>${f.origen === 'MIGRADO' ? '<span style="color:var(--gray);font-size:0.75rem;">📜 Histórico</span>' : '<span style="color:var(--green-mid);font-size:0.75rem;">✏️ Manual</span>'}</td>
-            <td style="white-space:nowrap;">
+            <td style="white-space:nowrap;" onclick="event.stopPropagation()">
               <button class="btn-secondary" style="padding:6px 14px;font-size:0.78rem;" onclick="generarFormato7(${f.id}, this)">📄 Generar</button>
               ${f.origen !== 'MIGRADO' ? `<button class="btn-secondary" style="padding:6px 14px;font-size:0.78rem;margin-left:6px;" onclick="editarFolio(${f.id})">✏️ Editar</button>` : ''}
             </td>
           </tr>`).join('')}
         </tbody>
       </table>
-    </div>`;
+    </div>
+    <p style="font-size:0.78rem;color:var(--gray);margin-bottom:22px;">
+      💡 Dale clic a un folio de la tabla de arriba para ver solo sus días en la tabla de abajo.
+      <span id="btnMostrarTodosFolios" class="hidden" style="color:var(--green-mid);font-weight:700;cursor:pointer;margin-left:8px;" onclick="mostrarTodosLosDias()">↺ Mostrar todos los días</span>
+    </p>`;
 
   resultWrap.innerHTML = resumenHtml + `
     <div class="table-wrap" style="max-height:560px; overflow-y:auto;">
-      <table class="data-table">
+      <table class="data-table" id="tablaDetalleDias">
         <thead><tr>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
         <tbody>
-          ${filas.map(r => `<tr>${cols.map(c => `<td>${r[c[0]] ?? ''}</td>`).join('')}</tr>`).join('')}
+          ${filas.map(r => `<tr data-folio-id="${r.folio_id}">${cols.map(c => `<td>${r[c[0]] ?? ''}</td>`).join('')}</tr>`).join('')}
         </tbody>
       </table>
     </div>`;
 
   document.getElementById('btnExportarFolios').disabled = false;
+}
+
+function filtrarPorFolio(folioId, filaEl) {
+  // Marca visualmente la fila elegida en la tabla de folios
+  document.querySelectorAll('#foliosResultWrap tr.fila-seleccionada').forEach(tr => tr.classList.remove('fila-seleccionada'));
+  filaEl.classList.add('fila-seleccionada');
+
+  // Filtra la tabla de dias para mostrar SOLO los del folio elegido
+  const filas = document.querySelectorAll('#tablaDetalleDias tbody tr');
+  filas.forEach(tr => {
+    tr.style.display = (String(tr.dataset.folioId) === String(folioId)) ? '' : 'none';
+  });
+
+  document.getElementById('btnMostrarTodosFolios').classList.remove('hidden');
+  document.getElementById('tablaDetalleDias').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function mostrarTodosLosDias() {
+  document.querySelectorAll('#foliosResultWrap tr.fila-seleccionada').forEach(tr => tr.classList.remove('fila-seleccionada'));
+  document.querySelectorAll('#tablaDetalleDias tbody tr').forEach(tr => { tr.style.display = ''; });
+  document.getElementById('btnMostrarTodosFolios').classList.add('hidden');
 }
 
 function exportarFoliosExcel() {
