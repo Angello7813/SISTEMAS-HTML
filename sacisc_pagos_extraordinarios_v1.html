@@ -1744,6 +1744,14 @@ function cambiarTab(nombre) {
 // Parsear texto pegado desde Excel (tab-separated, una fila por linea)
 // Si una fila pegada ya existe en la tabla (misma clave de conflicto: ficha, clave, etc.)
 // se ACTUALIZA en su lugar en vez de agregarse duplicada.
+// Limpia simbolos de moneda ($ , espacios) antes de convertir a numero.
+// Sin esto, "$182.74" se convierte en NaN y rompe cualquier comparacion.
+function limpiarNumero(valor) {
+  const limpio = String(valor ?? '').replace(/[$,\s]/g, '').trim();
+  const n = parseFloat(limpio);
+  return isNaN(n) ? null : n;
+}
+
 function parsearPegado(cat) {
   const ta = document.getElementById('paste' + capitalizar(cat));
   const texto = ta.value.trim();
@@ -1768,11 +1776,11 @@ function parsearPegado(cat) {
         while (f.length < config.cols.length) f.push('');
         const filaLimpia = f.slice(0, config.cols.length);
         const fichaNorm = parseInt(String(filaLimpia[idxFicha]).trim(), 10);
-        const salarioNorm = parseFloat(String(filaLimpia[idxSalario]).trim());
+        const salarioNorm = limpiarNumero(filaLimpia[idxSalario]);
 
         const idxExistente = CAT_DATA[cat].findIndex(existing => {
           const efFicha = parseInt(String(existing[idxFicha]).trim(), 10);
-          const efSalario = parseFloat(String(existing[idxSalario]).trim());
+          const efSalario = limpiarNumero(existing[idxSalario]);
           return efFicha === fichaNorm && efSalario === salarioNorm;
         });
 
@@ -1847,11 +1855,11 @@ function autoEtiquetarTrabajadores() {
   Object.values(grupos).forEach(indices => {
     if (indices.length < 2) return;
     const ordenados = indices.slice().sort((a, b) => {
-      const sa = parseFloat(String(CAT_DATA.trabajadores[a][idxSalario]).trim()) || 0;
-      const sb = parseFloat(String(CAT_DATA.trabajadores[b][idxSalario]).trim()) || 0;
+      const sa = limpiarNumero(CAT_DATA.trabajadores[a][idxSalario]) || 0;
+      const sb = limpiarNumero(CAT_DATA.trabajadores[b][idxSalario]) || 0;
       return sa - sb;
     });
-    const salarios = ordenados.map(i => parseFloat(String(CAT_DATA.trabajadores[i][idxSalario]).trim()) || 0);
+    const salarios = ordenados.map(i => limpiarNumero(CAT_DATA.trabajadores[i][idxSalario]) || 0);
     const distintos = new Set(salarios).size > 1;
     if (!distintos) return;
 
@@ -1956,8 +1964,8 @@ async function guardarCatalogo(cat) {
     const normalizarValor = (valor, ci) => {
       const tipo = config.tipos[ci];
       const limpio = (valor ?? '').toString().trim();
-      if (tipo === 'int') return String(parseInt(limpio, 10));
-      if (tipo === 'float') return String(parseFloat(limpio));
+      if (tipo === 'int') return String(parseInt(limpio.replace(/[$,\s]/g,''), 10));
+      if (tipo === 'float') return String(limpiarNumero(limpio));
       return limpio.toUpperCase();
     };
     const vistos = new Map();
