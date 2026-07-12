@@ -1063,6 +1063,10 @@
       </div>
       <div class="panel-body">
 
+        <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+          <button class="btn-secondary" onclick="descargarRespaldoCompleto(this)">💾 Descargar Respaldo Completo (Excel)</button>
+        </div>
+
         <div class="filters-grid" style="margin-bottom:18px;">
           <div class="field">
             <label>Tipo de Pago</label>
@@ -2581,6 +2585,23 @@ function seleccionarModoFolio(modo) {
   document.getElementById('folioManualInputWrap').classList.toggle('hidden', modo !== 'manual');
 }
 
+async function eliminarFolio(folioId, numeroFolio) {
+  if (!confirm(`¿Seguro que quieres BORRAR el Folio Nº ${numeroFolio}? Esta acción no se puede deshacer.`)) return;
+  if (!confirm(`Confirmación final: se eliminará permanentemente el Folio Nº ${numeroFolio} y todos sus días. ¿Continuar?`)) return;
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/pe_folios?id=eq.${folioId}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' }
+    });
+    if (!resp.ok) { alert('❌ Error al eliminar: ' + (await resp.text())); return; }
+    // Vuelve a correr la busqueda para que la tabla refleje el folio ya eliminado
+    await buscarFolios();
+  } catch (e) {
+    alert('❌ Error al eliminar: ' + e.message);
+  }
+}
+
 async function editarFolio(folioId) {
   mostrarPantalla('pantallaCaptura');
   resetCaptura();
@@ -2999,6 +3020,7 @@ async function buscarFolios() {
             <td style="white-space:nowrap;" onclick="event.stopPropagation()">
               <button class="btn-secondary" style="padding:6px 14px;font-size:0.78rem;" onclick="generarFormato7(${f.id}, this)">📄 Generar</button>
               ${f.origen !== 'MIGRADO' ? `<button class="btn-secondary" style="padding:6px 14px;font-size:0.78rem;margin-left:6px;" onclick="editarFolio(${f.id})">✏️ Editar</button>` : ''}
+              ${f.origen !== 'MIGRADO' ? `<button class="btn-clear" style="padding:6px 14px;font-size:0.78rem;margin-left:6px;" onclick="eliminarFolio(${f.id}, ${f.folio})">🗑️ Eliminar</button>` : ''}
             </td>
           </tr>`).join('')}
         </tbody>
@@ -3196,6 +3218,48 @@ async function generarFormato7(folioId, btnEl) {
 // ═══════════════════════════════════════════════════════════════
 let dashChartEvolucion = null;
 let dashChartComparativo = null;
+
+// Descarga un respaldo manual completo: las 7 tablas clave, cada una en
+// su propia pestana de un solo archivo Excel. Pensado para correrse cada
+// cierto tiempo (ej. mensual) como seguro extra, ya que el plan gratuito
+// de Supabase no incluye recuperacion automatica de datos borrados.
+async function descargarRespaldoCompleto(btnEl) {
+  if (typeof XLSX === 'undefined') {
+    alert('La librería de Excel no cargó (posiblemente bloqueada por el navegador). Intenta de nuevo en unos segundos o recarga la página.');
+    return;
+  }
+  const original = btnEl.textContent;
+  btnEl.disabled = true;
+  btnEl.textContent = '⏳ Generando respaldo...';
+
+  try {
+    const tablas = [
+      ['pe_folios', 'Folios'],
+      ['pe_folio_dias', 'Folio_Dias'],
+      ['pe_trabajadores', 'Trabajadores'],
+      ['pe_semanas', 'Semanas'],
+      ['pe_horarios', 'Horarios'],
+      ['pe_firmantes', 'Firmantes'],
+      ['pe_tipos_ausencia', 'Tipos_Ausencia'],
+    ];
+
+    const wb = XLSX.utils.book_new();
+    for (const [tabla, nombreHoja] of tablas) {
+      const datos = await sbGet(tabla, 'select=*');
+      const ws = XLSX.utils.json_to_sheet(datos.length ? datos : [{ aviso: 'Sin registros' }]);
+      XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+    }
+
+    const fecha = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `SACISC_Respaldo_PagosExtraordinarios_${fecha}.xlsx`);
+    btnEl.textContent = '✅ Respaldo descargado';
+    setTimeout(() => { btnEl.textContent = original; btnEl.disabled = false; }, 2500);
+  } catch (e) {
+    alert('❌ Error al generar el respaldo: ' + e.message);
+    btnEl.textContent = original;
+    btnEl.disabled = false;
+  }
+}
 
 function abrirDashboard() {
   if (areaValidada !== 'TODOS') {
