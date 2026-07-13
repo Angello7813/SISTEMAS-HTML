@@ -529,6 +529,7 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
         <button class="btn sm bghost" onclick="exportarHistoricoExcel()" style="background:#e8f3ef;color:#002f2a;border:1.5px solid #a0cfc3;display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3" width="20" height="18" rx="2" fill="#1D6F42"/><path d="M8 8L12 12M12 12L16 8M12 12L8 16M12 12L16 16" stroke="white" stroke-width="2" stroke-linecap="round"/><rect x="2" y="3" width="20" height="4" rx="1" fill="#1D6F42"/></svg> Exportar Excel</button>
         <select id="tAnio" onchange="renderTendencia()" class="bghost" style="border-radius:6px;padding:4px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;appearance:none;"><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option></select>
         <select id="tArea" onchange="renderTendencia()" class="bghost" style="border-radius:6px;padding:4px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;appearance:none;"><option value="">Todas las áreas</option><option value="SCAD">SCAD</option><option value="SCEP">SCEP</option><option value="SCUI">SCUI</option><option value="SCCO">SCCO</option></select>
+        <select id="tSubarea" onchange="renderTendencia()" class="bghost" style="border-radius:6px;padding:4px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;appearance:none;min-width:150px;"><option value="">Todas las subáreas</option></select>
       </div>
     </div>
     <div class="pb"><canvas id="chartTend" height="110" style="box-sizing: border-box; display: block; height: 110px; width: 1356px;" width="1356"></canvas></div>
@@ -2002,6 +2003,7 @@ function onServChange(){
   document.getElementById('lbCabo').innerHTML=`Cabo ${sv==='AV'?'Áreas Verdes':sv==='DOM'?'Domésticos':sv==='RB'?'Recolección de Basura':''} <span class="req">*</span>`;
   document.getElementById('lpDomWrap').style.display='none';
   poblarCabosM(sv);actualizarLocProgramador();
+  refrescarDatalistObs();
 }
 function onAreaChange(){
   const ar=document.getElementById('pArea').value;
@@ -2229,10 +2231,16 @@ function refrescarDatalistDom(){
   });
 }
 function refrescarDatalistObs(){
-  const obs=new Set();
-  PROG.forEach(p=>{if(p.obs&&p.obs.trim())obs.add(p.obs.trim());});
   const dl=document.getElementById('dlObs');if(!dl)return;
-  dl.innerHTML=[...obs].sort().map(o=>`<option value="${o}">`).join('');
+  const sv=document.getElementById('pServ')?document.getElementById('pServ').value:'';
+  // 1) Actividades Base del catálogo, filtradas por el servicio seleccionado (primero, como sugerencia principal)
+  const actsCat=AB.filter(a=>!sv||a.serv===sv).map(a=>a.nombre);
+  // 2) Observaciones históricas usadas en programas anteriores (texto libre)
+  const obsHist=new Set();
+  PROG.forEach(p=>{if(p.obs&&p.obs.trim())obsHist.add(p.obs.trim());});
+  // Combinar sin duplicados, catálogo primero
+  const combinado=[...new Set([...actsCat,...[...obsHist].sort()])];
+  dl.innerHTML=combinado.map(o=>`<option value="${o}"></option>`).join('');
 }
 function agregarLocPrograma(){
   const locId=document.getElementById('lpLoc').value;
@@ -2804,7 +2812,7 @@ function renderOrgTree(){
       h+=`<div style="margin-bottom:5px;border:1px solid #e0ede9;border-radius:7px;overflow:hidden;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f0f9f6;cursor:pointer;" onclick="toggleSubarea('${sid}')">
           <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:0;">
-            <span id="ic_${sid}" style="font-size:.7rem;color:var(--gm);flex-shrink:0;">▼</span>
+            <span id="ic_${sid}" style="font-size:.7rem;color:var(--gm);flex-shrink:0;">▶</span>
             <span style="font-family:Barlow Condensed,sans-serif;font-size:.82rem;font-weight:700;color:var(--gd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📂 ${s.nombre}</span>
             <span style="font-size:.65rem;color:var(--gray);flex-shrink:0;">${slocs.length} locs.</span>
           </div>
@@ -2813,7 +2821,7 @@ function renderOrgTree(){
             <button class="btn xs bdng" onclick="eliminarSubarea('${s.id}')" title="Eliminar">✕</button>
           </div>
         </div>
-        <div id="sub_${sid}" style="padding:6px 8px;display:block;">`;
+        <div id="sub_${sid}" style="padding:6px 8px;display:none;">`;
       slocs.forEach(l=>{h+=locRow(l);});
       if(!slocs.length)h+=`<p style="font-size:.72rem;color:var(--gray);padding:4px 0;">Sin localizaciones registradas.</p>`;
       h+=`</div></div>`;
@@ -3115,7 +3123,18 @@ let chartT=null;
 function renderTendencia(){
   const anio=parseInt(document.getElementById('tAnio').value)||AÑO;
   const area=document.getElementById('tArea').value;
-  let d=PROG.filter(p=>p.anio===anio);if(area)d=d.filter(p=>p.area===area);
+  // Poblar subárea según el área seleccionada (conservando selección previa si sigue siendo válida)
+  const tSub=document.getElementById('tSubarea');
+  if(tSub){
+    const _prev=tSub.value;
+    tSub.innerHTML='<option value="">Todas las subáreas</option>';
+    SA.filter(s=>!area||s.area===area).forEach(s=>{
+      const o=document.createElement('option');o.value=s.id;o.textContent=s.nombre;tSub.appendChild(o);
+    });
+    if(_prev&&Array.from(tSub.options).some(o=>o.value===_prev))tSub.value=_prev;
+  }
+  const subarea=tSub?tSub.value:'';
+  let d=PROG.filter(p=>p.anio===anio);if(area)d=d.filter(p=>p.area===area);if(subarea)d=d.filter(p=>(p.subareaId||'')===subarea);
   const sems=[...new Set(d.map(p=>p.semana))].sort((a,b)=>a-b);
   const av=sems.map(s=>{const r=d.filter(p=>p.semana===s&&p.serv==='AV');return r.length?Math.round(r.reduce((t,p)=>t+calcCump(p),0)/r.length):null;});
   const dom=sems.map(s=>{const r=d.filter(p=>p.semana===s&&p.serv==='DOM');return r.length?Math.round(r.reduce((t,p)=>t+calcCump(p),0)/r.length):null;});
@@ -3162,7 +3181,8 @@ function renderTendencia(){
     if(!serv)return;
     const anio2=parseInt(document.getElementById('tAnio').value)||AÑO;
     const area2=document.getElementById('tArea').value;
-    abrirDrillDown(sem,serv,anio2,area2);
+    const subarea2=document.getElementById('tSubarea')?document.getElementById('tSubarea').value:'';
+    abrirDrillDown(sem,serv,anio2,area2,subarea2);
   };
 }
 
@@ -3177,118 +3197,7 @@ function imprimirApertura(id){
   const hoy=new Date();
   const acts=(p.actividades||[]);
   const locs=p.localizaciones||[];
-
-  const actRows=acts.map(a=>`<tr><td>✔ ${a.nombre}</td><td>${a.desc||'—'}</td></tr>`).join('');
-
-  const _locsOrd=[...locs].sort((a,b)=>['LUN','MAR','MIÉ','JUE','VIE'].indexOf(a.dia)-['LUN','MAR','MIÉ','JUE','VIE'].indexOf(b.dia));
-  const locRows=_locsOrd.map((loc,i)=>{
-    const sub=SA.find(s=>s.id===loc.subarea);
-    const reg=(p.ejecucion||{})[`${loc.locId}_${loc.dia}`];
-    const stSym=!reg||reg.status==='PENDIENTE'?'—':reg.status==='EJECUTADO'?'✅':reg.status==='DESVIACION'?'⚠️':'N/A';
-    const domCell=p.serv==='DOM'?`<td style="padding:6px 8px;font-size:7pt;">${loc.domestico||'—'}</td>`:'';
-    const signCell=p.serv==='DOM'?`<td style="padding:10px 8px;vertical-align:bottom;border-right:1px solid #dde8e4;"><div style="border-bottom:1px solid #444;height:18px;margin-bottom:1px;"></div><div style="font-size:5pt;color:#777;">Nombre/Firma Rep.</div></td>`:'';
-    return `<tr style="border-bottom:1.5px solid #d0e8e3;${i%2?'background:#f8fcfa;':''}">
-      <td style="padding:6px 8px;font-weight:700;font-size:7.5pt;text-align:center;">${loc.dia}<br><span style="font-size:6pt;font-weight:400;color:#555;">${loc.fecha||''}</span></td>
-      <td style="padding:6px 8px;font-weight:700;font-size:7.5pt;">📍 ${loc.nombre}</td>
-      <td style="padding:6px 8px;font-size:7pt;color:#555;">${sub?sub.nombre:'—'}</td>
-      ${domCell}
-      <td style="padding:6px 8px;text-align:center;font-size:9pt;">${stSym}</td>
-      ${signCell}
-    </tr>`;
-  }).join('');
-
-  document.getElementById('rptPrint').innerHTML=`
-    <div class="rh">
-      <div style="display:flex;align-items:center;gap:14px;">
-        <img src="data:image/png;base64,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" style="height:52px;width:auto;flex-shrink:0;" alt="PEMEX">
-        <div>
-          <div class="rh-title" style="font-size:6.5pt;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.06em;margin-bottom:1px;">UNIDAD REGIONAL DE SERVICIOS CORPORATIVOS SUR · ZONA COATZACOALCOS</div>
-          <div class="rh-title">PROGRAMA SEMANAL DE TRABAJO</div>
-          <div class="rh-sub">${SVCL[p.serv]} · Área: ${p.area} · DAS-SSAB-GSG</div>
-        </div>
-      </div>
-      <div class="rh-meta"><div><span class="rfolio">${folio}</span></div><div><strong>Semana ${p.semana}:</strong> ${fe.ini} al ${fe.fin}</div><div><strong>Emisión:</strong> ${fmtF(hoy)}</div></div>
-    </div>
-    <div class="rsec">
-      <div class="rsect">Datos del Programa</div>
-      <table style="width:100%;font-size:7.5pt;border-collapse:collapse;">
-        <tr><td style="padding:3px 7px;width:50%;"><strong>Área Usuaria:</strong> ${p.area}</td><td style="padding:3px 7px;"><strong>Servicio:</strong> ${SVCL[p.serv]}</td></tr>
-        <tr><td style="padding:3px 7px;"><strong>${p.serv==='AV'?'Responsable AV':p.serv==='DOM'?'Responsable DOM':'Responsable RB'}:</strong> ${cab?cab.nombre+' — '+cab.cargo:'—'}</td>
-            <td style="padding:3px 7px;"><strong>Jefe de Área:</strong> ${mnd?mnd.nombre+' — '+mnd.cargo:'—'}</td></tr>
-        <tr><td style="padding:3px 7px;" colspan="2"><strong>Observaciones:</strong> ${p.obs||'Ninguna'}</td></tr>
-      </table>
-    </div>
-    ${acts.length?`<div class="rsec"><div class="rsect">Actividades Programadas</div><table class="rtable"><thead><tr><th>Actividad</th><th>Descripción</th></tr></thead><tbody>${actRows}</tbody></table></div>`:''}
-    <div class="rsec">
-      <div class="rsect">Programa de Localizaciones — Semana ${p.semana}${p.serv==='DOM'?' · Incluye conformidad diaria del representante':''}</div>
-      <table class="rtable"><thead><tr>
-        <th style="text-align:center;">Día / Fecha</th>
-        <th>Localización</th>
-        <th>Tipo / Subárea</th>
-        ${p.serv==='DOM'?'<th>Doméstico Asignado</th>':''}
-        <th style="text-align:center;">Estatus</th>
-        ${p.serv==='DOM'?'<th>Firma de Conformidad del Representante</th>':''}
-      </tr></thead><tbody>${locRows}</tbody></table>
-      ${p.serv==='DOM'?`<p style="font-size:5.5pt;color:#888;margin-top:5px;border-left:2px solid #1e5b4f;padding-left:5px;">Las filas sombreadas recogen la firma de conformidad del representante de la localización (persona que recibe el servicio) por cada día. Estas firmas acreditan la conformidad del servicio diario de Domésticos.</p>`:''}
-    </div>
-    <div class="rsec">
-      <div class="rsect">Firmas de Apertura</div>
-      <p style="font-size:7.5pt;line-height:1.7;background:#f4f9f7;border-left:2px solid #1e5b4f;padding:6px 10px;border-radius:3px;margin-bottom:12px;">
-        El presente programa de trabajo ampara las actividades de <strong>${SVCL[p.serv]}</strong> durante la <strong>Semana ${p.semana} (${fe.ini} — ${fe.fin})</strong> en instalaciones del área <strong>${p.area}</strong>. Al firmar, el Responsable se compromete a ejecutar y dar seguimiento. El Jefe de Área autoriza para su ejecución. Folio: <strong>${folio}</strong>.
-      </p>
-      <div class="rsign-grid">
-        <div class="rsign-block">
-          <div class="rsign-role">${p.serv==='AV'?'Responsable de Áreas Verdes':p.serv==='DOM'?'Responsable de Domésticos':'Responsable de Recolección de Basura'} — Elaboró</div>
-          <div style="margin-bottom:6px;"><div class="rsign-line"></div><div class="rsign-lbl">Nombre y Firma${cab?' — '+cab.nombre:''}</div></div>
-          <div style="margin-bottom:6px;"><div class="rsign-line"></div><div class="rsign-lbl">Cargo</div></div>
-          <div><div class="rsign-line"></div><div class="rsign-lbl">Fecha</div></div>
-        </div>
-        <div class="rsign-block">
-          <div class="rsign-role">Jefe de Área — Autorizó</div>
-          <div style="margin-bottom:6px;"><div class="rsign-line"></div><div class="rsign-lbl">Nombre y Firma${mnd?' — '+mnd.nombre:''}</div></div>
-          <div style="margin-bottom:6px;"><div class="rsign-line"></div><div class="rsign-lbl">Cargo</div></div>
-          <div><div class="rsign-line"></div><div class="rsign-lbl">Fecha</div></div>
-        </div>
-      </div>
-    </div>
-    <div class="rfoot"><div>SACISC Módulo 02 · v3.0 · Uso interno</div></div>`;
-
-  // Abrir en nueva pestaña con document.write (método más confiable)
-  const _cssAper=Array.from(document.styleSheets).map(ss=>{try{return Array.from(ss.cssRules).map(r=>r.cssText).join('\n');}catch(e){return '';}}).join('\n');
-  const _htmlAper='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+folio+'</title>'
-    +'<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">'
-    +'<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Barlow,Arial,sans-serif;font-size:8.5pt;color:#222;padding:14mm 15mm;background:#fff;}'
-    +'.rh{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1e5b4f;padding-bottom:10px;margin-bottom:14px;}'
-    +'.rh-logo{display:flex;align-items:center;flex-shrink:0;}'
-    +'.rh-title{font-family:Barlow Condensed,sans-serif;font-size:14pt;font-weight:800;color:#002f2a;text-transform:uppercase;}'
-    +'.rh-sub{font-size:7pt;color:#666;margin-top:2px;}'
-    +'.rh-meta{text-align:right;font-size:7pt;color:#444;line-height:1.9;}'
-    +'.rfolio{display:inline-block;background:#1e5b4f;color:#fff;font-size:6.5pt;font-weight:700;padding:2px 9px;border-radius:9px;print-color-adjust:exact;-webkit-print-color-adjust:exact;}'
-    +'.rsec{margin-bottom:13px;}'
-    +'.rsect{background:#002f2a;color:#fff;font-size:7pt;font-weight:700;text-transform:uppercase;padding:4px 10px;border-radius:3px;margin-bottom:7px;print-color-adjust:exact;-webkit-print-color-adjust:exact;}'
-    +'.rtable{width:100%;border-collapse:collapse;}'
-    +'.rtable thead tr{background:#002f2a;print-color-adjust:exact;-webkit-print-color-adjust:exact;}'
-    +'.rtable thead th{color:#fff;padding:5px 7px;font-size:6.5pt;font-weight:700;text-transform:uppercase;text-align:left;}'
-    +'.rtable tbody tr:nth-child(even){background:#f4f9f7;}'
-    +'.rtable tbody td{padding:5px 7px;border-bottom:1px solid #e0ede9;vertical-align:top;font-size:7.5pt;}'
-    +'.rsign-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:14px;}'
-    +'.rsign-block{padding:0 8px;}'
-    +'.rsign-role{font-size:7pt;font-weight:700;color:#002f2a;text-transform:uppercase;text-align:center;margin-bottom:10px;}'
-    +'.rsign-line{width:100%;border:none;border-bottom:1.5px solid #333;display:block;height:26px;margin-bottom:3px;}'
-    +'.rsign-lbl{font-size:5.5pt;color:#555;font-weight:600;text-transform:uppercase;}'
-    +'.rfoot{border-top:2px solid #1e5b4f;padding-top:7px;margin-top:14px;display:flex;justify-content:space-between;font-size:6pt;color:#555;}'
-    +'.topbar{background:#002f2a;color:#fff;padding:8px 15mm;display:flex;justify-content:space-between;align-items:center;font-size:7pt;}'
-    +'.topbar button{background:#fff;color:#002f2a;border:none;border-radius:5px;padding:5px 14px;font-weight:700;cursor:pointer;}'
-    +'@page{margin:0mm;size:Letter portrait;}'
-    +'@media print{.topbar{display:none;}body{padding:10mm 12mm;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}'
-    +'</style></head><body>'
-    +'<div class="topbar"><span><strong>SACISC · Programa Semanal de Trabajo</strong> · Folio: '+folio+'</span><button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>'
-    +document.getElementById('rptPrint').innerHTML
-    +'</body></html>';
-
-  const _w=window.open('','_blank');
-  if(_w){_w.document.open();_w.document.write(_htmlAper);_w.document.close();}
-  else{toast('⚠️ Permita ventanas emergentes para ver el reporte.');}
+  generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs);
 }
 
 function generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs,locRows,actRows){
@@ -3337,6 +3246,9 @@ function generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs,locRows,actRows){
     +'thead th{color:#fff;padding:5px 7px;font-size:6.5pt;font-weight:700;text-transform:uppercase;text-align:left;}'
     +'tbody tr:nth-child(even){background:#f4f9f7;}'
     +'tbody td{padding:5px 7px;border-bottom:1px solid #e0ede9;vertical-align:top;font-size:7.5pt;}'
+    +'tr{page-break-inside:avoid;break-inside:avoid;}'
+    +'thead{display:table-header-group;}'
+    +'.sign-grid{page-break-inside:avoid;break-inside:avoid;}'
     +'.sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:18px;}'
     +'.sign-block{padding:0 8px;}'
     +'.sign-role{font-size:7pt;font-weight:700;color:#002f2a;text-transform:uppercase;letter-spacing:.06em;text-align:center;margin-bottom:12px;}'
@@ -3486,7 +3398,7 @@ function abrirDocCierre(id){
   const domTh=(p.serv==='DOM'&&!esHospitalCie)?'<th>Domestico</th>':'';
   const obsRow=obsCierre?'<div class="sec"><div class="sect">Observaciones de Cierre</div><p style="font-size:7.5pt;padding:7px 9px;background:#f4f9f7;border-left:2px solid #1e5b4f;border-radius:3px;">'+obsCierre+'</p></div>':'';
 
-  const css='*{box-sizing:border-box;margin:0;padding:0;} body{font-family:Arial,sans-serif;font-size:8.5pt;color:#222;padding:14mm 15mm;} .rh{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1e5b4f;padding-bottom:10px;margin-bottom:14px;} .logo{width:42px;height:42px;border-radius:50%;background:#1e5b4f;display:inline-flex;align-items:center;justify-content:center;} .rh-t{font-size:13pt;font-weight:700;color:#002f2a;text-transform:uppercase;} .rh-s{font-size:7pt;color:#666;margin-top:2px;} .rh-meta{text-align:right;font-size:7pt;color:#444;line-height:1.9;} .folio{display:inline-block;background:#1e5b4f;color:#fff;font-size:6.5pt;font-weight:700;padding:2px 9px;border-radius:9px;} .sec{margin-bottom:13px;} .sect{background:#002f2a;color:#fff;font-size:7pt;font-weight:700;text-transform:uppercase;padding:4px 10px;border-radius:3px;margin-bottom:8px;} .kpis{display:flex;gap:6px;margin-bottom:10px;} .kbox{flex:1;border:1.5px solid #d0e8e3;border-radius:4px;padding:7px;text-align:center;} .kbox .lbl{font-size:5.5pt;font-weight:700;text-transform:uppercase;color:#777;margin-bottom:2px;} .kbox .val{font-size:13pt;font-weight:700;color:#002f2a;} table{width:100%;border-collapse:collapse;} thead tr{background:#002f2a;} thead th{color:#fff;padding:5px 7px;font-size:6.5pt;font-weight:700;text-transform:uppercase;text-align:left;} tbody tr:nth-child(even){background:#f4f9f7;} tbody td{padding:5px 7px;border-bottom:1px solid #e0ede9;vertical-align:top;} .sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:20px;} .sign-block{padding:0 8px;} .sign-role{font-size:7pt;font-weight:700;color:#002f2a;text-transform:uppercase;text-align:center;margin-bottom:12px;} .sign-line{width:100%;border:none;border-bottom:1.5px solid #333;display:block;height:28px;margin-bottom:3px;} .sign-lbl{font-size:5.5pt;color:#555;font-weight:600;text-transform:uppercase;} .foot{border-top:2px solid #1e5b4f;padding-top:8px;margin-top:16px;display:flex;justify-content:space-between;font-size:6pt;color:#555;} .info-box{background:#f0f9f6;border:1px solid #c3e0d6;border-radius:4px;padding:7px 10px;font-size:7pt;color:#1e5b4f;margin-bottom:12px;line-height:1.7;} .topbar{background:#1e5b4f;color:#fff;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;} .topbar button{background:#fff;color:#1e5b4f;border:none;border-radius:6px;padding:7px 18px;font-weight:700;font-size:9pt;cursor:pointer;} @page{margin:0mm;size:Letter portrait;} @media print{.topbar{display:none;} body{padding:12mm 15mm;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}';
+  const css='*{box-sizing:border-box;margin:0;padding:0;} body{font-family:Arial,sans-serif;font-size:8.5pt;color:#222;padding:14mm 15mm;} .rh{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #1e5b4f;padding-bottom:10px;margin-bottom:14px;} .logo{width:42px;height:42px;border-radius:50%;background:#1e5b4f;display:inline-flex;align-items:center;justify-content:center;} .rh-t{font-size:13pt;font-weight:700;color:#002f2a;text-transform:uppercase;} .rh-s{font-size:7pt;color:#666;margin-top:2px;} .rh-meta{text-align:right;font-size:7pt;color:#444;line-height:1.9;} .folio{display:inline-block;background:#1e5b4f;color:#fff;font-size:6.5pt;font-weight:700;padding:2px 9px;border-radius:9px;} .sec{margin-bottom:13px;} .sect{background:#002f2a;color:#fff;font-size:7pt;font-weight:700;text-transform:uppercase;padding:4px 10px;border-radius:3px;margin-bottom:8px;} .kpis{display:flex;gap:6px;margin-bottom:10px;} .kbox{flex:1;border:1.5px solid #d0e8e3;border-radius:4px;padding:7px;text-align:center;} .kbox .lbl{font-size:5.5pt;font-weight:700;text-transform:uppercase;color:#777;margin-bottom:2px;} .kbox .val{font-size:13pt;font-weight:700;color:#002f2a;} table{width:100%;border-collapse:collapse;} thead tr{background:#002f2a;} thead th{color:#fff;padding:5px 7px;font-size:6.5pt;font-weight:700;text-transform:uppercase;text-align:left;} tbody tr:nth-child(even){background:#f4f9f7;} tbody td{padding:5px 7px;border-bottom:1px solid #e0ede9;vertical-align:top;} tr{page-break-inside:avoid;break-inside:avoid;} thead{display:table-header-group;} .sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:20px;page-break-inside:avoid;break-inside:avoid;} .sign-block{padding:0 8px;} .sign-role{font-size:7pt;font-weight:700;color:#002f2a;text-transform:uppercase;text-align:center;margin-bottom:12px;} .sign-line{width:100%;border:none;border-bottom:1.5px solid #333;display:block;height:28px;margin-bottom:3px;} .sign-lbl{font-size:5.5pt;color:#555;font-weight:600;text-transform:uppercase;} .foot{border-top:2px solid #1e5b4f;padding-top:8px;margin-top:16px;display:flex;justify-content:space-between;font-size:6pt;color:#555;} .info-box{background:#f0f9f6;border:1px solid #c3e0d6;border-radius:4px;padding:7px 10px;font-size:7pt;color:#1e5b4f;margin-bottom:12px;line-height:1.7;} .topbar{background:#1e5b4f;color:#fff;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;} .topbar button{background:#fff;color:#1e5b4f;border:none;border-radius:6px;padding:7px 18px;font-weight:700;font-size:9pt;cursor:pointer;} @page{margin:10mm 12mm;size:Letter portrait;} @media print{.topbar{display:none;} body{padding:0;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}';
 
   // PEMEX logo embedded in header
 
@@ -4293,7 +4205,8 @@ function imprimirConstanciaEmergente(p,dia,fecha,locOrig,locNueva,motivo,autorid
     .foot{border-top:2px solid #c2410c;padding-top:7px;margin-top:14px;display:flex;justify-content:space-between;font-size:6pt;color:#555;}
     .print-btn{text-align:center;margin:14px 0 6px;}
     .print-btn button{background:#c2410c;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:9pt;font-weight:700;cursor:pointer;}
-    @page{margin:0mm;size:Letter portrait;}
+    tr{page-break-inside:avoid;break-inside:avoid;}
+    @page{margin:10mm 12mm;size:Letter portrait;}
     @media print{.topbar{display:none!important;}.print-btn{display:none!important;}body{padding:0;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
   `;
 
@@ -4408,6 +4321,16 @@ function abrirReplica(id){
   const fe=semDates(p.anio,p.semana);
   const serv=SVCL[p.serv]||p.serv;
   const subNom=p.subareaNom||(p.subareaId?((SA.find(s=>s.id===p.subareaId)||{}).nombre||''):'');
+  // Restablecer el modal compartido a su estado original (por si quedó en modo "Replicar Cierre")
+  const tit=document.querySelector('#movReplica .mh span');
+  if(tit)tit.textContent='Replicar Programa a Semana Siguiente';
+  const destBadge=document.getElementById('replicaSemDest');
+  if(destBadge)destBadge.style.background='var(--gm)';
+  const btnConf0=document.querySelector('#movReplica .mf .btn.bpri');
+  if(btnConf0){
+    btnConf0.onclick=confirmarReplica;
+    btnConf0.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Confirmar Réplica';
+  }
   // Info del programa origen
   document.getElementById('replicaServArea').textContent=serv+' — '+p.area+(subNom?' · '+subNom:'');
   document.getElementById('replicaSemOrig').textContent='Sem. '+p.semana+' ('+fe.ini+')';
@@ -5060,13 +4983,13 @@ function limpiarProgramasSemana(semana){
 // ══════════════════════════════════════════════════════════════
 let _ddProgId=null;
 
-function abrirDrillDown(sem,serv,anio,area){
+function abrirDrillDown(sem,serv,anio,area,subarea){
   const SVCOL={AV:'#10b981',DOM:'#3b82f6',RB:'#f59e0b'};
-  const progs=PROG.filter(p=>p.semana===sem&&p.serv===serv&&p.anio===anio&&!p.eliminado&&(!area||p.area===area));
+  const progs=PROG.filter(p=>p.semana===sem&&p.serv===serv&&p.anio===anio&&!p.eliminado&&(!area||p.area===area)&&(!subarea||(p.subareaId||'')===subarea));
   
   const svcColors={AV:'#10b981',DOM:'#3b82f6',RB:'#f59e0b'};
   document.getElementById('ddTitle').textContent=
-    (SVCL[serv]||serv)+' — Semana '+sem+' / '+anio+(area?' · '+area:'');
+    (SVCL[serv]||serv)+' — Semana '+sem+' / '+anio+(area?' · '+area:'')+(subarea?' · '+((SA.find(s=>s.id===subarea)||{}).nombre||''):'');
   
   if(!progs.length){
     document.getElementById('ddContent').innerHTML=
