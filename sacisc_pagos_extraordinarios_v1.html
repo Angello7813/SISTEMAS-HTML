@@ -124,6 +124,39 @@
   .area-card.todas { grid-column: 1 / -1; background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%); border:none; }
   .area-card.todas .ac-code, .area-card.todas .ac-name { color: #fff; }
 
+  /* Tarjetas de seleccion de sub-area (pantalla de PIN) */
+  .subarea-tipo-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr));
+    gap: 20px; margin-bottom: 12px; max-width: 700px; margin-left:auto; margin-right:auto;
+  }
+  .subarea-tipo-card {
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 18px;
+    padding: 28px 20px; cursor: pointer; transition: all .25s cubic-bezier(.4,0,.2,1);
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: relative; overflow: hidden;
+  }
+  .subarea-tipo-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:4px;
+    background: linear-gradient(90deg, var(--green-mid), var(--green-light));
+    transform: scaleX(0); transform-origin: left; transition: transform .25s;
+  }
+  .subarea-tipo-card:hover { border-color: var(--green-mid); box-shadow: 0 12px 30px rgba(30,91,79,0.16); transform: translateY(-4px); }
+  .subarea-tipo-card:hover::before { transform: scaleX(1); }
+  .stc-icon {
+    width: 62px; height: 62px; border-radius: 50%; display:flex; align-items:center; justify-content:center;
+    font-size: 1.8rem; box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  }
+  .stc-nombre {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 1.15rem; font-weight: 700;
+    color: var(--green-dark); letter-spacing: 0.02em; text-align: center;
+  }
+  .stc-tipos { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .stc-tag {
+    background: #f0f9f6; color: var(--green-mid); border: 1px solid #c3e0d6;
+    border-radius: 20px; padding: 3px 11px; font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.03em; text-transform: uppercase;
+  }
+
   /* FOOTER (patron SACISC) */
   footer { background: var(--green-dark); color: rgba(255,255,255,0.7); padding: 28px 40px; margin-top: auto; }
   .footer-inner { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 24px; }
@@ -140,6 +173,12 @@
     align-items: center; justify-content: center;
   }
   #areaModal.active { display: flex; }
+  #subareaModal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,47,42,0.78); z-index: 10020;
+    align-items: center; justify-content: center;
+  }
+  #subareaModal.active { display: flex; }
   .area-modal-card {
     background: #fff; border-radius: 16px;
     width: 420px; max-width: 96vw;
@@ -295,6 +334,8 @@
   table.data-table tbody tr:hover { background: #eaf3f0; }
   table.data-table tbody td { padding: 10px 14px; color: #333; white-space: nowrap; }
   table.data-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table tbody tr.fila-clickeable { cursor: pointer; }
+  table.data-table tbody tr.fila-seleccionada { background: #d8f0e8 !important; box-shadow: inset 3px 0 0 var(--green-mid); }
 
   .empty { text-align: center; padding: 60px 20px; color: var(--gray); }
   .empty svg { opacity: 0.3; margin-bottom: 14px; }
@@ -339,6 +380,13 @@
   .cat-table tbody td { padding:6px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
   .cat-table tbody td[contenteditable="true"] { cursor:text; }
   .cat-table tbody td[contenteditable="true"]:focus { outline:2px solid var(--green-mid); outline-offset:-2px; background:#f0f9f6; }
+  .cat-select-inline {
+    width:100%; border:none; background:transparent; font-family:inherit; font-size:0.8rem;
+    color:inherit; padding:6px 10px; cursor:pointer; appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%231e5b4f' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 6px center; padding-right:20px;
+  }
+  .cat-select-inline:focus { outline:2px solid var(--green-mid); outline-offset:-2px; background-color:#f0f9f6; }
   .cat-table tbody tr:nth-child(even) { background:#f7faf9; }
   .cat-table tbody tr:hover { background:#eaf3f0; }
   .row-del { color:#c0392b; cursor:pointer; font-weight:700; text-align:center; }
@@ -360,8 +408,22 @@
   .cat-status { font-size:0.8rem; font-weight:600; margin-left:10px; }
   .cat-status.ok { color:#27ae60; }
   .cat-status.err { color:#c0392b; }
-  .back-link { display:inline-flex; align-items:center; gap:6px; color:var(--green-mid); font-size:0.85rem; font-weight:600; cursor:pointer; margin-bottom:18px; }
-  .back-link:hover { text-decoration:underline; }
+  .back-link {
+    display:inline-flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:22px;
+    background:var(--white); color:var(--green-mid);
+    border:1.5px solid var(--border); border-radius:24px;
+    padding:9px 20px 9px 14px;
+    font-family:'Barlow Condensed',sans-serif; font-size:0.85rem; font-weight:700;
+    letter-spacing:0.04em; text-transform:uppercase;
+    box-shadow:0 1px 3px rgba(0,0,0,0.05);
+    transition:all .2s cubic-bezier(.4,0,.2,1);
+  }
+  .back-link svg { transition:transform .2s; }
+  .back-link:hover {
+    background:var(--green-mid); color:#fff; border-color:var(--green-mid);
+    box-shadow:0 4px 14px rgba(30,91,79,0.25); transform:translateX(-2px);
+  }
+  .back-link:hover svg { transform:translateX(-3px); }
 
 
   /* CAPTURA — version elegante */
@@ -585,15 +647,47 @@
     </div>
   </div>
 
+  <!-- ═══════ PANTALLA DE ACCESO POR SUB-ÁREA (segundo nivel) ═══════ -->
+  <div id="pantallaSubareaAcceso" class="hidden acceso-wrap">
+    <h1>Selecciona tu Sub-área</h1>
+    <p class="desc">Cada sub-área tiene su propia clave de acceso, para que cada capturista solo vea y trabaje su información.</p>
+    <div class="subarea-tipo-grid" id="subareaTipoGrid">
+      <div class="subarea-tipo-card" onclick="onSubareaTipoChange('vigilancia')">
+        <div class="stc-icon" style="background:linear-gradient(150deg,#1e5b4f,#2d9e7e);">🛡️</div>
+        <div class="stc-nombre">Vigilancia</div>
+        <div class="stc-tipos"><span class="stc-tag">Doblete</span></div>
+      </div>
+      <div class="subarea-tipo-card" onclick="onSubareaTipoChange('hospital')">
+        <div class="stc-icon" style="background:linear-gradient(150deg,#a13d3d,#d46a6a);">🏥</div>
+        <div class="stc-nombre">Hospital</div>
+        <div class="stc-tipos"><span class="stc-tag">Doblete</span><span class="stc-tag">Insalubre</span></div>
+      </div>
+      <div class="subarea-tipo-card" onclick="onSubareaTipoChange('areas_verdes')">
+        <div class="stc-icon" style="background:linear-gradient(150deg,#2f7a3d,#5fae6d);">🌳</div>
+        <div class="stc-nombre">Áreas Verdes</div>
+        <div class="stc-tipos"><span class="stc-tag">Tiempo Extra</span><span class="stc-tag">Insalubre</span></div>
+      </div>
+      <div class="subarea-tipo-card" onclick="onSubareaTipoChange('combustion_interna')">
+        <div class="stc-icon" style="background:linear-gradient(150deg,#5a4a1e,#9c8342);">⚙️</div>
+        <div class="stc-nombre">Combustión Interna</div>
+        <div class="stc-tipos"><span class="stc-tag">Tiempo Extra</span></div>
+      </div>
+    </div>
+    <span class="back-link" onclick="cambiarArea()" style="margin-top:8px;">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Cambiar de Área
+    </span>
+  </div>
+
   <!-- ═══════ PANTALLA PRINCIPAL (post-acceso) ═══════ -->
   <div id="pantallaPrincipal" class="hidden">
     <div class="panel">
       <div class="panel-header">
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        Pagos Extraordinarios — Vigilancia y Hospital
+        Pagos Extraordinarios
       </div>
       <div class="panel-body">
-        <p style="color:var(--gray);font-size:0.85rem;margin-bottom:16px;">
+        <p style="color:var(--gray);font-size:0.85rem;margin-bottom:16px;" id="infoAreaSubarea">
           Sub-áreas registradas para <strong id="areaActualNombre" style="color:var(--green-mid);"></strong>:
           <span id="subareasList"></span>
         </p>
@@ -658,20 +752,21 @@
         <div class="tab-panel active" id="tab-trabajadores">
           <p class="paste-hint">
             Pega aquí filas copiadas de tu Excel (columnas separadas por tabulador, en este orden):<br>
-            <strong>Ficha&nbsp;&nbsp;Nombre&nbsp;&nbsp;Régimen&nbsp;&nbsp;Sociedad&nbsp;&nbsp;Nivel&nbsp;&nbsp;Salario&nbsp;&nbsp;Jornada</strong>
+            <strong>Ficha&nbsp;&nbsp;Nombre&nbsp;&nbsp;Régimen&nbsp;&nbsp;Sociedad&nbsp;&nbsp;Nivel&nbsp;&nbsp;Salario&nbsp;&nbsp;Jornada</strong><br>
+            <span style="font-size:0.72rem;color:var(--gray);">Si una ficha aparece dos veces con salarios distintos (el trabajador tiene puesto base y ascendido), el sistema lo detecta solo y etiqueta automáticamente cuál es BASE y cuál ASCENDIDO — no necesitas escribir nada extra.</span>
           </p>
           <textarea class="paste-box" id="pasteTrabajadores" placeholder="240975	LUIS G. CANCINO GONZALEZ	PS	10	18	244.02	1"></textarea>
           <div class="cat-toolbar">
             <button class="btn-secondary" onclick="parsearPegado('trabajadores')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('trabajadores')">+ Fila manual</button>
-            <button class="btn-primary" onclick="guardarCatalogo('trabajadores')">Guardar en Supabase</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('trabajadores')">🗑️ Vaciar catálogo en Supabase</button>
+            <button class="btn-primary" onclick="guardarCatalogo('trabajadores')">💾 Guardar</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('trabajadores')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-trabajadores">0</span>
             <span class="cat-status" id="status-trabajadores"></span>
           </div>
           <div class="cat-table-wrap">
             <table class="cat-table">
-              <thead><tr><th>Ficha</th><th>Nombre</th><th>Régimen</th><th>Sociedad</th><th>Nivel</th><th>Salario</th><th>Jornada</th><th></th></tr></thead>
+              <thead><tr><th>Ficha</th><th>Nombre</th><th>Régimen</th><th>Sociedad</th><th>Nivel</th><th>Salario</th><th>Jornada</th><th>Etiqueta</th><th></th></tr></thead>
               <tbody id="body-trabajadores"></tbody>
             </table>
           </div>
@@ -686,8 +781,8 @@
           <div class="cat-toolbar">
             <button class="btn-secondary" onclick="parsearPegado('semanas')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('semanas')">+ Fila manual</button>
-            <button class="btn-primary" onclick="guardarCatalogo('semanas')">Guardar en Supabase</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('semanas')">🗑️ Vaciar catálogo en Supabase</button>
+            <button class="btn-primary" onclick="guardarCatalogo('semanas')">💾 Guardar</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('semanas')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-semanas">0</span>
             <span class="cat-status" id="status-semanas"></span>
           </div>
@@ -705,8 +800,8 @@
             Regla de negocio precargada conforme a tu especificación. Solo aplica a subáreas de <strong>Vigilancia</strong> y <strong>Hospital</strong>. Editable si cambia alguna regla.
           </p>
           <div class="cat-toolbar">
-            <button class="btn-primary" onclick="guardarCatalogo('horarios')">Guardar en Supabase</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('horarios')">🗑️ Vaciar catálogo en Supabase</button>
+            <button class="btn-primary" onclick="guardarCatalogo('horarios')">💾 Guardar</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('horarios')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-horarios">0</span>
             <span class="cat-status" id="status-horarios"></span>
           </div>
@@ -727,8 +822,8 @@
           <div class="cat-toolbar">
             <button class="btn-secondary" onclick="parsearPegado('firmantes')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('firmantes')">+ Fila manual</button>
-            <button class="btn-primary" onclick="guardarCatalogo('firmantes')">Guardar en Supabase</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('firmantes')">🗑️ Vaciar catálogo en Supabase</button>
+            <button class="btn-primary" onclick="guardarCatalogo('firmantes')">💾 Guardar</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('firmantes')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-firmantes">0</span>
             <span class="cat-status" id="status-firmantes"></span>
           </div>
@@ -749,8 +844,8 @@
           <div class="cat-toolbar">
             <button class="btn-secondary" onclick="parsearPegado('ausencias')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('ausencias')">+ Fila manual</button>
-            <button class="btn-primary" onclick="guardarCatalogo('ausencias')">Guardar en Supabase</button>
-            <button class="btn-clear" onclick="vaciarCatalogoSupabase('ausencias')">🗑️ Vaciar catálogo en Supabase</button>
+            <button class="btn-primary" onclick="guardarCatalogo('ausencias')">💾 Guardar</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('ausencias')">🗑️ Vaciar catálogo</button>
             <span class="cat-count" id="count-ausencias">0</span>
             <span class="cat-status" id="status-ausencias"></span>
           </div>
@@ -842,6 +937,31 @@
         <!-- PASO 5: FIRMANTES Y GUARDAR -->
         <div class="wizard-panel hidden" id="wpanel-5">
           <div class="resumen-folio" id="resumenFolio"></div>
+
+          <div class="hidden" id="folioModoWrap" style="margin-bottom:20px;">
+            <label style="display:block;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;color:var(--green-mid);margin-bottom:8px;">
+              Número de Folio
+            </label>
+            <div class="radio-cards" style="grid-template-columns:repeat(2,minmax(160px,1fr));margin-bottom:12px;">
+              <div class="radio-card selected" id="folioModoAuto" onclick="seleccionarModoFolio('auto')">
+                <div class="rc-icon">🔢</div>
+                <div class="rc-label" style="font-size:0.85rem;">Automático</div>
+              </div>
+              <div class="radio-card" id="folioModoManual" onclick="seleccionarModoFolio('manual')">
+                <div class="rc-icon">✍️</div>
+                <div class="rc-label" style="font-size:0.85rem;">Manual</div>
+              </div>
+            </div>
+            <div class="hidden field" id="folioManualInputWrap" style="max-width:220px;">
+              <label>Escribe el número de folio</label>
+              <input type="number" min="1" id="folioManualInput" placeholder="ej. 5">
+            </div>
+            <p style="font-size:0.75rem;color:var(--gray);margin-top:6px;">
+              Tiempo Extra e Insalubre no tienen un histórico automático como Doblete — usa "Manual" si necesitas
+              indicar tú mismo en qué número vas.
+            </p>
+          </div>
+
           <div class="filters-grid" style="margin-bottom:20px;">
             <div class="field"><label>Elaboró</label><select id="selElaboro"></select></div>
             <div class="field"><label>Visto Bueno</label><select id="selVoBo"></select></div>
@@ -950,10 +1070,14 @@
       </div>
       <div class="panel-body">
 
+        <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+          <button class="btn-secondary" onclick="descargarRespaldoCompleto(this)">💾 Descargar Respaldo Completo (Excel)</button>
+        </div>
+
         <div class="filters-grid" style="margin-bottom:18px;">
           <div class="field">
             <label>Tipo de Pago</label>
-            <select id="dashTipoPago">
+            <select id="dashTipoPago" onchange="onDashTipoPagoChange()">
               <option value="">Todos</option>
               <option value="DOBLETE">Doblete</option>
               <option value="TIEMPO_EXTRA">Tiempo Extra</option>
@@ -966,7 +1090,7 @@
           </div>
           <div class="field">
             <label>Sub-área (para evolución histórica)</label>
-            <select id="dashSubarea">
+            <select id="dashSubarea" onchange="onDashSubareaChange()">
               <option value="">Todas (comparar por área)</option>
             </select>
           </div>
@@ -1032,7 +1156,7 @@
 
         <div class="cat-toolbar">
           <button class="btn-secondary" onclick="parsearImportarSemana()">Vista previa</button>
-          <button class="btn-primary" onclick="guardarImportarSemana()">Guardar semana en Supabase</button>
+          <button class="btn-primary" onclick="guardarImportarSemana()">💾 Guardar semana</button>
           <span class="cat-count" id="count-importar">0</span>
           <span class="cat-status" id="status-importar"></span>
         </div>
@@ -1081,8 +1205,60 @@
             PEMEX · F.383573
           </div>
         </div>
+
         <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(17,205,120,0.3),transparent);"></div>
-        <div style="width:100%;padding-top:6px;font-size:0.6rem;color:rgba(255,255,255,0.25);letter-spacing:0.08em;text-transform:uppercase;text-align:center;">
+
+        <div style="width:100%;display:flex;flex-direction:column;gap:9px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;text-align:left;">
+            <div style="width:28px;height:28px;border-radius:8px;flex-shrink:0;background:rgba(17,205,120,0.12);border:1px solid rgba(17,205,120,0.2);display:flex;align-items:center;justify-content:center;">
+              <svg width="13" height="13" fill="none" stroke="#11CD78" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div>
+              <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1px;">Especialidad</div>
+              <div style="font-size:0.75rem;color:rgba(255,255,255,0.9);font-weight:500;line-height:1.3;">Análisis de Datos<br>& Programación</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;text-align:left;">
+            <div style="width:28px;height:28px;border-radius:8px;flex-shrink:0;background:rgba(17,205,120,0.12);border:1px solid rgba(17,205,120,0.2);display:flex;align-items:center;justify-content:center;">
+              <svg width="13" height="13" fill="none" stroke="#11CD78" stroke-width="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            </div>
+            <div>
+              <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1px;">Posgrado</div>
+              <div style="font-size:0.75rem;color:rgba(255,255,255,0.9);font-weight:500;line-height:1.3;">Mtr. Ing. Industrial<br>& Medio Ambiente</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;text-align:left;">
+            <div style="width:28px;height:28px;border-radius:8px;flex-shrink:0;background:rgba(17,205,120,0.12);border:1px solid rgba(17,205,120,0.2);display:flex;align-items:center;justify-content:center;">
+              <svg width="13" height="13" fill="none" stroke="#11CD78" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+            </div>
+            <div>
+              <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1px;">Trayectoria PEMEX</div>
+              <div style="font-size:0.75rem;color:rgba(255,255,255,0.9);font-weight:500;line-height:1.3;">
+                Desde enero 2002
+                <span style="display:block;font-size:0.68rem;color:#11CD78;font-weight:700;margin-top:1px;">+23 años de servicio</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(17,205,120,0.3),transparent);"></div>
+
+        <div style="width:100%;text-align:left;">
+          <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px;display:flex;align-items:center;gap:6px;">
+            <svg width="11" height="11" fill="none" stroke="#11CD78" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            Experiencia Laboral
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Supervisión de Obra y Adm. de Contratos</span></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Analista de Presupuestos</span></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Enlace Financiero</span></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Cartera de Proyectos</span></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Prog. de Servicios y Costos a Intervenciones a Pozos</span></div>
+            <div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span><span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Gestión de Adquisiciones y Compra de Bienes y Servicios</span></div>
+          </div>
+        </div>
+
+        <div style="width:100%;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);font-size:0.6rem;color:rgba(255,255,255,0.25);letter-spacing:0.08em;text-transform:uppercase;text-align:center;">
           PEMEX · URCS Sur · Coatzacoalcos
         </div>
       </div>
@@ -1132,6 +1308,40 @@
       <div class="area-modal-actions">
         <button class="area-btn-cancel" onclick="cancelarArea()">CANCELAR</button>
         <button class="area-btn-ok" onclick="validarArea()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="margin-right:6px;vertical-align:middle"><path d="M9 11l3 3L22 4"/></svg>
+          Validar Acceso
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL VALIDACIÓN SUB-ÁREA (PIN de 1 dígito) ═══════ -->
+<div id="subareaModal">
+  <div class="area-modal-card">
+    <div class="area-modal-header">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      Validación de Sub-área
+    </div>
+    <div class="area-modal-body">
+      <div class="area-modal-label">Sub-área seleccionada</div>
+      <div class="area-modal-area-name" id="subareaModalNombre">—</div>
+      <div class="area-modal-label">Clave de acceso (1 dígito)</div>
+      <div class="area-pwd-wrap">
+        <input type="password" id="subareaPin" maxlength="1" placeholder="•"
+          onkeydown="if(event.key==='Enter')validarSubareaPin()">
+        <button class="area-pwd-toggle" onclick="toggleSubareaPin()" tabindex="-1">
+          <svg id="eyeIconSubarea" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="area-pwd-msg" id="subareaPinMsg"></div>
+      <div class="area-modal-actions">
+        <button class="area-btn-cancel" onclick="cancelarSubareaPin()">CANCELAR</button>
+        <button class="area-btn-ok" onclick="validarSubareaPin()">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="margin-right:6px;vertical-align:middle"><path d="M9 11l3 3L22 4"/></svg>
           Validar Acceso
         </button>
@@ -1251,7 +1461,7 @@ function validarArea() {
 // Lista maestra de TODAS las pantallas del sistema. Cualquier navegacion
 // pasa por aqui, garantizando que nunca queden dos pantallas visibles a la vez
 // (por ejemplo, si el usuario usa "Cambiar de Area" estando dentro de un submodulo).
-const TODAS_LAS_PANTALLAS = ['pantallaAcceso','pantallaPrincipal','pantallaCatalogos','pantallaCaptura','pantallaFolios','pantallaDashboard','pantallaImportar'];
+const TODAS_LAS_PANTALLAS = ['pantallaAcceso','pantallaSubareaAcceso','pantallaPrincipal','pantallaCatalogos','pantallaCaptura','pantallaFolios','pantallaDashboard','pantallaImportar'];
 function mostrarPantalla(idVisible) {
   TODAS_LAS_PANTALLAS.forEach(id => {
     const el = document.getElementById(id);
@@ -1262,25 +1472,23 @@ function mostrarPantalla(idVisible) {
 function accederArea(area) {
   areaValidada = area;
 
-  mostrarPantalla('pantallaPrincipal');
-
   document.getElementById('headerAreaBadge').textContent = area;
   document.getElementById('headerAreaBadge').classList.remove('hidden');
   document.getElementById('btnCambiarArea').classList.remove('hidden');
 
-  document.getElementById('areaActualNombre').textContent = AREA_NOMBRES[area];
   document.getElementById('footerSubarea').textContent = AREA_NOMBRES[area];
 
-  const subareasHtml = SUBAREAS[area].map(s => {
-    const icon = s.doblete ? '🟢 Doblete' : '⚪ Sin doblete';
-    const pre = s.precargado ? ' · datos precargados' : '';
-    return `<span class="subarea-tag" title="${icon}${pre}">${s.nombre}</span>`;
-  }).join('');
-  document.getElementById('subareasList').innerHTML = subareasHtml;
+  if (area === 'TODOS') {
+    // El administrador entra directo, sin PIN de sub-area, con visibilidad total.
+    subareaActual = null;
+    tipoSubareaActual = null;
+    mostrarPantalla('pantallaPrincipal');
+    mostrarInfoAreaCompleta(area);
+  } else {
+    // Los capturistas de cada area deben elegir y validar su sub-area primero.
+    mostrarPantalla('pantallaSubareaAcceso');
+  }
 
-  // La Importacion Semanal (transicion) y el Dashboard de Supervision son
-  // funciones EXCLUSIVAS del administrador (acceso "Todas las Areas").
-  // Los capturistas de cada area no las ven.
   const tarjetaImportar = document.getElementById('tarjetaImportarSemana');
   if (tarjetaImportar) {
     tarjetaImportar.style.display = (area === 'TODOS') ? '' : 'none';
@@ -1289,6 +1497,87 @@ function accederArea(area) {
   if (tarjetaDash) {
     tarjetaDash.style.display = (area === 'TODOS') ? '' : 'none';
   }
+}
+
+function mostrarInfoAreaCompleta(area) {
+  const subareasHtml = SUBAREAS[area].map(s => {
+    const icon = s.doblete ? '🟢 Doblete' : '⚪ Sin doblete';
+    const pre = s.precargado ? ' · datos precargados' : '';
+    return `<span class="subarea-tag" title="${icon}${pre}">${s.nombre}</span>`;
+  }).join('');
+  document.getElementById('infoAreaSubarea').innerHTML =
+    `Sub-áreas registradas para <strong style="color:var(--green-mid);">${AREA_NOMBRES[area]}</strong>: <span>${subareasHtml}</span>`;
+}
+
+// ── PIN DE SUB-ÁREA (segundo nivel de acceso) ──────────────────
+const SUBAREA_PINS = { vigilancia: '1', hospital: '2', areas_verdes: '3', combustion_interna: '4' };
+const SUBAREA_TIPO_NOMBRE = { vigilancia: 'Vigilancia', hospital: 'Hospital', areas_verdes: 'Áreas Verdes', combustion_interna: 'Combustión Interna' };
+let subareaTipoPendiente = null;
+
+function onSubareaTipoChange(tipo) {
+  subareaTipoPendiente = tipo;
+  const subareaInfo = (SUBAREAS[areaValidada] || []).find(s => s.tipo === tipo);
+  document.getElementById('subareaModalNombre').textContent = subareaInfo ? subareaInfo.nombre : SUBAREA_TIPO_NOMBRE[tipo];
+  document.getElementById('subareaPin').value = '';
+  document.getElementById('subareaPinMsg').textContent = '';
+  document.getElementById('subareaPinMsg').className = 'area-pwd-msg';
+  document.getElementById('subareaPin').className = '';
+  document.getElementById('subareaModal').classList.add('active');
+  setTimeout(() => document.getElementById('subareaPin').focus(), 150);
+}
+
+function cancelarSubareaPin() {
+  document.getElementById('subareaModal').classList.remove('active');
+  subareaTipoPendiente = null;
+}
+
+function toggleSubareaPin() {
+  const inp = document.getElementById('subareaPin');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function validarSubareaPin() {
+  const pin = document.getElementById('subareaPin').value.trim();
+  const tipo = subareaTipoPendiente;
+  const msgEl = document.getElementById('subareaPinMsg');
+  const inputEl = document.getElementById('subareaPin');
+  if (!tipo) return;
+
+  if (pin === SUBAREA_PINS[tipo]) {
+    inputEl.className = 'success';
+    msgEl.className = 'area-pwd-msg ok';
+    msgEl.textContent = '✅ Acceso autorizado';
+    setTimeout(() => {
+      document.getElementById('subareaModal').classList.remove('active');
+      entrarConSubareaBloqueada(tipo);
+    }, 600);
+  } else {
+    inputEl.className = 'error';
+    inputEl.value = '';
+    msgEl.className = 'area-pwd-msg err';
+    msgEl.textContent = '❌ Clave incorrecta.';
+    setTimeout(() => { inputEl.className = ''; document.getElementById('subareaPin').focus(); }, 900);
+  }
+}
+
+function entrarConSubareaBloqueada(tipo) {
+  const subareaInfo = (SUBAREAS[areaValidada] || []).find(s => s.tipo === tipo);
+  tipoSubareaActual = tipo;
+  subareaActual = subareaInfo ? subareaInfo.nombre : null;
+
+  mostrarPantalla('pantallaPrincipal');
+
+  // Con la sub-area ya bloqueada, se muestra fija (sin lista de todas las demas)
+  document.getElementById('infoAreaSubarea').innerHTML =
+    `Sub-área activa: <strong style="color:var(--green-mid);">${subareaActual}</strong> ` +
+    `<span class="subarea-tag" style="margin-left:6px;">${subareaInfo && subareaInfo.doblete ? '🟢 Admite Doblete' : '⚪ Sin Doblete'}</span> ` +
+    `<span class="back-link" style="display:inline-flex;margin:0 0 0 10px;padding:4px 12px;font-size:0.72rem;" onclick="cambiarSubarea()">🔁 Cambiar sub-área</span>`;
+}
+
+function cambiarSubarea() {
+  subareaActual = null;
+  tipoSubareaActual = null;
+  mostrarPantalla('pantallaSubareaAcceso');
 }
 
 function cambiarArea() {
@@ -1315,31 +1604,47 @@ const SUPABASE_ANON_KEY = 'sb_publishable_RcSictggIciEBwzLcxqt_w_DX3HUon0';
 const CAT_CONFIG = {
   trabajadores: {
     tabla: 'pe_trabajadores',
-    cols: ['ficha','nombre','regimen','sociedad','nivel','salario','jornada'],
-    tipos: ['int','text','text','text','int','float','int'],
+    cols: ['ficha','nombre','regimen','sociedad','nivel','salario','jornada','etiqueta_puesto'],
+    tipos: ['int','text','text','text','int','float','int','text'],
     global: false,
-    conflict: 'area,subarea,ficha'
+    conflict: 'area,subarea,ficha,etiqueta_puesto',
+    opciones: {
+      regimen: ['PS', 'TS'],
+      sociedad: ['PMXC'],
+      jornada: ['0', '1', '2']
+    }
   },
   semanas: {
     tabla: 'pe_semanas',
     cols: ['num_semana','anio','fecha_inicio','fecha_termino'],
     tipos: ['int','int','text','text'],
     global: true,
-    conflict: 'anio,num_semana'
+    conflict: 'anio,num_semana',
+    opciones: {
+      num_semana: Array.from({length: 52}, (_, i) => String(i + 1))
+    }
   },
   horarios: {
     tabla: 'pe_horarios',
     cols: ['clave','inicio','termino','dobletes','comidas'],
     tipos: ['text','text','text','int','int'],
     global: true,
-    conflict: 'clave'
+    conflict: 'clave',
+    opciones: {
+      clave: ['00-08','00-16','00-24','08-16','08-24','16-24','23-07','07-15','15-23','07-23','23-15','DESCANSO'],
+      dobletes: ['0', '1', '2'],
+      comidas: ['0', '1', '2', '3']
+    }
   },
   firmantes: {
     tabla: 'pe_firmantes',
     cols: ['rol','nombre','puesto'],
     tipos: ['text','text','text'],
     global: true,
-    conflict: null
+    conflict: null,
+    opciones: {
+      rol: ['ELABORO', 'VOBO', 'AUTORIZA']
+    }
   },
   ausencias: {
     tabla: 'pe_tipos_ausencia',
@@ -1373,6 +1678,13 @@ async function abrirCatalogos() {
   mostrarPantalla('pantallaCatalogos');
   document.getElementById('catAreaNombre').textContent = AREA_NOMBRES[areaValidada] || '';
   poblarSelectorSubarea();
+
+  // "Vaciar catálogo" borra datos de forma permanente e irreversible — es
+  // una accion de alto riesgo, asi que solo el administrador (TODOS) la ve.
+  document.querySelectorAll('.btn-solo-admin').forEach(btn => {
+    btn.style.display = (areaValidada === 'TODOS') ? '' : 'none';
+  });
+
   await cargarTodosLosCatalogosGuardados();
 }
 
@@ -1417,6 +1729,19 @@ async function cargarCatalogoGuardado(cat) {
 
 function poblarSelectorSubarea() {
   const sel = document.getElementById('selSubarea');
+  const wrap = document.getElementById('subareaSelectorWrap');
+
+  if (areaValidada !== 'TODOS') {
+    // La sub-area ya quedo bloqueada desde el login (PIN de sub-area).
+    // Aqui solo se muestra, fija, para que el capturista nunca pueda
+    // cambiarla ni ver datos de otra sub-area por error.
+    sel.innerHTML = `<option value="${subareaActual}" data-tipo="${tipoSubareaActual}">🔒 ${subareaActual}</option>`;
+    sel.disabled = true;
+    if (wrap) wrap.title = 'Tu sub-área quedó fija desde el acceso inicial.';
+    return;
+  }
+
+  sel.disabled = false;
   const lista = SUBAREAS[areaValidada] || [];
   sel.innerHTML = '<option value="">— Selecciona una sub-área —</option>' +
     lista.map(s => `<option value="${s.nombre}" data-tipo="${s.tipo}">${s.nombre} ${s.doblete ? '(admite doblete)' : '(sin doblete)'}</option>`).join('');
@@ -1446,6 +1771,14 @@ function cambiarTab(nombre) {
 // Parsear texto pegado desde Excel (tab-separated, una fila por linea)
 // Si una fila pegada ya existe en la tabla (misma clave de conflicto: ficha, clave, etc.)
 // se ACTUALIZA en su lugar en vez de agregarse duplicada.
+// Limpia simbolos de moneda ($ , espacios) antes de convertir a numero.
+// Sin esto, "$182.74" se convierte en NaN y rompe cualquier comparacion.
+function limpiarNumero(valor) {
+  const limpio = String(valor ?? '').replace(/[$,\s]/g, '').trim();
+  const n = parseFloat(limpio);
+  return isNaN(n) ? null : n;
+}
+
 function parsearPegado(cat) {
   const ta = document.getElementById('paste' + capitalizar(cat));
   const texto = ta.value.trim();
@@ -1453,33 +1786,72 @@ function parsearPegado(cat) {
   const config = CAT_CONFIG[cat];
   const filas = texto.split('\n').map(l => l.split('\t').map(c => c.trim()));
 
-  const keyCols = config.conflict
-    ? config.conflict.split(',').filter(c => c !== 'area' && c !== 'subarea').map(c => config.cols.indexOf(c))
-    : null;
-
   let nuevas = 0, actualizadas = 0;
 
-  filas.forEach(f => {
-    if (f.length >= 1 && f.some(v => v !== '')) {
-      while (f.length < config.cols.length) f.push('');
-      const filaLimpia = f.slice(0, config.cols.length);
+  if (cat === 'trabajadores') {
+    // Caso especial: la ficha SOLA no basta para saber si es "la misma fila"
+    // porque un trabajador puede tener 2 salarios (base y ascendido). Aqui se
+    // empareja por FICHA + SALARIO -- si coincide, se actualiza; si la ficha
+    // ya existe pero con OTRO salario, se agrega como una fila nueva (una
+    // segunda version de ese trabajador), y luego se etiqueta automaticamente.
+    const idxFicha = config.cols.indexOf('ficha');
+    const idxSalario = config.cols.indexOf('salario');
+    const idxEtiqueta = config.cols.indexOf('etiqueta_puesto');
 
-      if (keyCols) {
-        const key = keyCols.map(ci => filaLimpia[ci]).join('|');
-        const idxExistente = CAT_DATA[cat].findIndex(existing => keyCols.map(ci => existing[ci]).join('|') === key);
+    filas.forEach(f => {
+      if (f.length >= 1 && f.some(v => v !== '')) {
+        while (f.length < config.cols.length) f.push('');
+        const filaLimpia = f.slice(0, config.cols.length);
+        const fichaNorm = parseInt(String(filaLimpia[idxFicha]).trim(), 10);
+        const salarioNorm = limpiarNumero(filaLimpia[idxSalario]);
+
+        const idxExistente = CAT_DATA[cat].findIndex(existing => {
+          const efFicha = parseInt(String(existing[idxFicha]).trim(), 10);
+          const efSalario = limpiarNumero(existing[idxSalario]);
+          return efFicha === fichaNorm && efSalario === salarioNorm;
+        });
+
         if (idxExistente >= 0) {
+          const etiquetaVieja = CAT_DATA[cat][idxExistente][idxEtiqueta];
+          filaLimpia[idxEtiqueta] = etiquetaVieja || 'BASE';
           CAT_DATA[cat][idxExistente] = filaLimpia;
           actualizadas++;
+        } else {
+          filaLimpia[idxEtiqueta] = 'BASE'; // se corrige en el auto-etiquetado de abajo
+          CAT_DATA[cat].push(filaLimpia);
+          nuevas++;
+        }
+      }
+    });
+
+    autoEtiquetarTrabajadores();
+  } else {
+    const keyCols = config.conflict
+      ? config.conflict.split(',').filter(c => c !== 'area' && c !== 'subarea').map(c => config.cols.indexOf(c))
+      : null;
+
+    filas.forEach(f => {
+      if (f.length >= 1 && f.some(v => v !== '')) {
+        while (f.length < config.cols.length) f.push('');
+        const filaLimpia = f.slice(0, config.cols.length);
+
+        if (keyCols) {
+          const key = keyCols.map(ci => filaLimpia[ci]).join('|');
+          const idxExistente = CAT_DATA[cat].findIndex(existing => keyCols.map(ci => existing[ci]).join('|') === key);
+          if (idxExistente >= 0) {
+            CAT_DATA[cat][idxExistente] = filaLimpia;
+            actualizadas++;
+          } else {
+            CAT_DATA[cat].push(filaLimpia);
+            nuevas++;
+          }
         } else {
           CAT_DATA[cat].push(filaLimpia);
           nuevas++;
         }
-      } else {
-        CAT_DATA[cat].push(filaLimpia);
-        nuevas++;
       }
-    }
-  });
+    });
+  }
 
   ta.value = '';
   renderTabla(cat);
@@ -1489,6 +1861,39 @@ function parsearPegado(cat) {
     statusEl.className = 'cat-status ok';
     statusEl.textContent = `Vista previa: ${nuevas} fila(s) nueva(s), ${actualizadas} actualizada(s) (sin duplicar).`;
   }
+}
+
+// Recorre TODO el catalogo de Trabajadores cargado y, para cada ficha que
+// tenga 2 o mas salarios distintos, etiqueta automaticamente el mas bajo
+// como BASE y los demas como ASCENDIDO (o ASCENDIDO 2, ASCENDIDO 3...).
+function autoEtiquetarTrabajadores() {
+  const config = CAT_CONFIG.trabajadores;
+  const idxFicha = config.cols.indexOf('ficha');
+  const idxSalario = config.cols.indexOf('salario');
+  const idxEtiqueta = config.cols.indexOf('etiqueta_puesto');
+
+  const grupos = {};
+  CAT_DATA.trabajadores.forEach((fila, i) => {
+    const ficha = parseInt(String(fila[idxFicha]).trim(), 10);
+    if (!grupos[ficha]) grupos[ficha] = [];
+    grupos[ficha].push(i);
+  });
+
+  Object.values(grupos).forEach(indices => {
+    if (indices.length < 2) return;
+    const ordenados = indices.slice().sort((a, b) => {
+      const sa = limpiarNumero(CAT_DATA.trabajadores[a][idxSalario]) || 0;
+      const sb = limpiarNumero(CAT_DATA.trabajadores[b][idxSalario]) || 0;
+      return sa - sb;
+    });
+    const salarios = ordenados.map(i => limpiarNumero(CAT_DATA.trabajadores[i][idxSalario]) || 0);
+    const distintos = new Set(salarios).size > 1;
+    if (!distintos) return;
+
+    ordenados.forEach((i, pos) => {
+      CAT_DATA.trabajadores[i][idxEtiqueta] = pos === 0 ? 'BASE' : (pos === 1 ? 'ASCENDIDO' : `ASCENDIDO ${pos}`);
+    });
+  });
 }
 
 function agregarFilaVacia(cat) {
@@ -1506,9 +1911,19 @@ function renderTabla(cat) {
   const tbody = document.getElementById('body-' + cat);
   const config = CAT_CONFIG[cat];
   tbody.innerHTML = CAT_DATA[cat].map((fila, idx) => {
-    const tds = fila.map((val, ci) =>
-      `<td contenteditable="true" oninput="actualizarCelda('${cat}',${idx},${ci},this.textContent)">${val ?? ''}</td>`
-    ).join('');
+    const tds = fila.map((val, ci) => {
+      const colName = config.cols[ci];
+      const opciones = config.opciones && config.opciones[colName];
+      if (opciones) {
+        // Campo con valores fijos/repetitivos: se ofrece como lista
+        // desplegable para blindar contra minusculas, acentos o typos.
+        const opts = opciones.map(o =>
+          `<option value="${o}" ${String(val).trim().toUpperCase() === String(o).toUpperCase() ? 'selected' : ''}>${o}</option>`
+        ).join('');
+        return `<td><select class="cat-select-inline" onchange="actualizarCelda('${cat}',${idx},${ci},this.value)"><option value="">— Elige —</option>${opts}</select></td>`;
+      }
+      return `<td contenteditable="true" oninput="actualizarCelda('${cat}',${idx},${ci},this.textContent)">${val ?? ''}</td>`;
+    }).join('');
     return `<tr>${tds}<td class="row-del" onclick="eliminarFila('${cat}',${idx})">✕</td></tr>`;
   }).join('');
   document.getElementById('count-' + cat).textContent = CAT_DATA[cat].length;
@@ -1563,6 +1978,15 @@ function normalizarRol(v) {
 async function guardarCatalogo(cat) {
   const config = CAT_CONFIG[cat];
   const statusEl = document.getElementById('status-' + cat);
+
+  if (cat === 'trabajadores') {
+    // Red de seguridad: recalcula BASE/ASCENDIDO justo antes de guardar,
+    // sin importar si los datos llegaron pegados, con "+ Fila manual",
+    // o editando una celda a mano.
+    autoEtiquetarTrabajadores();
+    renderTabla('trabajadores');
+  }
+
   const filas = CAT_DATA[cat];
 
   if (filas.length === 0) {
@@ -1577,13 +2001,22 @@ async function guardarCatalogo(cat) {
     return;
   }
 
-  // Detectar duplicados dentro del propio bloque pegado (misma clave de conflicto repetida)
+  // Detectar duplicados dentro del propio bloque pegado (misma clave de conflicto repetida).
+  // Se normaliza cada valor (quitar espacios, convertir a numero si aplica) antes de comparar,
+  // porque " 240975" y "240975" son la MISMA ficha para Postgres pero texto distinto para JS.
   if (config.conflict) {
     const keyCols = config.conflict.split(',').filter(c => c !== 'area' && c !== 'subarea');
     const keyIdx = keyCols.map(c => config.cols.indexOf(c));
+    const normalizarValor = (valor, ci) => {
+      const tipo = config.tipos[ci];
+      const limpio = (valor ?? '').toString().trim();
+      if (tipo === 'int') return String(parseInt(limpio.replace(/[$,\s]/g,''), 10));
+      if (tipo === 'float') return String(limpiarNumero(limpio));
+      return limpio.toUpperCase();
+    };
     const vistos = new Map();
     filas.forEach((f, i) => {
-      const key = keyIdx.map(ci => f[ci]).join('|');
+      const key = keyIdx.map(ci => normalizarValor(f[ci], ci)).join('|');
       if (!vistos.has(key)) vistos.set(key, []);
       vistos.get(key).push(i);
     });
@@ -1727,6 +2160,7 @@ function cerrarCaptura() {
 
 function resetCaptura() {
   editandoFolioId = null;
+  modoFolioActual = 'auto';
   const avisoViejo = document.getElementById('avisoModoEdicion');
   if (avisoViejo) avisoViejo.remove();
   capturaState = { tipoPago:null, anio:null, semana:null, trabajador:null, dias:{}, horariosCat:[], semanasCat:[], trabajadoresCat:[], firmantesCat:[], ausenciasCat:[] };
@@ -1754,12 +2188,20 @@ function irPaso(n) {
 }
 
 // ── PASO 1: TIPO DE PAGO ──────────────────────────────────────
+// Regla de negocio: que tipo de pago admite cada tipo de sub-area
+const TIPOS_PAGO_PERMITIDOS = {
+  vigilancia: ['DOBLETE'],
+  hospital: ['DOBLETE', 'INSALUBRE'],
+  areas_verdes: ['TIEMPO_EXTRA', 'INSALUBRE'],
+  combustion_interna: ['TIEMPO_EXTRA'],
+};
+
 function renderTipoPagoCards() {
-  const subareaTipo = (SUBAREAS[areaValidada] || []).find(s => s.nombre === subareaActual)?.tipo;
-  const admiteDoblete = subareaAdmiteDoblete(subareaTipo);
+  const subareaTipo = (SUBAREAS[areaValidada] || []).find(s => s.nombre === subareaActual)?.tipo || tipoSubareaActual;
+  const permitidos = TIPOS_PAGO_PERMITIDOS[subareaTipo] || ['DOBLETE', 'TIEMPO_EXTRA', 'INSALUBRE'];
   const cont = document.getElementById('tipoPagoCards');
   cont.innerHTML = TIPOS_PAGO.map(tp => {
-    const disabled = tp.soloVigHosp && !admiteDoblete;
+    const disabled = !permitidos.includes(tp.clave);
     return `<div class="radio-card ${disabled ? 'disabled' : ''}" ${disabled ? '' : `onclick="seleccionarTipoPago('${tp.clave}')"`} id="tpc-${tp.clave}">
       <div class="rc-icon">${tp.icon}</div>
       <div class="rc-label">${tp.label}</div>
@@ -1800,7 +2242,12 @@ async function cargarTrabajadoresCat() {
   capturaState.trabajadoresCat = await sbGet('pe_trabajadores', q);
   const sel = document.getElementById('selTrabajador');
   sel.innerHTML = '<option value="">— Selecciona trabajador —</option>' +
-    capturaState.trabajadoresCat.map(t => `<option value="${t.ficha}">${t.ficha} — ${t.nombre}</option>`).join('');
+    capturaState.trabajadoresCat.map(t => {
+      const etiqueta = t.etiqueta_puesto && t.etiqueta_puesto !== 'BASE' ? ` — ${t.etiqueta_puesto} ($${t.salario})` : (t.salario ? ` — $${t.salario}` : '');
+      // Cuando el trabajador tiene mas de una version (BASE/ASCENDIDO), el value
+      // debe distinguir cual exactamente para no confundir el salario a usar.
+      return `<option value="${t.ficha}|||${t.etiqueta_puesto||'BASE'}">${t.ficha} — ${t.nombre}${etiqueta}</option>`;
+    }).join('');
 }
 
 async function cargarFirmantesCat() {
@@ -1837,8 +2284,9 @@ function onSemanaChange() {
 
 // ── PASO 3: TRABAJADOR ─────────────────────────────────────────
 function onTrabajadorChange() {
-  const ficha = document.getElementById('selTrabajador').value;
-  const t = capturaState.trabajadoresCat.find(x => String(x.ficha) === ficha);
+  const valor = document.getElementById('selTrabajador').value;
+  const [ficha, etiqueta] = valor.split('|||');
+  const t = capturaState.trabajadoresCat.find(x => String(x.ficha) === ficha && (x.etiqueta_puesto || 'BASE') === etiqueta);
   capturaState.trabajador = t || null;
   const info = document.getElementById('trabajadorInfo');
   if (t) {
@@ -1848,6 +2296,7 @@ function onTrabajadorChange() {
         <div class="stat-item"><div class="stat-label">Nivel</div><div class="stat-value" style="font-size:1.1rem;">${t.nivel ?? '—'}</div></div>
         <div class="stat-item"><div class="stat-label">Salario</div><div class="stat-value" style="font-size:1.1rem; ${t.salario == null ? 'color:#ffb84d;' : ''}">${t.salario != null ? '$' + t.salario : '⚠️ Sin capturar'}</div></div>
         <div class="stat-item"><div class="stat-label">Jornada</div><div class="stat-value" style="font-size:1.1rem;">${t.jornada ?? '—'}</div></div>
+        <div class="stat-item"><div class="stat-label">Puesto</div><div class="stat-value" style="font-size:1.1rem;">${t.etiqueta_puesto || 'BASE'}</div></div>
       </div>`;
     document.getElementById('btnPaso3Next').disabled = false;
   } else {
@@ -1876,7 +2325,7 @@ function renderDias() {
     const fechaCalculada = fechaDeDia(idx);
     if (!capturaState.dias[d.clave]) {
       capturaState.dias[d.clave] = { fecha: fechaCalculada, horario:'', dobletes:0, comidas:0, horas:0, minutos:0,
-        ausente1:{ficha:'',nombre:'',motivo:'',horario:''}, ausente2:{ficha:'',nombre:'',motivo:'',horario:''},
+        ausente1:{ficha:'',nombre:'',motivo:'',horario:'',tipoMotivo:'AUSENCIA',comentarioPlaza:''}, ausente2:{ficha:'',nombre:'',motivo:'',horario:'',tipoMotivo:'AUSENCIA',comentarioPlaza:''},
         labores:'' };
     } else if (fechaCalculada) {
       // Solo pisa la fecha si el calculo dio un resultado valido; si no,
@@ -1935,16 +2384,22 @@ function renderDiaCard(d, idx, fecha) {
 }
 
 function renderAusenteBox(diaClave, n, ausente) {
-  const opcionesFicha = capturaState.trabajadoresCat
+  // Deduplicar por ficha (un trabajador puede aparecer 2 veces: BASE y ASCENDIDO,
+  // pero para saber QUIEN falto no importa cual version de salario tenia)
+  const fichasUnicas = [...new Map(capturaState.trabajadoresCat.map(t => [String(t.ficha), t])).values()];
+  const opcionesFicha = fichasUnicas
     .map(t => `<option value="${t.ficha}" ${String(ausente.ficha)===String(t.ficha)?'selected':''}>${t.ficha} — ${t.nombre}</option>`)
     .join('');
   const tiposUnicos = [...new Map(capturaState.ausenciasCat.map(a => [a.tipo, a])).values()];
   const opcionesMotivo = tiposUnicos
     .map(a => `<option value="${a.tipo}" ${ausente.motivo===a.tipo?'selected':''}>${a.tipo}</option>`)
     .join('');
-  return `
-    <div class="ausente-box">
-      <div class="abx-title">🚫 Ausente ${n}</div>
+
+  const tipoMotivo = ausente.tipoMotivo || 'AUSENCIA';
+
+  let contenidoSegunTipo = '';
+  if (tipoMotivo === 'AUSENCIA') {
+    contenidoSegunTipo = `
       <div class="dia-grid">
         <div class="field">
           <label>Ficha</label>
@@ -1964,18 +2419,67 @@ function renderAusenteBox(diaClave, n, ausente) {
           <option value="">— Selecciona motivo —</option>
           ${opcionesMotivo}
         </select>
+      </div>`;
+  } else if (tipoMotivo === 'PLAZA_SIN_COBERTURA') {
+    contenidoSegunTipo = `
+      <div class="field">
+        <label>Comentario (ej. número de plaza sin cubrir)</label>
+        <input type="text" value="${ausente.comentarioPlaza || ''}" placeholder="ej. Plaza 1234" onchange="onAusenteChange('${diaClave}',${n},'comentarioPlaza',this.value)">
+      </div>`;
+  } else {
+    // CAMBIO_ROL no necesita ningun dato adicional
+    contenidoSegunTipo = `<p style="font-size:0.78rem;color:var(--gray);margin:0;">No requiere datos adicionales.</p>`;
+  }
+
+  return `
+    <div class="ausente-box">
+      <div class="abx-title">🚫 Motivo del Doblete ${n}</div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Tipo de motivo</label>
+        <select onchange="onAusenteTipoMotivoChange('${diaClave}',${n},this.value)">
+          <option value="AUSENCIA" ${tipoMotivo==='AUSENCIA'?'selected':''}>Ausencia de un trabajador</option>
+          <option value="CAMBIO_ROL" ${tipoMotivo==='CAMBIO_ROL'?'selected':''}>Cambio de Rol de Guardia</option>
+          <option value="PLAZA_SIN_COBERTURA" ${tipoMotivo==='PLAZA_SIN_COBERTURA'?'selected':''}>Plaza sin Cobertura</option>
+        </select>
       </div>
+      ${contenidoSegunTipo}
     </div>`;
+}
+
+function onAusenteTipoMotivoChange(diaClave, n, tipo) {
+  const ausente = capturaState.dias[diaClave]['ausente'+n];
+  ausente.tipoMotivo = tipo;
+  if (tipo !== 'AUSENCIA') {
+    // Al cambiar de tipo, se limpian los datos de ausencia para no dejar basura
+    ausente.ficha = ''; ausente.nombre = ''; ausente.motivo = '';
+  }
+  if (tipo !== 'PLAZA_SIN_COBERTURA') {
+    ausente.comentarioPlaza = '';
+  }
+  renderDias();
 }
 
 function onAusenteFichaChange(diaClave, n, ficha) {
   const t = capturaState.trabajadoresCat.find(x => String(x.ficha) === ficha);
-  capturaState.dias[diaClave]['ausente'+n].ficha = ficha;
-  capturaState.dias[diaClave]['ausente'+n].nombre = t ? t.nombre : '';
-  // El horario que cubre siempre es el horario ya seleccionado para este dia
-  capturaState.dias[diaClave]['ausente'+n].horario = capturaState.dias[diaClave].horario;
+  const data = capturaState.dias[diaClave];
+  data['ausente'+n].ficha = ficha;
+  data['ausente'+n].nombre = t ? t.nombre : '';
+  // El horario que cubre este ausente es su tramo especifico (si el doblete
+  // se divide en 2), o el horario completo (si es un solo doblete).
+  const split = DOBLETE_SPLIT[data.horario];
+  data['ausente'+n].horario = split ? split[n - 1] : data.horario;
   renderDias();
 }
+
+// Cuando un doblete cubre 2 ausencias distintas, cada una corresponde a un
+// tramo especifico del horario (no el horario completo para ambas).
+const DOBLETE_SPLIT = {
+  '00-16': ['00-08', '08-16'],
+  '00-24': ['00-08', '16-24'],
+  '07-23': ['07-15', '15-23'],
+  '08-24': ['08-16', '16-24'],
+  '23-15': ['23-07', '07-15'],
+};
 
 function onHorarioDiaChange(diaClave, horarioClave) {
   const data = capturaState.dias[diaClave];
@@ -1983,9 +2487,17 @@ function onHorarioDiaChange(diaClave, horarioClave) {
   const h = capturaState.horariosCat.find(x => x.clave === horarioClave);
   data.dobletes = h ? h.dobletes : 0;
   data.comidas = h ? h.comidas : 0;
-  // El "horario que cubre" del ausente siempre refleja el horario del dia
-  data.ausente1.horario = horarioClave;
-  data.ausente2.horario = horarioClave;
+
+  const split = DOBLETE_SPLIT[horarioClave];
+  if (split) {
+    // Doblete de 2 ausencias: cada una cubre su propio tramo especifico.
+    data.ausente1.horario = split[0];
+    data.ausente2.horario = split[1];
+  } else {
+    // Doblete de 1 sola ausencia: cubre el horario completo tal cual.
+    data.ausente1.horario = horarioClave;
+    data.ausente2.horario = horarioClave;
+  }
   renderDias();
 }
 
@@ -2016,13 +2528,24 @@ function onAusenteChange(diaClave, n, campo, valor) {
   capturaState.dias[diaClave]['ausente'+n][campo] = valor;
 }
 
+function razonTexto(ausente) {
+  if (ausente.tipoMotivo === 'CAMBIO_ROL') {
+    return 'CAMBIO DE ROL DE GUARDIA';
+  }
+  if (ausente.tipoMotivo === 'PLAZA_SIN_COBERTURA') {
+    return `FALTA DE COBERTURA DE PLAZA${ausente.comentarioPlaza ? ' ' + ausente.comentarioPlaza : ''}`;
+  }
+  // Por defecto: AUSENCIA de un trabajador especifico
+  return `LA AUSENCIA DE: F. ${ausente.ficha} ${ausente.nombre} DE: ${ausente.horario}`;
+}
+
 function sugerirLabores(diaClave) {
   const data = capturaState.dias[diaClave];
   let texto = '';
   if (data.dobletes === 1) {
-    texto = `DOBLA POR LA AUSENCIA DE: F. ${data.ausente1.ficha} ${data.ausente1.nombre}`;
+    texto = `DOBLA POR ${razonTexto(data.ausente1)}`;
   } else if (data.dobletes === 2) {
-    texto = `DOBLA POR LA AUSENCIA DE: F. ${data.ausente1.ficha} ${data.ausente1.nombre} DE: ${data.ausente1.horario} Y LA AUSENCIA DE F. ${data.ausente2.ficha} ${data.ausente2.nombre} DE: ${data.ausente2.horario}`;
+    texto = `DOBLA POR ${razonTexto(data.ausente1)} Y ${razonTexto(data.ausente2)}`;
   }
   data.labores = texto;
   document.getElementById('lab-' + diaClave).value = texto;
@@ -2030,10 +2553,34 @@ function sugerirLabores(diaClave) {
 
 // ── PASO 5: FIRMANTES Y GUARDAR ─────────────────────────────────
 function prepararPaso5() {
-  const elaboro = capturaState.firmantesCat.filter(f => f.rol === 'ELABORO');
-  const vobo = capturaState.firmantesCat.filter(f => f.rol === 'VOBO');
-  const autoriza = capturaState.firmantesCat.filter(f => f.rol === 'AUTORIZA');
-  const optHtml = arr => '<option value="">— Selecciona —</option>' + arr.map(f => `<option value="${f.nombre}|||${f.puesto||''}">${f.nombre}</option>`).join('');
+  // El selector de folio manual/automatico solo aplica a Tiempo Extra/Insalubre
+  // (Doblete ya tiene su historial migrado y sigue siendo siempre automatico).
+  const folioModoWrap = document.getElementById('folioModoWrap');
+  if (capturaState.tipoPago === 'DOBLETE') {
+    folioModoWrap.classList.add('hidden');
+    modoFolioActual = 'auto';
+  } else {
+    folioModoWrap.classList.remove('hidden');
+    seleccionarModoFolio('auto');
+  }
+
+  // Quita duplicados exactos (mismo nombre+puesto) que puedan existir en el catalogo
+  const dedupe = (arr) => {
+    const vistos = new Set();
+    return arr.filter(f => {
+      const key = `${f.nombre}|||${f.puesto || ''}`;
+      if (vistos.has(key)) return false;
+      vistos.add(key);
+      return true;
+    });
+  };
+
+  const elaboro = dedupe(capturaState.firmantesCat.filter(f => f.rol === 'ELABORO'));
+  const vobo = dedupe(capturaState.firmantesCat.filter(f => f.rol === 'VOBO'));
+  const autoriza = dedupe(capturaState.firmantesCat.filter(f => f.rol === 'AUTORIZA'));
+  const optHtml = arr => '<option value="">— Selecciona —</option>' + arr.map(f =>
+    `<option value="${f.nombre}|||${f.puesto||''}">${f.nombre}${f.puesto ? ' — ' + f.puesto : ''}</option>`
+  ).join('');
   document.getElementById('selElaboro').innerHTML = optHtml(elaboro);
   document.getElementById('selVoBo').innerHTML = optHtml(vobo);
   document.getElementById('selAutoriza').innerHTML = optHtml(autoriza);
@@ -2071,6 +2618,31 @@ async function siguienteFolioDisponible() {
 //  EDICION DE FOLIOS MANUALES (los MIGRADOS son historia intocable)
 // ═══════════════════════════════════════════════════════════════
 let editandoFolioId = null;
+let modoFolioActual = 'auto'; // 'auto' | 'manual' -- solo relevante para Tiempo Extra/Insalubre
+
+function seleccionarModoFolio(modo) {
+  modoFolioActual = modo;
+  document.getElementById('folioModoAuto').classList.toggle('selected', modo === 'auto');
+  document.getElementById('folioModoManual').classList.toggle('selected', modo === 'manual');
+  document.getElementById('folioManualInputWrap').classList.toggle('hidden', modo !== 'manual');
+}
+
+async function eliminarFolio(folioId, numeroFolio) {
+  if (!confirm(`¿Seguro que quieres BORRAR el Folio Nº ${numeroFolio}? Esta acción no se puede deshacer.`)) return;
+  if (!confirm(`Confirmación final: se eliminará permanentemente el Folio Nº ${numeroFolio} y todos sus días. ¿Continuar?`)) return;
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/pe_folios?id=eq.${folioId}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' }
+    });
+    if (!resp.ok) { alert('❌ Error al eliminar: ' + (await resp.text())); return; }
+    // Vuelve a correr la busqueda para que la tabla refleje el folio ya eliminado
+    await buscarFolios();
+  } catch (e) {
+    alert('❌ Error al eliminar: ' + e.message);
+  }
+}
 
 async function editarFolio(folioId) {
   mostrarPantalla('pantallaCaptura');
@@ -2116,11 +2688,11 @@ async function editarFolio(folioId) {
       fecha: diaGuardado.fecha, horario: diaGuardado.horario || '', iniRaw, finRaw,
       dobletes: diaGuardado.dobletes || 0, comidas: diaGuardado.comidas || 0,
       horas: diaGuardado.horas || 0, minutos: diaGuardado.minutos || 0,
-      ausente1: { ficha: diaGuardado.ausente1_ficha || '', nombre: diaGuardado.ausente1_nombre || '', motivo: diaGuardado.ausente1_motivo || '', horario: diaGuardado.ausente1_horario || diaGuardado.horario || '' },
-      ausente2: { ficha: diaGuardado.ausente2_ficha || '', nombre: diaGuardado.ausente2_nombre || '', motivo: '', horario: diaGuardado.ausente2_horario || diaGuardado.horario || '' },
+      ausente1: { ficha: diaGuardado.ausente1_ficha || '', nombre: diaGuardado.ausente1_nombre || '', motivo: diaGuardado.ausente1_motivo || '', horario: diaGuardado.ausente1_horario || diaGuardado.horario || '', tipoMotivo: diaGuardado.ausente1_tipo || 'AUSENCIA', comentarioPlaza: diaGuardado.ausente1_comentario || '' },
+      ausente2: { ficha: diaGuardado.ausente2_ficha || '', nombre: diaGuardado.ausente2_nombre || '', motivo: '', horario: diaGuardado.ausente2_horario || diaGuardado.horario || '', tipoMotivo: diaGuardado.ausente2_tipo || 'AUSENCIA', comentarioPlaza: diaGuardado.ausente2_comentario || '' },
       labores: diaGuardado.labores_desarrolladas || ''
     } : { fecha: '', horario: '', iniRaw: '', finRaw: '', dobletes: 0, comidas: 0, horas: 0, minutos: 0,
-      ausente1: {ficha:'',nombre:'',motivo:'',horario:''}, ausente2: {ficha:'',nombre:'',motivo:'',horario:''}, labores: '' };
+      ausente1: {ficha:'',nombre:'',motivo:'',horario:'',tipoMotivo:'AUSENCIA',comentarioPlaza:''}, ausente2: {ficha:'',nombre:'',motivo:'',horario:'',tipoMotivo:'AUSENCIA',comentarioPlaza:''}, labores: '' };
   });
 
   // Saltar directo al paso 4 (dias) para editar, con opcion de avanzar/regresar a los demas
@@ -2136,7 +2708,11 @@ async function editarFolio(folioId) {
 
   document.getElementById('subareaCapturaNombre').textContent = subareaActual;
   document.getElementById('selTrabajador').innerHTML =
-    capturaState.trabajadoresCat.map(t => `<option value="${t.ficha}" ${String(t.ficha)===String(folio.ficha)?'selected':''}>${t.ficha} — ${t.nombre}</option>`).join('');
+    capturaState.trabajadoresCat.map(t => {
+      const etiqueta = t.etiqueta_puesto || 'BASE';
+      const etiquetaTxt = etiqueta !== 'BASE' ? ` — ${etiqueta} ($${t.salario})` : (t.salario ? ` — $${t.salario}` : '');
+      return `<option value="${t.ficha}|||${etiqueta}" ${String(t.ficha)===String(folio.ficha) && Number(t.salario)===Number(folio.salario) ?'selected':''}>${t.ficha} — ${t.nombre}${etiquetaTxt}</option>`;
+    }).join('');
   onTrabajadorChange();
 
   irPaso(4);
@@ -2159,7 +2735,20 @@ async function guardarFolio() {
 
   const t = capturaState.trabajador;
   const esEdicion = !!editandoFolioId;
-  const folio = esEdicion ? null : await siguienteFolioDisponible();
+  let folio = null;
+  if (!esEdicion) {
+    if (capturaState.tipoPago !== 'DOBLETE' && modoFolioActual === 'manual') {
+      const manual = parseInt(document.getElementById('folioManualInput').value, 10);
+      if (!manual || manual < 1) {
+        statusEl.className = 'cat-status err';
+        statusEl.textContent = '⚠️ Escribe un número de folio válido antes de guardar.';
+        return;
+      }
+      folio = manual;
+    } else {
+      folio = await siguienteFolioDisponible();
+    }
+  }
   const regimen = (t.regimen || '').toUpperCase();
   const partida = regimen === 'PS' ? '10' : (regimen === 'TS' ? '16' : null);
 
@@ -2220,8 +2809,10 @@ async function guardarFolio() {
         horas: data.horas||0, minutos: data.minutos||0,
         ausente1_ficha: data.ausente1.ficha || null, ausente1_nombre: data.ausente1.nombre || null,
         ausente1_motivo: data.ausente1.motivo || null, ausente1_horario: data.ausente1.horario || null,
+        ausente1_tipo: data.ausente1.tipoMotivo || 'AUSENCIA', ausente1_comentario: data.ausente1.comentarioPlaza || null,
         ausente2_ficha: data.ausente2.ficha || null, ausente2_nombre: data.ausente2.nombre || null,
         ausente2_motivo: data.ausente2.motivo || null, ausente2_horario: data.ausente2.horario || null,
+        ausente2_tipo: data.ausente2.tipoMotivo || 'AUSENCIA', ausente2_comentario: data.ausente2.comentarioPlaza || null,
         labores_desarrolladas: data.labores || null
       };
     });
@@ -2269,6 +2860,12 @@ function terminarCaptura() {
 let ultimosFoliosResultado = []; // filas planas (1 por dia) para exportar
 let ultimosFoliosCrudos = []; // folios sin aplanar (con id), para generar Formato 7
 
+function formatearFechaCorta(fechaISO) {
+  if (!fechaISO) return '?';
+  const [y, m, d] = fechaISO.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 async function abrirFolios() {
   try {
     mostrarPantalla('pantallaFolios');
@@ -2287,19 +2884,48 @@ async function abrirFolios() {
       </div>`;
 
     const selSub = document.getElementById('folSubarea');
-    const lista = SUBAREAS[areaValidada] || [];
-    selSub.innerHTML = '<option value="">Todas las sub-áreas</option>' +
-      lista.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+    if (areaValidada !== 'TODOS') {
+      selSub.innerHTML = `<option value="${subareaActual}">🔒 ${subareaActual}</option>`;
+      selSub.disabled = true;
+    } else {
+      selSub.disabled = false;
+      const lista = SUBAREAS[areaValidada] || [];
+      selSub.innerHTML = '<option value="">Todas las sub-áreas</option>' +
+        lista.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+    }
+
+    // El filtro de Tipo de Pago tambien respeta la regla de negocio de la
+    // sub-area activa: un capturista de Vigilancia no debe poder ni buscar
+    // Tiempo Extra/Insalubre, ya que esa sub-area nunca los genera.
+    const selTipoPago = document.getElementById('folTipoPago');
+    const TODOS_TIPOS_PAGO = [['DOBLETE','Doblete'], ['TIEMPO_EXTRA','Tiempo Extra'], ['INSALUBRE','Insalubre']];
+    if (areaValidada !== 'TODOS') {
+      const permitidos = TIPOS_PAGO_PERMITIDOS[tipoSubareaActual] || [];
+      selTipoPago.innerHTML = '<option value="">Todos</option>' +
+        TODOS_TIPOS_PAGO.filter(([clave]) => permitidos.includes(clave))
+          .map(([clave, label]) => `<option value="${clave}">${label}</option>`).join('');
+    } else {
+      selTipoPago.innerHTML = '<option value="">Todos</option>' +
+        TODOS_TIPOS_PAGO.map(([clave, label]) => `<option value="${clave}">${label}</option>`).join('');
+    }
 
     const semanas = await sbGet('pe_semanas', 'select=*&order=anio,num_semana');
     const anios = [...new Set(semanas.map(s => s.anio))].sort();
     document.getElementById('folAnio').innerHTML = '<option value="">Todos</option>' + anios.map(a => `<option value="${a}">${a}</option>`).join('');
     document.getElementById('folAnio').dataset.semanas = JSON.stringify(semanas);
-    document.getElementById('folAnio').onchange = () => {
-      const anio = document.getElementById('folAnio').value;
-      const sems = semanas.filter(s => String(s.anio) === anio);
+
+    // Llena el desplegable de Semana con TODAS las semanas desde el inicio
+    // (antes solo se llenaba al cambiar Año, y si solo habia un año disponible
+    // ese cambio nunca se disparaba, dejando el filtro de semana vacio).
+    const pintarSemanas = (anioFiltro) => {
+      const sems = anioFiltro ? semanas.filter(s => String(s.anio) === anioFiltro) : semanas;
       document.getElementById('folSemana').innerHTML = '<option value="">Todas</option>' +
-        sems.map(s => `<option value="${s.num_semana}">Semana ${s.num_semana}</option>`).join('');
+        sems.map(s => `<option value="${s.num_semana}">Semana ${s.num_semana} (del ${formatearFechaCorta(s.fecha_inicio)} al ${formatearFechaCorta(s.fecha_termino)})</option>`).join('');
+    };
+    pintarSemanas(null);
+
+    document.getElementById('folAnio').onchange = () => {
+      pintarSemanas(document.getElementById('folAnio').value);
     };
   } catch (e) {
     alert('Error al abrir Folios Capturados: ' + e.message + '\n\nCopia este mensaje y compártelo para revisarlo.');
@@ -2312,7 +2938,9 @@ function cerrarFolios() {
 }
 
 function limpiarFiltrosFolios() {
-  document.getElementById('folSubarea').value = '';
+  if (areaValidada === 'TODOS') {
+    document.getElementById('folSubarea').value = '';
+  }
   document.getElementById('folTipoPago').value = '';
   document.getElementById('folAnio').value = '';
   document.getElementById('folSemana').innerHTML = '<option value="">Todas</option>';
@@ -2327,7 +2955,13 @@ async function buscarFolios() {
   statsWrap.innerHTML = '';
   document.getElementById('btnExportarFolios').disabled = true;
 
-  let q = `select=*,pe_folio_dias(*)&area=eq.${encodeURIComponent(areaValidada)}&order=folio.desc`; // incluye 'origen' via select=*
+  // 'TODOS' es solo el modo de acceso del supervisor, no un valor real de
+  // area en la base de datos -- si se filtrara por area=eq.TODOS nunca
+  // encontraria nada. El supervisor ve las 4 areas reales sin restriccion.
+  let q = `select=*,pe_folio_dias(*)&order=folio.desc`;
+  if (areaValidada !== 'TODOS') {
+    q += `&area=eq.${encodeURIComponent(areaValidada)}`;
+  }
 
   const subarea = document.getElementById('folSubarea').value;
   if (subarea) q += `&subarea=eq.${encodeURIComponent(subarea)}`;
@@ -2376,7 +3010,7 @@ async function buscarFolios() {
       if (sinHorario && sinDobletes && sinHoras && sinLabores) return;
 
       filas.push({
-        folio: f.folio, area: f.area, subarea: f.subarea, tipo_pago: f.tipo_pago,
+        folio_id: f.id, folio: f.folio, area: f.area, subarea: f.subarea, tipo_pago: f.tipo_pago,
         anio: f.anio, semana: f.num_semana,
         ficha: f.ficha, trabajador: f.nombre_trabajador, regimen: f.regimen, nivel: f.nivel, salario: f.salario, jornada: f.jornada,
         dia: DIA_LABEL[d.dia_semana] || d.dia_semana, fecha: d.fecha, horario: d.horario || '',
@@ -2414,37 +3048,63 @@ async function buscarFolios() {
   ];
 
   const resumenHtml = `
-    <div class="table-wrap" style="margin-bottom:22px;">
+    <div class="table-wrap" style="margin-bottom:14px;">
       <table class="data-table">
         <thead><tr><th>Folio</th><th>Sub-área</th><th>Tipo</th><th>Año/Sem.</th><th>Trabajador</th><th>Origen</th><th>Acciones</th></tr></thead>
         <tbody>
-          ${folios.map(f => `<tr>
+          ${folios.map(f => `<tr class="fila-clickeable" data-folio-id="${f.id}" onclick="filtrarPorFolio(${f.id}, this)">
             <td class="num">${f.folio}</td>
             <td>${f.subarea}</td>
             <td>${f.tipo_pago}</td>
             <td>${f.anio} / ${f.num_semana}</td>
             <td>${f.ficha} — ${f.nombre_trabajador}</td>
             <td>${f.origen === 'MIGRADO' ? '<span style="color:var(--gray);font-size:0.75rem;">📜 Histórico</span>' : '<span style="color:var(--green-mid);font-size:0.75rem;">✏️ Manual</span>'}</td>
-            <td style="white-space:nowrap;">
+            <td style="white-space:nowrap;" onclick="event.stopPropagation()">
               <button class="btn-secondary" style="padding:6px 14px;font-size:0.78rem;" onclick="generarFormato7(${f.id}, this)">📄 Generar</button>
               ${f.origen !== 'MIGRADO' ? `<button class="btn-secondary" style="padding:6px 14px;font-size:0.78rem;margin-left:6px;" onclick="editarFolio(${f.id})">✏️ Editar</button>` : ''}
+              ${f.origen !== 'MIGRADO' ? `<button class="btn-clear" style="padding:6px 14px;font-size:0.78rem;margin-left:6px;" onclick="eliminarFolio(${f.id}, ${f.folio})">🗑️ Eliminar</button>` : ''}
             </td>
           </tr>`).join('')}
         </tbody>
       </table>
-    </div>`;
+    </div>
+    <p style="font-size:0.78rem;color:var(--gray);margin-bottom:22px;">
+      💡 Dale clic a un folio de la tabla de arriba para ver solo sus días en la tabla de abajo.
+      <span id="btnMostrarTodosFolios" class="hidden" style="color:var(--green-mid);font-weight:700;cursor:pointer;margin-left:8px;" onclick="mostrarTodosLosDias()">↺ Mostrar todos los días</span>
+    </p>`;
 
   resultWrap.innerHTML = resumenHtml + `
     <div class="table-wrap" style="max-height:560px; overflow-y:auto;">
-      <table class="data-table">
+      <table class="data-table" id="tablaDetalleDias">
         <thead><tr>${cols.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead>
         <tbody>
-          ${filas.map(r => `<tr>${cols.map(c => `<td>${r[c[0]] ?? ''}</td>`).join('')}</tr>`).join('')}
+          ${filas.map(r => `<tr data-folio-id="${r.folio_id}">${cols.map(c => `<td>${r[c[0]] ?? ''}</td>`).join('')}</tr>`).join('')}
         </tbody>
       </table>
     </div>`;
 
   document.getElementById('btnExportarFolios').disabled = false;
+}
+
+function filtrarPorFolio(folioId, filaEl) {
+  // Marca visualmente la fila elegida en la tabla de folios
+  document.querySelectorAll('#foliosResultWrap tr.fila-seleccionada').forEach(tr => tr.classList.remove('fila-seleccionada'));
+  filaEl.classList.add('fila-seleccionada');
+
+  // Filtra la tabla de dias para mostrar SOLO los del folio elegido
+  const filas = document.querySelectorAll('#tablaDetalleDias tbody tr');
+  filas.forEach(tr => {
+    tr.style.display = (String(tr.dataset.folioId) === String(folioId)) ? '' : 'none';
+  });
+
+  document.getElementById('btnMostrarTodosFolios').classList.remove('hidden');
+  document.getElementById('tablaDetalleDias').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function mostrarTodosLosDias() {
+  document.querySelectorAll('#foliosResultWrap tr.fila-seleccionada').forEach(tr => tr.classList.remove('fila-seleccionada'));
+  document.querySelectorAll('#tablaDetalleDias tbody tr').forEach(tr => { tr.style.display = ''; });
+  document.getElementById('btnMostrarTodosFolios').classList.add('hidden');
 }
 
 function exportarFoliosExcel() {
@@ -2570,9 +3230,21 @@ async function generarFormato7(folioId, btnEl) {
       return;
     }
 
-    // Abre el Excel en un visor dentro del navegador (para ver/imprimir), SIN descargarlo a la carpeta local
-    const xlsxUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.xlsx`;
-    const visorUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(xlsxUrl)}`;
+    // Genera una URL FIRMADA nueva y unica (token criptografico distinto cada vez).
+    // Microsoft nunca ha visto esta URL exacta antes, asi que no tiene nada que
+    // reutilizar de cache -- a diferencia de solo agregar "?t=..." a la misma
+    // URL de siempre, que Microsoft puede seguir ignorando.
+    const signResp = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${bucket}/${base}.xlsx`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expiresIn: 3600 })
+    });
+    if (!signResp.ok) throw new Error('No se pudo generar la URL firmada: ' + (await signResp.text()));
+    const signData = await signResp.json();
+    const xlsxUrlFirmada = `${SUPABASE_URL}/storage/v1${signData.signedURL}`;
+
+    const xlsxUrl = `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.xlsx`; // para "descargar directo"
+    const visorUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(xlsxUrlFirmada)}`;
     btnEl.innerHTML = `<a href="${visorUrl}" target="_blank" style="color:inherit;text-decoration:none;">📄 Ver e Imprimir</a>`;
     btnEl.disabled = false;
   } catch (e) {
@@ -2588,6 +3260,48 @@ async function generarFormato7(folioId, btnEl) {
 // ═══════════════════════════════════════════════════════════════
 let dashChartEvolucion = null;
 let dashChartComparativo = null;
+
+// Descarga un respaldo manual completo: las 7 tablas clave, cada una en
+// su propia pestana de un solo archivo Excel. Pensado para correrse cada
+// cierto tiempo (ej. mensual) como seguro extra, ya que el plan gratuito
+// de Supabase no incluye recuperacion automatica de datos borrados.
+async function descargarRespaldoCompleto(btnEl) {
+  if (typeof XLSX === 'undefined') {
+    alert('La librería de Excel no cargó (posiblemente bloqueada por el navegador). Intenta de nuevo en unos segundos o recarga la página.');
+    return;
+  }
+  const original = btnEl.textContent;
+  btnEl.disabled = true;
+  btnEl.textContent = '⏳ Generando respaldo...';
+
+  try {
+    const tablas = [
+      ['pe_folios', 'Folios'],
+      ['pe_folio_dias', 'Folio_Dias'],
+      ['pe_trabajadores', 'Trabajadores'],
+      ['pe_semanas', 'Semanas'],
+      ['pe_horarios', 'Horarios'],
+      ['pe_firmantes', 'Firmantes'],
+      ['pe_tipos_ausencia', 'Tipos_Ausencia'],
+    ];
+
+    const wb = XLSX.utils.book_new();
+    for (const [tabla, nombreHoja] of tablas) {
+      const datos = await sbGet(tabla, 'select=*');
+      const ws = XLSX.utils.json_to_sheet(datos.length ? datos : [{ aviso: 'Sin registros' }]);
+      XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+    }
+
+    const fecha = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `SACISC_Respaldo_PagosExtraordinarios_${fecha}.xlsx`);
+    btnEl.textContent = '✅ Respaldo descargado';
+    setTimeout(() => { btnEl.textContent = original; btnEl.disabled = false; }, 2500);
+  } catch (e) {
+    alert('❌ Error al generar el respaldo: ' + e.message);
+    btnEl.textContent = original;
+    btnEl.disabled = false;
+  }
+}
 
 function abrirDashboard() {
   if (areaValidada !== 'TODOS') {
@@ -2609,16 +3323,54 @@ function cerrarDashboard() {
   mostrarPantalla('pantallaPrincipal');
 }
 
+// Los 3 filtros (Area, Sub-area, Tipo de Pago) se retroalimentan entre si,
+// para que nunca se pueda armar una combinacion que no existe en la realidad
+// (ej. Vigilancia + Insalubre, que nunca sucede segun la regla de negocio).
+
 function onDashAreaChange() {
   const area = document.getElementById('dashArea').value;
-  const selSub = document.getElementById('dashSubarea');
-  if (!area) {
-    selSub.innerHTML = '<option value="">Todas (comparar por área)</option>';
+  poblarDashSubareas(area, document.getElementById('dashTipoPago').value);
+}
+
+function onDashSubareaChange() {
+  const area = document.getElementById('dashArea').value;
+  const subareaNombre = document.getElementById('dashSubarea').value;
+  if (!subareaNombre) {
+    poblarDashTiposPago(null);
     return;
   }
-  const lista = SUBAREAS[area] || [];
-  selSub.innerHTML = '<option value="">Todas (comparar por sub-área)</option>' +
-    lista.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+  const listaBase = area ? (SUBAREAS[area] || []) : (SUBAREAS['TODOS'] || []);
+  const info = listaBase.find(s => s.nombre === subareaNombre);
+  poblarDashTiposPago(info ? info.tipo : null);
+}
+
+function onDashTipoPagoChange() {
+  const tipoPago = document.getElementById('dashTipoPago').value;
+  const area = document.getElementById('dashArea').value;
+  poblarDashSubareas(area, tipoPago);
+}
+
+function poblarDashSubareas(area, tipoPagoFiltro) {
+  const selSub = document.getElementById('dashSubarea');
+  const listaBase = area ? (SUBAREAS[area] || []) : (SUBAREAS['TODOS'] || []);
+  const filtradas = tipoPagoFiltro
+    ? listaBase.filter(s => (TIPOS_PAGO_PERMITIDOS[s.tipo] || []).includes(tipoPagoFiltro))
+    : listaBase;
+  const valorActual = selSub.value;
+  selSub.innerHTML = '<option value="">Todas (comparar por área)</option>' +
+    filtradas.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+  if ([...selSub.options].some(o => o.value === valorActual)) selSub.value = valorActual;
+}
+
+function poblarDashTiposPago(tipoSubarea) {
+  const selTipo = document.getElementById('dashTipoPago');
+  const permitidos = tipoSubarea ? (TIPOS_PAGO_PERMITIDOS[tipoSubarea] || []) : ['DOBLETE','TIEMPO_EXTRA','INSALUBRE'];
+  const TODOS_TIPOS_DASH = [['DOBLETE','Doblete'], ['TIEMPO_EXTRA','Tiempo Extra'], ['INSALUBRE','Insalubre']];
+  const valorActual = selTipo.value;
+  selTipo.innerHTML = '<option value="">Todos</option>' +
+    TODOS_TIPOS_DASH.filter(([clave]) => permitidos.includes(clave))
+      .map(([clave, label]) => `<option value="${clave}">${label}</option>`).join('');
+  if ([...selTipo.options].some(o => o.value === valorActual)) selTipo.value = valorActual;
 }
 
 async function cargarAniosDashboard() {
@@ -2678,12 +3430,12 @@ async function analizarDashboard() {
 
       if (dob > 0) {
         const key = f.ficha;
-        if (!porTrabajadorDobletes[key]) porTrabajadorDobletes[key] = { nombre: f.nombre_trabajador, total: 0 };
+        if (!porTrabajadorDobletes[key]) porTrabajadorDobletes[key] = { nombre: f.nombre_trabajador, area: f.area, total: 0 };
         porTrabajadorDobletes[key].total += dob;
       }
       if (horas > 0 && f.tipo_pago !== 'DOBLETE') {
         const key = f.ficha;
-        if (!porTrabajadorHoras[key]) porTrabajadorHoras[key] = { nombre: f.nombre_trabajador, total: 0 };
+        if (!porTrabajadorHoras[key]) porTrabajadorHoras[key] = { nombre: f.nombre_trabajador, area: f.area, total: 0 };
         porTrabajadorHoras[key].total += horas;
       }
       [d.ausente1_nombre, d.ausente2_nombre].forEach(nombre => {
@@ -2775,7 +3527,7 @@ function renderRanking(elId, datosPorFicha, unidad, esHoras) {
     <div class="ranking-item">
       <div class="ranking-pos">${i+1}</div>
       <div class="ranking-info">
-        <div class="ranking-name">${item.nombre}</div>
+        <div class="ranking-name">${item.nombre} ${item.area ? `<span style="color:var(--gray);font-weight:400;">· ${item.area}</span>` : ''}</div>
         <div class="ranking-bar-wrap"><div class="ranking-bar" style="width:${(item.total/max*100).toFixed(0)}%"></div></div>
       </div>
       <div class="ranking-value">${esHoras ? item.total.toFixed(1) : item.total}</div>
