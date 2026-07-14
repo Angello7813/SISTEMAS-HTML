@@ -1399,6 +1399,10 @@
         <select id="oficioDestinatario"></select>
       </div>
       <div class="field" style="margin-bottom:14px;">
+        <label>C.c.p.1 — Máxima Autoridad</label>
+        <select id="oficioCcp1"></select>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
         <label>Firma (Vo.Bo.)</label>
         <select id="oficioVobo"></select>
       </div>
@@ -3095,6 +3099,7 @@ async function abrirModalOficioRH() {
   llenarSelectFirmante('oficioVobo', 'VOBO');
   llenarSelectFirmante('oficioAutoriza', 'AUTORIZA');
   llenarSelectFirmante('oficioElaboro', 'ELABORO');
+  llenarSelectFirmante('oficioCcp1', 'CCP1');
 
   document.getElementById('oficioPreviewAnio').textContent = f0.anio;
   document.getElementById('oficioFolioManual').value = '';
@@ -3137,26 +3142,34 @@ async function generarOficioRH() {
   const voboVal = document.getElementById('oficioVobo').value;
   const autorizaVal = document.getElementById('oficioAutoriza').value;
   const elaboroVal = document.getElementById('oficioElaboro').value;
-  if (!voboVal || !autorizaVal || !elaboroVal) {
+  const ccp1Val = document.getElementById('oficioCcp1').value;
+  if (!voboVal || !autorizaVal || !elaboroVal || !ccp1Val) {
     msgEl.className = 'area-pwd-msg err';
-    msgEl.textContent = '⚠️ Falta elegir Vo.Bo., Autoriza o Elaboró (agrégalos en Catálogos → Firmantes si no existen).';
+    msgEl.textContent = '⚠️ Falta elegir Vo.Bo., Autoriza, Elaboró o C.c.p.1 (agrégalos en Catálogos → Firmantes si no existen).';
     return;
   }
   const [vobo_nombre, vobo_puesto] = voboVal.split('|||');
   const [autoriza_nombre, autoriza_puesto] = autorizaVal.split('|||');
   const [elaboro_nombre, , elaboro_extension] = elaboroVal.split('|||');
+  const [ccp1_nombre, ccp1_puesto] = ccp1Val.split('|||');
 
   const f0 = ultimosFoliosCrudos[0];
   const tipoSubarea = (SUBAREAS[f0.area] || []).find(s => s.nombre === f0.subarea)?.tipo;
 
+  // GitHub solo permite 10 propiedades sueltas en el aviso -- se agrupan
+  // los datos relacionados en paquetitos para quedar muy por debajo del limite.
   const payload = {
-    area: f0.area, subarea: f0.subarea, tipo_pago: f0.tipo_pago,
-    anio: f0.anio, num_semana: f0.num_semana,
-    subarea_corta: SUBAREA_TIPO_CORTO[tipoSubarea] || f0.subarea,
+    folio_ctx: {
+      area: f0.area, subarea: f0.subarea, tipo_pago: f0.tipo_pago,
+      anio: f0.anio, num_semana: f0.num_semana,
+      subarea_corta: SUBAREA_TIPO_CORTO[tipoSubarea] || f0.subarea,
+    },
     fecha, folio_manual: folioManual,
-    destinatario_nombre, destinatario_puesto,
-    vobo_nombre, vobo_puesto, autoriza_nombre, autoriza_puesto,
-    elaboro_nombre, elaboro_extension,
+    destinatario: { nombre: destinatario_nombre, puesto: destinatario_puesto },
+    vobo: { nombre: vobo_nombre, puesto: vobo_puesto },
+    autoriza: { nombre: autoriza_nombre, puesto: autoriza_puesto },
+    elaboro: { nombre: elaboro_nombre, extension: elaboro_extension },
+    ccp1: { nombre: ccp1_nombre, puesto: ccp1_puesto },
   };
 
   btnEl.disabled = true;
@@ -3172,7 +3185,7 @@ async function generarOficioRH() {
     });
     if (!dispatchResp.ok) throw new Error('No se pudo disparar el proceso: ' + (await dispatchResp.text()));
 
-    const base = slugificarNombreArchivo(`OFICIO_RH_${f0.area}_${payload.subarea_corta}_${f0.tipo_pago}_${f0.anio}_S${f0.num_semana}`.replace(/ /g, '_'));
+    const base = slugificarNombreArchivo(`OFICIO_RH_${f0.area}_${payload.folio_ctx.subarea_corta}_${f0.tipo_pago}_${f0.anio}_S${f0.num_semana}`.replace(/ /g, '_'));
     const bucket = 'oficios-rh-generados';
 
     btnEl.textContent = '⏳ Esperando archivo...';
