@@ -2141,10 +2141,7 @@ async function guardarCatalogo(cat) {
   registros.forEach((r, i) => {
     if (config.cols.includes('fecha_inicio') && !r.fecha_inicio) problemas.push(`fila ${i+1}: fecha_inicio no reconocida`);
     if (config.cols.includes('fecha_termino') && !r.fecha_termino) problemas.push(`fila ${i+1}: fecha_termino no reconocida`);
-    if (config.cols.includes('rol')) {
-      console.log('DEBUG rol fila', i+1, '=', JSON.stringify(r.rol), 'longitud:', r.rol ? r.rol.length : 0, 'codigos:', r.rol ? [...r.rol].map(c=>c.charCodeAt(0)) : []);
-      if (!['ELABORO','VOBO','AUTORIZA','CCP1'].includes(r.rol)) problemas.push(`fila ${i+1}: rol "${r.rol}" no reconocido`);
-    }
+    if (config.cols.includes('rol') && !['ELABORO','VOBO','AUTORIZA','CCP1'].includes(r.rol)) problemas.push(`fila ${i+1}: rol "${r.rol}" no reconocido`);
   });
   if (problemas.length > 0) {
     statusEl.className = 'cat-status err';
