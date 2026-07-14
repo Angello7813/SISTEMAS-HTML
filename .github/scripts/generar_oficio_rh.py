@@ -6,6 +6,12 @@ Toma un tipo_pago + area + subarea + num_semana + anio, junta todos los
 folios que coincidan, y llena la plantilla oficial de oficio (Word) con
 la lista de trabajadores -- el diseno/membrete se preserva 100% porque
 solo se sustituye texto, nunca se reconstruye el documento desde cero.
+
+Vo.Bo., Autoriza y Elaboro llegan YA elegidos desde el navegador (el
+usuario los selecciona en el modal), porque el catalogo de Firmantes es
+compartido entre las 4 areas y el sistema no puede adivinar cual aplica.
+Solo CCP1 (la maxima autoridad) se sigue tomando automatico, porque es
+siempre la misma persona para todo el sistema.
 """
 import os
 import json
@@ -44,6 +50,32 @@ TIPO_PAGO_TEXTO = {
     "TIEMPO_EXTRA": "Tiempo extraordinario",
     "INSALUBRE": "Insalubre",
 }
+
+MINUSCULAS = {'de', 'del', 'la', 'las', 'el', 'los', 'y', 'en', 'a', 'al', 'san'}
+
+
+def titulo(texto):
+    """Convierte 'ALEJANDRO CAMACHO SANCHEZ' o cualquier variante de
+    mayusculas/minusculas en 'Alejandro Camacho Sanchez' -- estilo normal,
+    con las preposiciones cortas en minuscula (excepto al inicio). Las
+    siglas con puntos internos (S.P.A., I.N.E., etc.) se dejan tal cual."""
+    if not texto:
+        return texto
+    palabras = str(texto).strip().split(' ')
+    resultado = []
+    for i, p in enumerate(palabras):
+        if not p:
+            continue
+        # Sigla tipo "S.P.A." (2+ puntos) -- se conserva en mayusculas
+        if p.count('.') >= 2:
+            resultado.append(p.upper())
+            continue
+        pl = p.lower()
+        if i > 0 and pl in MINUSCULAS:
+            resultado.append(pl)
+        else:
+            resultado.append(pl[0].upper() + pl[1:] if len(pl) > 1 else pl.upper())
+    return ' '.join(resultado)
 
 
 def slugificar(texto):
@@ -99,9 +131,7 @@ def main():
     os.makedirs(WORKDIR, exist_ok=True)
     folios = fetch_folios()
 
-    vobo = fetch_firmante("VOBO")
-    autoriza = fetch_firmante("AUTORIZA")
-    elaboro = fetch_firmante("ELABORO")
+    # CCP1 (maxima autoridad) sigue siendo automatico, siempre la misma persona.
     ccp1 = fetch_firmante("CCP1")
 
     y, m, d = PARAMS["fecha"].split("-")
@@ -116,21 +146,21 @@ def main():
         f"personal de {PARAMS['subarea_corta']} que se enlistan a continuación, correspondientes "
         f"a la semana {PARAMS['num_semana']}."
     )
-    elaboro_txt = f"Elaboró: {elaboro.get('nombre','')} Ext. {elaboro.get('extension','')}"
+    elaboro_txt = f"Elaboró: {titulo(PARAMS.get('elaboro_nombre',''))} Ext. {PARAMS.get('elaboro_extension','')}"
 
     reemplazos = {
         "Agua Dulce, Ver., a  08 de julio de 2026     ": fecha_txt,
         "DAS-SSAB-URSCS-SSCC-JSCAD-      395       -2026": folio_txt,
-        "Mtro. José Antonio Rivera Hernández": PARAMS["destinatario_nombre"],
-        "Departamento de Personal Agua Dulce.": PARAMS["destinatario_puesto"],
+        "Mtro. José Antonio Rivera Hernández": titulo(PARAMS["destinatario_nombre"]),
+        "Departamento de Personal Agua Dulce.": titulo(PARAMS["destinatario_puesto"]),
         "Reporte de tiempo extraordinario Semana 27, Servicios Corporativos Agua Dulce-Áreas Verdes": asunto_txt,
         "Por medio del presente, le solicito gire sus instrucciones a quien corresponda para que se realicen los trámites correspondientes para el pago de Tiempo extraordinario del personal de Áreas Verdes que se enlistan a continuación, correspondientes a la semana 27.": cuerpo_txt,
-        "Mtro. Jonatan Eric Reyes Gómez": vobo.get("nombre", ""),
-        "Jefe de Servicios Corporativos Agua Dulce": vobo.get("puesto", ""),
-        "Ing. José Rogelio Ramírez García": ccp1.get("nombre", ""),
-        ". – S.P.A. de la Unidad Regional de Servicios Corporativos Sur.": f". – {ccp1.get('puesto','')}",
-        "Lic. Jorge Hernández Landero": autoriza.get("nombre", ""),
-        ".- S.P.A. de la Superintendencia de Servicios Corporativos Zona Coatzacoalcos.": f".- {autoriza.get('puesto','')}",
+        "Mtro. Jonatan Eric Reyes Gómez": titulo(PARAMS.get("vobo_nombre", "")),
+        "Jefe de Servicios Corporativos Agua Dulce": titulo(PARAMS.get("vobo_puesto", "")),
+        "Ing. José Rogelio Ramírez García": titulo(ccp1.get("nombre", "")),
+        ". – S.P.A. de la Unidad Regional de Servicios Corporativos Sur.": f". – {titulo(ccp1.get('puesto',''))}",
+        "Lic. Jorge Hernández Landero": titulo(PARAMS.get("autoriza_nombre", "")),
+        ".- S.P.A. de la Superintendencia de Servicios Corporativos Zona Coatzacoalcos.": f".- {titulo(PARAMS.get('autoriza_puesto',''))}",
         "Elaboró: Yarumi Leonora Villalobos Kanga Ext. 27-195": elaboro_txt,
     }
 
@@ -139,7 +169,7 @@ def main():
 
     reemplazar_textos(TEMPLATE_PATH, out_path, reemplazos)
 
-    filas_tabla = [[f"{i+1:03d}.", f["ficha"], f["nombre_trabajador"]] for i, f in enumerate(folios)]
+    filas_tabla = [[f"{i+1:03d}.", f["ficha"], titulo(f["nombre_trabajador"])] for i, f in enumerate(folios)]
     reconstruir_tabla(out_path, tabla_idx=1, fila_referencia_idx=1, filas_nuevas=filas_tabla)
 
     bucket = "oficios-rh-generados"
