@@ -1399,6 +1399,18 @@
         <select id="oficioDestinatario"></select>
       </div>
       <div class="field" style="margin-bottom:14px;">
+        <label>Firma (Vo.Bo.)</label>
+        <select id="oficioVobo"></select>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>C.c.p. — Autoriza</label>
+        <select id="oficioAutoriza"></select>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>Elaboró</label>
+        <select id="oficioElaboro"></select>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
         <label>Número de folio del oficio (manual)</label>
         <input type="text" id="oficioFolioManual" placeholder="ej. 401">
         <p style="font-size:0.72rem;color:var(--gray);margin-top:4px;">Se colocará como: DAS-SSAB-URSCS-SSCC-JSCAD-<strong id="oficioPreviewFolio">___</strong>-<span id="oficioPreviewAnio">2026</span></p>
@@ -1711,7 +1723,7 @@ const CAT_CONFIG = {
     cols: ['rol','nombre','puesto','extension'],
     tipos: ['text','text','text','text'],
     global: true,
-    conflict: null,
+    conflict: 'rol,nombre,puesto',
     opciones: {
       rol: ['ELABORO', 'VOBO', 'AUTORIZA', 'CCP1']
     }
@@ -1734,6 +1746,10 @@ const CAT_CONFIG = {
 
 // Datos en memoria por catalogo (array de arrays, mismo orden que CAT_CONFIG.cols)
 const CAT_DATA = { trabajadores: [], semanas: [], horarios: [], firmantes: [], destinatarios_rh: [], ausencias: [] };
+// Guarda el id real de Supabase de cada fila (mismo indice que CAT_DATA), para
+// poder borrarla de verdad en la base cuando el usuario la elimina en pantalla.
+// null = fila nueva que aun no existe en la base.
+const CAT_IDS = { trabajadores: [], semanas: [], horarios: [], firmantes: [], destinatarios_rh: [], ausencias: [] };
 
 // Precarga de Horarios (regla de negocio fija segun especificacion de doblete)
 const HORARIOS_PRECARGA = [
@@ -1778,6 +1794,7 @@ async function cargarCatalogoGuardado(cat) {
   if (!config.global && !subareaActual) {
     // Sin subarea elegida todavia -> no se puede filtrar, se deja vacio hasta que elijan
     CAT_DATA[cat] = [];
+    CAT_IDS[cat] = [];
     renderTabla(cat);
     return;
   }
@@ -1794,6 +1811,7 @@ async function cargarCatalogoGuardado(cat) {
     if (!resp.ok) { throw new Error(await resp.text()); }
     const filas = await resp.json();
     CAT_DATA[cat] = filas.map(f => config.cols.map(c => f[c] ?? ''));
+    CAT_IDS[cat] = filas.map(f => f.id);
     renderTabla(cat);
     if (statusEl) {
       statusEl.className = 'cat-status ok';
@@ -1896,6 +1914,7 @@ function parsearPegado(cat) {
         } else {
           filaLimpia[idxEtiqueta] = 'BASE'; // se corrige en el auto-etiquetado de abajo
           CAT_DATA[cat].push(filaLimpia);
+          CAT_IDS[cat].push(null);
           nuevas++;
         }
       }
@@ -1920,10 +1939,12 @@ function parsearPegado(cat) {
             actualizadas++;
           } else {
             CAT_DATA[cat].push(filaLimpia);
+            CAT_IDS[cat].push(null);
             nuevas++;
           }
         } else {
           CAT_DATA[cat].push(filaLimpia);
+          CAT_IDS[cat].push(null);
           nuevas++;
         }
       }
@@ -1976,11 +1997,30 @@ function autoEtiquetarTrabajadores() {
 function agregarFilaVacia(cat) {
   const config = CAT_CONFIG[cat];
   CAT_DATA[cat].push(config.cols.map(() => ''));
+  CAT_IDS[cat].push(null); // fila nueva, todavia no existe en Supabase
   renderTabla(cat);
 }
 
-function eliminarFila(cat, idx) {
+async function eliminarFila(cat, idx) {
+  const id = CAT_IDS[cat][idx];
+  if (id) {
+    // La fila ya existia guardada en Supabase -> hay que borrarla de verdad ahi,
+    // si no, reaparece "fantasma" la siguiente vez que se cargue el catalogo.
+    if (!confirm('¿Eliminar este registro de forma permanente?')) return;
+    try {
+      const config = CAT_CONFIG[cat];
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/${config.tabla}?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'return=minimal' }
+      });
+      if (!resp.ok) { alert('❌ No se pudo eliminar: ' + (await resp.text())); return; }
+    } catch (e) {
+      alert('❌ No se pudo eliminar: ' + e.message);
+      return;
+    }
+  }
   CAT_DATA[cat].splice(idx, 1);
+  CAT_IDS[cat].splice(idx, 1);
   renderTabla(cat);
 }
 
@@ -3045,6 +3085,17 @@ async function abrirModalOficioRH() {
       ? destinatarios.map(d => `<option value="${d.nombre}|||${d.puesto}">${d.nombre} — ${d.puesto}</option>`).join('')
       : '<option value="">— No hay destinatarios en el catálogo —</option>';
 
+  const todosFirmantes = await sbGet('pe_firmantes', 'select=*&order=nombre');
+  const llenarSelectFirmante = (elId, rol) => {
+    const lista = todosFirmantes.filter(f => f.rol === rol);
+    document.getElementById(elId).innerHTML = lista.length
+      ? lista.map(f => `<option value="${f.nombre}|||${f.puesto}|||${f.extension||''}">${f.nombre} — ${f.puesto}</option>`).join('')
+      : `<option value="">— No hay ${rol} en el catálogo —</option>`;
+  };
+  llenarSelectFirmante('oficioVobo', 'VOBO');
+  llenarSelectFirmante('oficioAutoriza', 'AUTORIZA');
+  llenarSelectFirmante('oficioElaboro', 'ELABORO');
+
   document.getElementById('oficioPreviewAnio').textContent = f0.anio;
   document.getElementById('oficioFolioManual').value = '';
   document.getElementById('oficioFolioManual').oninput = function() {
@@ -3083,6 +3134,18 @@ async function generarOficioRH() {
   }
 
   const [destinatario_nombre, destinatario_puesto] = destinatarioVal.split('|||');
+  const voboVal = document.getElementById('oficioVobo').value;
+  const autorizaVal = document.getElementById('oficioAutoriza').value;
+  const elaboroVal = document.getElementById('oficioElaboro').value;
+  if (!voboVal || !autorizaVal || !elaboroVal) {
+    msgEl.className = 'area-pwd-msg err';
+    msgEl.textContent = '⚠️ Falta elegir Vo.Bo., Autoriza o Elaboró (agrégalos en Catálogos → Firmantes si no existen).';
+    return;
+  }
+  const [vobo_nombre, vobo_puesto] = voboVal.split('|||');
+  const [autoriza_nombre, autoriza_puesto] = autorizaVal.split('|||');
+  const [elaboro_nombre, , elaboro_extension] = elaboroVal.split('|||');
+
   const f0 = ultimosFoliosCrudos[0];
   const tipoSubarea = (SUBAREAS[f0.area] || []).find(s => s.nombre === f0.subarea)?.tipo;
 
@@ -3092,6 +3155,8 @@ async function generarOficioRH() {
     subarea_corta: SUBAREA_TIPO_CORTO[tipoSubarea] || f0.subarea,
     fecha, folio_manual: folioManual,
     destinatario_nombre, destinatario_puesto,
+    vobo_nombre, vobo_puesto, autoriza_nombre, autoriza_puesto,
+    elaboro_nombre, elaboro_extension,
   };
 
   btnEl.disabled = true;
@@ -3379,6 +3444,7 @@ async function vaciarCatalogoSupabase(cat) {
     statusEl.className = 'cat-status ok';
     statusEl.textContent = '✅ Catálogo vaciado.';
     CAT_DATA[cat] = [];
+    CAT_IDS[cat] = [];
     renderTabla(cat);
   } catch (e) {
     statusEl.className = 'cat-status err';
