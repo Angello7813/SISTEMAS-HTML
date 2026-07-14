@@ -2048,6 +2048,7 @@ function normalizarRol(v) {
   if (t.includes('ELABOR')) return 'ELABORO';
   if (t.includes('VO.BO') || t.includes('VOBO') || t.includes('VISTO BUENO') || t.includes('VO BO')) return 'VOBO';
   if (t.includes('AUTORIZ')) return 'AUTORIZA';
+  if (t.includes('CCP1') || t.includes('CCP 1') || t.includes('MAXIMA AUTORIDAD')) return 'CCP1';
   return t; // se deja tal cual si no coincide con ningun patron conocido (marcara error visible)
 }
 
@@ -2140,7 +2141,7 @@ async function guardarCatalogo(cat) {
   registros.forEach((r, i) => {
     if (config.cols.includes('fecha_inicio') && !r.fecha_inicio) problemas.push(`fila ${i+1}: fecha_inicio no reconocida`);
     if (config.cols.includes('fecha_termino') && !r.fecha_termino) problemas.push(`fila ${i+1}: fecha_termino no reconocida`);
-    if (config.cols.includes('rol') && !['ELABORO','VOBO','AUTORIZA'].includes(r.rol)) problemas.push(`fila ${i+1}: rol "${r.rol}" no reconocido`);
+    if (config.cols.includes('rol') && !['ELABORO','VOBO','AUTORIZA','CCP1'].includes(r.rol)) problemas.push(`fila ${i+1}: rol "${r.rol}" no reconocido`);
   });
   if (problemas.length > 0) {
     statusEl.className = 'cat-status err';
