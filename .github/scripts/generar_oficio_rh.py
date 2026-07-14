@@ -7,11 +7,15 @@ folios que coincidan, y llena la plantilla oficial de oficio (Word) con
 la lista de trabajadores -- el diseno/membrete se preserva 100% porque
 solo se sustituye texto, nunca se reconstruye el documento desde cero.
 
-Vo.Bo., Autoriza y Elaboro llegan YA elegidos desde el navegador (el
-usuario los selecciona en el modal), porque el catalogo de Firmantes es
-compartido entre las 4 areas y el sistema no puede adivinar cual aplica.
-Solo CCP1 (la maxima autoridad) se sigue tomando automatico, porque es
-siempre la misma persona para todo el sistema.
+Vo.Bo., Autoriza, Elaboro y CCP1 llegan YA elegidos desde el navegador
+(el usuario los selecciona en el modal), porque el catalogo de Firmantes
+es compartido entre las 4 areas y el sistema no puede adivinar cual
+aplica -- ademas CCP1 puede cambiar temporalmente (vacaciones, etc.),
+asi que tampoco se asume fijo.
+
+Los parametros (OFICIO_PARAMS) llegan agrupados en paquetitos, no como
+16 campos sueltos, porque GitHub solo permite 10 propiedades en el aviso
+de repository_dispatch.
 """
 import os
 import json
@@ -66,7 +70,6 @@ def titulo(texto):
     for i, p in enumerate(palabras):
         if not p:
             continue
-        # Sigla tipo "S.P.A." (2+ puntos) -- se conserva en mayusculas
         if p.count('.') >= 2:
             resultado.append(p.upper())
             continue
@@ -86,14 +89,14 @@ def slugificar(texto):
     return texto
 
 
-def fetch_folios():
+def fetch_folios(ctx):
     url = f"{SUPABASE_URL}/rest/v1/pe_folios"
     params = {
-        "area": f"eq.{PARAMS['area']}",
-        "subarea": f"eq.{PARAMS['subarea']}",
-        "tipo_pago": f"eq.{PARAMS['tipo_pago']}",
-        "anio": f"eq.{PARAMS['anio']}",
-        "num_semana": f"eq.{PARAMS['num_semana']}",
+        "area": f"eq.{ctx['area']}",
+        "subarea": f"eq.{ctx['subarea']}",
+        "tipo_pago": f"eq.{ctx['tipo_pago']}",
+        "anio": f"eq.{ctx['anio']}",
+        "num_semana": f"eq.{ctx['num_semana']}",
         "order": "folio.asc",
         "select": "folio,ficha,nombre_trabajador",
     }
@@ -103,15 +106,6 @@ def fetch_folios():
     if not data:
         raise ValueError("No hay folios para esos filtros (area/subarea/tipo_pago/semana).")
     return data
-
-
-def fetch_firmante(rol):
-    url = f"{SUPABASE_URL}/rest/v1/pe_firmantes"
-    params = {"rol": f"eq.{rol}", "select": "*", "limit": 1}
-    resp = requests.get(url, headers=HEADERS, params=params)
-    resp.raise_for_status()
-    data = resp.json()
-    return data[0] if data else {"nombre": "", "puesto": "", "extension": ""}
 
 
 def subir_a_storage(local_path, bucket, dest_name):
@@ -129,42 +123,47 @@ def subir_a_storage(local_path, bucket, dest_name):
 
 def main():
     os.makedirs(WORKDIR, exist_ok=True)
-    folios = fetch_folios()
 
-    # CCP1 (maxima autoridad) sigue siendo automatico, siempre la misma persona.
-    ccp1 = fetch_firmante("CCP1")
+    ctx = PARAMS["folio_ctx"]
+    destinatario = PARAMS["destinatario"]
+    vobo = PARAMS["vobo"]
+    autoriza = PARAMS["autoriza"]
+    elaboro = PARAMS["elaboro"]
+    ccp1 = PARAMS["ccp1"]
+
+    folios = fetch_folios(ctx)
 
     y, m, d = PARAMS["fecha"].split("-")
-    fecha_txt = f"{CIUDAD_POR_AREA.get(PARAMS['area'], '')} a  {int(d):02d} de {MESES[int(m)]} de {y}"
-    folio_txt = f"DAS-SSAB-URSCS-SSCC-JSCAD-{PARAMS['folio_manual']}-{PARAMS['anio']}"
-    tipo_txt = TIPO_PAGO_TEXTO.get(PARAMS["tipo_pago"], PARAMS["tipo_pago"])
-    ciudad_area = CIUDAD_POR_AREA.get(PARAMS["area"], "").replace(", Ver.", "")
-    asunto_txt = f"Reporte de {tipo_txt.lower()} Semana {PARAMS['num_semana']}, Servicios Corporativos {ciudad_area}-{PARAMS['subarea_corta']}"
+    fecha_txt = f"{CIUDAD_POR_AREA.get(ctx['area'], '')} a  {int(d):02d} de {MESES[int(m)]} de {y}"
+    folio_txt = f"DAS-SSAB-URSCS-SSCC-JSCAD-{PARAMS['folio_manual']}-{ctx['anio']}"
+    tipo_txt = TIPO_PAGO_TEXTO.get(ctx["tipo_pago"], ctx["tipo_pago"])
+    ciudad_area = CIUDAD_POR_AREA.get(ctx["area"], "").replace(", Ver.", "")
+    asunto_txt = f"Reporte de {tipo_txt.lower()} Semana {ctx['num_semana']}, Servicios Corporativos {ciudad_area}-{ctx['subarea_corta']}"
     cuerpo_txt = (
         f"Por medio del presente, le solicito gire sus instrucciones a quien corresponda "
         f"para que se realicen los trámites correspondientes para el pago de {tipo_txt} del "
-        f"personal de {PARAMS['subarea_corta']} que se enlistan a continuación, correspondientes "
-        f"a la semana {PARAMS['num_semana']}."
+        f"personal de {ctx['subarea_corta']} que se enlistan a continuación, correspondientes "
+        f"a la semana {ctx['num_semana']}."
     )
-    elaboro_txt = f"Elaboró: {titulo(PARAMS.get('elaboro_nombre',''))} Ext. {PARAMS.get('elaboro_extension','')}"
+    elaboro_txt = f"Elaboró: {titulo(elaboro.get('nombre',''))} Ext. {elaboro.get('extension','')}"
 
     reemplazos = {
         "Agua Dulce, Ver., a  08 de julio de 2026     ": fecha_txt,
         "DAS-SSAB-URSCS-SSCC-JSCAD-      395       -2026": folio_txt,
-        "Mtro. José Antonio Rivera Hernández": titulo(PARAMS["destinatario_nombre"]),
-        "Departamento de Personal Agua Dulce.": titulo(PARAMS["destinatario_puesto"]),
+        "Mtro. José Antonio Rivera Hernández": titulo(destinatario["nombre"]),
+        "Departamento de Personal Agua Dulce.": titulo(destinatario["puesto"]),
         "Reporte de tiempo extraordinario Semana 27, Servicios Corporativos Agua Dulce-Áreas Verdes": asunto_txt,
         "Por medio del presente, le solicito gire sus instrucciones a quien corresponda para que se realicen los trámites correspondientes para el pago de Tiempo extraordinario del personal de Áreas Verdes que se enlistan a continuación, correspondientes a la semana 27.": cuerpo_txt,
-        "Mtro. Jonatan Eric Reyes Gómez": titulo(PARAMS.get("vobo_nombre", "")),
-        "Jefe de Servicios Corporativos Agua Dulce": titulo(PARAMS.get("vobo_puesto", "")),
+        "Mtro. Jonatan Eric Reyes Gómez": titulo(vobo.get("nombre", "")),
+        "Jefe de Servicios Corporativos Agua Dulce": titulo(vobo.get("puesto", "")),
         "Ing. José Rogelio Ramírez García": titulo(ccp1.get("nombre", "")),
         ". – S.P.A. de la Unidad Regional de Servicios Corporativos Sur.": f". – {titulo(ccp1.get('puesto',''))}",
-        "Lic. Jorge Hernández Landero": titulo(PARAMS.get("autoriza_nombre", "")),
-        ".- S.P.A. de la Superintendencia de Servicios Corporativos Zona Coatzacoalcos.": f".- {titulo(PARAMS.get('autoriza_puesto',''))}",
+        "Lic. Jorge Hernández Landero": titulo(autoriza.get("nombre", "")),
+        ".- S.P.A. de la Superintendencia de Servicios Corporativos Zona Coatzacoalcos.": f".- {titulo(autoriza.get('puesto',''))}",
         "Elaboró: Yarumi Leonora Villalobos Kanga Ext. 27-195": elaboro_txt,
     }
 
-    base = slugificar(f"OFICIO_RH_{PARAMS['area']}_{PARAMS['subarea_corta']}_{PARAMS['tipo_pago']}_{PARAMS['anio']}_S{PARAMS['num_semana']}".replace(" ", "_"))
+    base = slugificar(f"OFICIO_RH_{ctx['area']}_{ctx['subarea_corta']}_{ctx['tipo_pago']}_{ctx['anio']}_S{ctx['num_semana']}".replace(" ", "_"))
     out_path = os.path.join(WORKDIR, f"{base}.docx")
 
     reemplazar_textos(TEMPLATE_PATH, out_path, reemplazos)
