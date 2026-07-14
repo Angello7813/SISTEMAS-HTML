@@ -1,0 +1,27 @@
+name: Generar Oficio RH
+
+on:
+  repository_dispatch:
+    types: [generar-oficio-rh]
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias de Python
+        run: pip install requests python-docx
+
+      - name: Generar Oficio RH
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          OFICIO_PARAMS: ${{ toJson(github.event.client_payload) }}
+        run: python .github/scripts/generar_oficio_rh.py
