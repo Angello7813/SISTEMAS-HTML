@@ -179,6 +179,12 @@
     align-items: center; justify-content: center;
   }
   #subareaModal.active { display: flex; }
+  #oficioModal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,47,42,0.78); z-index: 10020;
+    align-items: center; justify-content: center;
+  }
+  #oficioModal.active { display: flex; }
   .area-modal-card {
     background: #fff; border-radius: 16px;
     width: 420px; max-width: 96vw;
@@ -745,6 +751,7 @@
           <button class="tab-btn" onclick="cambiarTab('semanas')">Semanas</button>
           <button class="tab-btn" onclick="cambiarTab('horarios')">Horarios (Doblete)</button>
           <button class="tab-btn" onclick="cambiarTab('firmantes')">Firmantes</button>
+          <button class="tab-btn" onclick="cambiarTab('destinatarios_rh')">Destinatarios RH</button>
           <button class="tab-btn" onclick="cambiarTab('ausencias')">Tipos de Ausencia</button>
         </div>
 
@@ -816,9 +823,10 @@
         <!-- FIRMANTES -->
         <div class="tab-panel" id="tab-firmantes">
           <p class="paste-hint">
-            Pega: <strong>Rol (ELABORO/VOBO/AUTORIZA)&nbsp;&nbsp;Nombre&nbsp;&nbsp;Puesto</strong> — aplica a la sub-área actualmente seleccionada.
+            Pega: <strong>Rol (ELABORO/VOBO/AUTORIZA/CCP1)&nbsp;&nbsp;Nombre&nbsp;&nbsp;Puesto&nbsp;&nbsp;Extensión</strong> — catálogo compartido por todas las áreas.<br>
+            <span style="font-size:0.72rem;color:var(--gray);">La Extensión solo aplica al rol ELABORO (se usa en la línea "Elaboró: Nombre Ext. XXX" del Oficio a RH) — para los demás roles, déjala en blanco. CCP1 es la máxima autoridad, siempre la misma persona para todo el sistema — solo debe existir un renglón con ese rol.</span>
           </p>
-          <textarea class="paste-box" id="pasteFirmantes" placeholder="ELABORO	ING. CRISTAL NALLELY CERVANTES CHIÑAS	APOYO ADMINISTRATIVO SERVICIOS CORPORATIVOS"></textarea>
+          <textarea class="paste-box" id="pasteFirmantes" placeholder="ELABORO	ING. CRISTAL NALLELY CERVANTES CHIÑAS	APOYO ADMINISTRATIVO SERVICIOS CORPORATIVOS	27-195"></textarea>
           <div class="cat-toolbar">
             <button class="btn-secondary" onclick="parsearPegado('firmantes')">Vista previa</button>
             <button class="btn-secondary" onclick="agregarFilaVacia('firmantes')">+ Fila manual</button>
@@ -829,8 +837,31 @@
           </div>
           <div class="cat-table-wrap">
             <table class="cat-table">
-              <thead><tr><th>Rol</th><th>Nombre</th><th>Puesto</th><th></th></tr></thead>
+              <thead><tr><th>Rol</th><th>Nombre</th><th>Puesto</th><th>Extensión</th><th></th></tr></thead>
               <tbody id="body-firmantes"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- DESTINATARIOS RH -->
+        <div class="tab-panel" id="tab-destinatarios_rh">
+          <p class="paste-hint">
+            Catálogo global (compartido por todas las áreas). Pega: <strong>Nombre&nbsp;&nbsp;Puesto</strong><br>
+            <span style="font-size:0.72rem;color:var(--gray);">Ej. "Mtro. José Antonio Rivera Hernández" / "Departamento de Personal Agua Dulce." — uno por cada departamento de Recursos Humanos al que le envíes oficios.</span>
+          </p>
+          <textarea class="paste-box" id="pasteDestinatarios_rh" placeholder="Mtro. José Antonio Rivera Hernández	Departamento de Personal Agua Dulce."></textarea>
+          <div class="cat-toolbar">
+            <button class="btn-secondary" onclick="parsearPegado('destinatarios_rh')">Vista previa</button>
+            <button class="btn-secondary" onclick="agregarFilaVacia('destinatarios_rh')">+ Fila manual</button>
+            <button class="btn-primary" onclick="guardarCatalogo('destinatarios_rh')">💾 Guardar</button>
+            <button class="btn-clear btn-solo-admin" onclick="vaciarCatalogoSupabase('destinatarios_rh')">🗑️ Vaciar catálogo</button>
+            <span class="cat-count" id="count-destinatarios_rh">0</span>
+            <span class="cat-status" id="status-destinatarios_rh"></span>
+          </div>
+          <div class="cat-table-wrap">
+            <table class="cat-table">
+              <thead><tr><th>Nombre</th><th>Puesto</th><th></th></tr></thead>
+              <tbody id="body-destinatarios_rh"></tbody>
             </table>
           </div>
         </div>
@@ -1039,6 +1070,9 @@
             Buscar
           </button>
           <button class="btn-clear" onclick="limpiarFiltrosFolios()">Limpiar filtros</button>
+          <button class="btn-secondary" onclick="abrirModalOficioRH()" id="btnOficioRH" disabled>
+            📨 Generar Oficio RH
+          </button>
           <button class="btn-secondary" onclick="exportarFoliosExcel()" id="btnExportarFolios" style="margin-left:auto;" disabled>
             📊 Exportar a Excel
           </button>
@@ -1350,6 +1384,42 @@
   </div>
 </div>
 
+<!-- ═══════ MODAL GENERAR OFICIO RH ═══════ -->
+<div id="oficioModal">
+  <div class="area-modal-card" style="max-width:480px;">
+    <div class="area-modal-header">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      Generar Oficio para RH
+    </div>
+    <div class="area-modal-body" style="text-align:left;">
+      <p id="oficioResumenFolios" style="font-size:0.82rem;color:var(--gray);margin-bottom:16px;"></p>
+
+      <div class="field" style="margin-bottom:14px;">
+        <label>Destinatario</label>
+        <select id="oficioDestinatario"></select>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>Número de folio del oficio (manual)</label>
+        <input type="text" id="oficioFolioManual" placeholder="ej. 401">
+        <p style="font-size:0.72rem;color:var(--gray);margin-top:4px;">Se colocará como: DAS-SSAB-URSCS-SSCC-JSCAD-<strong id="oficioPreviewFolio">___</strong>-<span id="oficioPreviewAnio">2026</span></p>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>Fecha del oficio</label>
+        <input type="date" id="oficioFecha">
+      </div>
+
+      <div class="area-pwd-msg" id="oficioMsg"></div>
+
+      <div class="area-modal-actions">
+        <button class="area-btn-cancel" onclick="cerrarModalOficioRH()">CANCELAR</button>
+        <button class="area-btn-ok" id="oficioBtnGenerar" onclick="generarOficioRH()">
+          📨 Generar Oficio
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════════════
 //  SISTEMA DE ACCESO POR ÁREA USUARIA — Módulo Pagos Extraordinarios
@@ -1638,13 +1708,20 @@ const CAT_CONFIG = {
   },
   firmantes: {
     tabla: 'pe_firmantes',
-    cols: ['rol','nombre','puesto'],
-    tipos: ['text','text','text'],
+    cols: ['rol','nombre','puesto','extension'],
+    tipos: ['text','text','text','text'],
     global: true,
     conflict: null,
     opciones: {
-      rol: ['ELABORO', 'VOBO', 'AUTORIZA']
+      rol: ['ELABORO', 'VOBO', 'AUTORIZA', 'CCP1']
     }
+  },
+  destinatarios_rh: {
+    tabla: 'pe_destinatarios_rh',
+    cols: ['nombre','puesto'],
+    tipos: ['text','text'],
+    global: true,
+    conflict: 'nombre,puesto'
   },
   ausencias: {
     tabla: 'pe_tipos_ausencia',
@@ -1656,7 +1733,7 @@ const CAT_CONFIG = {
 };
 
 // Datos en memoria por catalogo (array de arrays, mismo orden que CAT_CONFIG.cols)
-const CAT_DATA = { trabajadores: [], semanas: [], horarios: [], firmantes: [], ausencias: [] };
+const CAT_DATA = { trabajadores: [], semanas: [], horarios: [], firmantes: [], destinatarios_rh: [], ausencias: [] };
 
 // Precarga de Horarios (regla de negocio fija segun especificacion de doblete)
 const HORARIOS_PRECARGA = [
@@ -1692,7 +1769,7 @@ async function abrirCatalogos() {
 // Catalogos globales (semanas, horarios, ausencias) se cargan completos.
 // Catalogos por subarea (trabajadores, firmantes) se cargan filtrados a la subarea activa, si hay una elegida.
 async function cargarTodosLosCatalogosGuardados() {
-  await Promise.all(['trabajadores','semanas','horarios','firmantes','ausencias'].map(cat => cargarCatalogoGuardado(cat)));
+  await Promise.all(['trabajadores','semanas','horarios','firmantes','destinatarios_rh','ausencias'].map(cat => cargarCatalogoGuardado(cat)));
 }
 
 async function cargarCatalogoGuardado(cat) {
@@ -2876,6 +2953,7 @@ async function abrirFolios() {
     ultimosFoliosResultado = [];
     ultimosFoliosCrudos = [];
     document.getElementById('btnExportarFolios').disabled = true;
+    document.getElementById('btnOficioRH').disabled = true;
     document.getElementById('foliosStatsWrap').innerHTML = '';
     document.getElementById('foliosResultWrap').innerHTML = `
       <div class="empty">
@@ -2937,6 +3015,138 @@ function cerrarFolios() {
   mostrarPantalla('pantallaPrincipal');
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  GENERAR OFICIO RH
+// ═══════════════════════════════════════════════════════════════
+const SUBAREA_TIPO_CORTO = { vigilancia: 'Vigilancia', hospital: 'Hospital', areas_verdes: 'Áreas Verdes', combustion_interna: 'Combustión Interna' };
+
+async function abrirModalOficioRH() {
+  if (ultimosFoliosCrudos.length === 0) {
+    alert('Primero busca folios con los filtros de arriba.');
+    return;
+  }
+
+  // El oficio agrupa folios de UNA sola combinacion area+subarea+tipo_pago+anio+semana.
+  // Si los resultados actuales mezclan mas de una, se avisa para que el usuario afine sus filtros.
+  const combos = new Set(ultimosFoliosCrudos.map(f => `${f.area}|${f.subarea}|${f.tipo_pago}|${f.anio}|${f.num_semana}`));
+  if (combos.size > 1) {
+    alert('Tus resultados actuales mezclan más de una combinación de sub-área/tipo de pago/semana. Afina los filtros (elige una sub-área, un tipo de pago y una semana específicos) antes de generar el oficio.');
+    return;
+  }
+
+  const f0 = ultimosFoliosCrudos[0];
+  document.getElementById('oficioResumenFolios').innerHTML =
+    `<strong>${ultimosFoliosCrudos.length} folio(s)</strong> — ${f0.subarea} · ${f0.tipo_pago} · Semana ${f0.num_semana}/${f0.anio}`;
+
+  const destinatarios = await sbGet('pe_destinatarios_rh', 'select=*&order=nombre');
+  document.getElementById('oficioDestinatario').innerHTML =
+    destinatarios.length
+      ? destinatarios.map(d => `<option value="${d.nombre}|||${d.puesto}">${d.nombre} — ${d.puesto}</option>`).join('')
+      : '<option value="">— No hay destinatarios en el catálogo —</option>';
+
+  document.getElementById('oficioPreviewAnio').textContent = f0.anio;
+  document.getElementById('oficioFolioManual').value = '';
+  document.getElementById('oficioFolioManual').oninput = function() {
+    document.getElementById('oficioPreviewFolio').textContent = this.value || '___';
+  };
+
+  const hoy = new Date().toISOString().slice(0, 10);
+  document.getElementById('oficioFecha').value = hoy;
+  document.getElementById('oficioMsg').textContent = '';
+  document.getElementById('oficioBtnGenerar').disabled = false;
+  document.getElementById('oficioBtnGenerar').textContent = '📨 Generar Oficio';
+
+  document.getElementById('oficioModal').classList.add('active');
+}
+
+function cerrarModalOficioRH() {
+  document.getElementById('oficioModal').classList.remove('active');
+}
+
+async function generarOficioRH() {
+  const msgEl = document.getElementById('oficioMsg');
+  const btnEl = document.getElementById('oficioBtnGenerar');
+  const folioManual = document.getElementById('oficioFolioManual').value.trim();
+  const fecha = document.getElementById('oficioFecha').value;
+  const destinatarioVal = document.getElementById('oficioDestinatario').value;
+
+  if (!folioManual) {
+    msgEl.className = 'area-pwd-msg err';
+    msgEl.textContent = '⚠️ Escribe el número de folio del oficio.';
+    return;
+  }
+  if (!destinatarioVal) {
+    msgEl.className = 'area-pwd-msg err';
+    msgEl.textContent = '⚠️ Selecciona un destinatario (agrégalo primero en Catálogos si no existe).';
+    return;
+  }
+
+  const [destinatario_nombre, destinatario_puesto] = destinatarioVal.split('|||');
+  const f0 = ultimosFoliosCrudos[0];
+  const tipoSubarea = (SUBAREAS[f0.area] || []).find(s => s.nombre === f0.subarea)?.tipo;
+
+  const payload = {
+    area: f0.area, subarea: f0.subarea, tipo_pago: f0.tipo_pago,
+    anio: f0.anio, num_semana: f0.num_semana,
+    subarea_corta: SUBAREA_TIPO_CORTO[tipoSubarea] || f0.subarea,
+    fecha, folio_manual: folioManual,
+    destinatario_nombre, destinatario_puesto,
+  };
+
+  btnEl.disabled = true;
+  btnEl.textContent = '⏳ Generando...';
+  msgEl.className = 'area-pwd-msg';
+  msgEl.textContent = '';
+
+  try {
+    const dispatchResp = await fetch(`${SUPABASE_URL}/functions/v1/generar-oficio-trigger`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!dispatchResp.ok) throw new Error('No se pudo disparar el proceso: ' + (await dispatchResp.text()));
+
+    const base = slugificarNombreArchivo(`OFICIO_RH_${f0.area}_${payload.subarea_corta}_${f0.tipo_pago}_${f0.anio}_S${f0.num_semana}`.replace(/ /g, '_'));
+    const bucket = 'oficios-rh-generados';
+
+    btnEl.textContent = '⏳ Esperando archivo...';
+    let encontrado = false;
+    for (let intento = 0; intento < 24; intento++) {
+      await new Promise(r => setTimeout(r, 5000));
+      const check = await fetch(`${SUPABASE_URL}/storage/v1/object/public/${bucket}/${base}.docx`, { method: 'HEAD' });
+      if (check.ok) { encontrado = true; break; }
+    }
+
+    if (!encontrado) {
+      msgEl.className = 'area-pwd-msg err';
+      msgEl.textContent = '⚠️ Tardó demasiado, revisa GitHub Actions.';
+      btnEl.disabled = false;
+      btnEl.textContent = '📨 Generar Oficio';
+      return;
+    }
+
+    const signResp = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${bucket}/${base}.docx`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expiresIn: 3600 })
+    });
+    if (!signResp.ok) throw new Error('No se pudo generar la URL firmada: ' + (await signResp.text()));
+    const signData = await signResp.json();
+    const docxUrlFirmada = `${SUPABASE_URL}/storage/v1${signData.signedURL}`;
+    const visorUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(docxUrlFirmada)}`;
+
+    msgEl.className = 'area-pwd-msg ok';
+    msgEl.innerHTML = `✅ Listo — <a href="${visorUrl}" target="_blank" style="color:inherit;font-weight:700;">Ver e Imprimir</a>`;
+    btnEl.disabled = false;
+    btnEl.textContent = '📨 Generar Oficio';
+  } catch (e) {
+    msgEl.className = 'area-pwd-msg err';
+    msgEl.textContent = '❌ ' + e.message;
+    btnEl.disabled = false;
+    btnEl.textContent = '📨 Generar Oficio';
+  }
+}
+
 function limpiarFiltrosFolios() {
   if (areaValidada === 'TODOS') {
     document.getElementById('folSubarea').value = '';
@@ -2954,6 +3164,7 @@ async function buscarFolios() {
   resultWrap.innerHTML = '<div class="cat-loading">Buscando folios…</div>';
   statsWrap.innerHTML = '';
   document.getElementById('btnExportarFolios').disabled = true;
+  document.getElementById('btnOficioRH').disabled = true;
 
   // 'TODOS' es solo el modo de acceso del supervisor, no un valor real de
   // area en la base de datos -- si se filtrara por area=eq.TODOS nunca
@@ -3084,6 +3295,7 @@ async function buscarFolios() {
     </div>`;
 
   document.getElementById('btnExportarFolios').disabled = false;
+  document.getElementById('btnOficioRH').disabled = false;
 }
 
 function filtrarPorFolio(folioId, filaEl) {
