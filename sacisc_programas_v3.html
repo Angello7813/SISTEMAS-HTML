@@ -1462,25 +1462,18 @@ async function cargarDesdeSB(){
 
     // PASO 2: Construir índice de IDs que ya están en Supabase
     const sbIds={
-      prog:new Set(progs.map(r=>r.id)),
-      per:new Set(pers.map(r=>r.id)),
-      sa:new Set(subs.map(r=>r.id)),
-      lc:new Set(locs.map(r=>r.id)),
-      ab:new Set(acts.map(r=>r.id))
+      prog:new Set(progs.map(r=>r.id))
     };
 
-    // PASO 3: Identificar registros locales que NO están en Supabase → subirlos
+    // PASO 3: Identificar programas locales que NO están en Supabase → subirlos
+    // (Los catálogos —personas, subáreas, localizaciones, actividades base— NUNCA se
+    // resuben aquí: ya se sincronizan al crearlos/editarlos, y Supabase es SIEMPRE su
+    // única fuente de verdad. Resubir "huérfanos locales" de catálogos resucitaba
+    // registros viejos ya borrados que quedaban rezagados en el localStorage de
+    // máquinas poco usadas — bug corregido.)
     const soloProg=PROG.filter(r=>!sbIds.prog.has(r.id));
-    const soloPer=PE.filter(r=>!sbIds.per.has(r.id));
-    const soloSA=SA.filter(r=>!sbIds.sa.has(r.id));
-    const soloLC=LC.filter(r=>!sbIds.lc.has(r.id));
-    const soloAB=AB.filter(r=>!sbIds.ab.has(r.id));
 
     if(soloProg.length){const r=await sbUpsert('programas',soloProg.map(prog2sb));if(r)console.log('Subidos',soloProg.length,'programas nuevos');}
-    if(soloPer.length){const r=await sbUpsert('personas',soloPer.map(per2sb));if(r)console.log('Subidas',soloPer.length,'personas nuevas');}
-    if(soloSA.length){const r=await sbUpsert('subareas',soloSA.map(sub2sb));if(r)console.log('Subidas',soloSA.length,'subareas nuevas');}
-    if(soloLC.length){const r=await sbUpsert('localizaciones',soloLC.map(loc2sb));if(r)console.log('Subidas',soloLC.length,'locs nuevas');}
-    if(soloAB.length){const r=await sbUpsert('actividades_base',soloAB.map(ab2sb));if(r)console.log('Subidas',soloAB.length,'actividades nuevas');}
 
     // PASO 4: Para programas existentes en ambos lados,
     // subir los locales que tengan actualizado_en más reciente que SB
@@ -1519,7 +1512,7 @@ async function cargarDesdeSB(){
     saveLocal(LS.P,PROG);saveLocal(LS.PE,PE);saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);saveLocal(LS.AB,AB);
     _sbListo=true;
 
-    const pendTotal=soloProg.length+soloPer.length+soloSA.length+soloLC.length+soloAB.length+progActualizar.length;
+    const pendTotal=soloProg.length+progActualizar.length;
     mostrarSyncBanner(pendTotal>0?`✅ Sincronizado — ${pendTotal} registro(s) enviado(s) al servidor`:'✅ Sincronizado correctamente',false);
     setTimeout(()=>ocultarSyncBanner(),3000);
     aplicarFiltros();renderProgramasTab();
