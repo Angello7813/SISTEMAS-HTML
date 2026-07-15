@@ -720,6 +720,50 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
 
         </div>
 
+        <!-- Separador -->
+        <div style="width:100%;height:1px;
+          background:linear-gradient(90deg,transparent,rgba(17,205,120,0.3),transparent);">
+        </div>
+
+        <!-- Experiencia Laboral -->
+        <div style="width:100%;text-align:left;">
+          <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);
+            text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px;
+            display:flex;align-items:center;gap:6px;">
+            <svg width="11" height="11" fill="none" stroke="#11CD78" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <path d="M8 21h8M12 17v4"/>
+            </svg>
+            Experiencia Laboral
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Supervisión de Obra y Adm. de Contratos</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Analista de Presupuestos</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Enlace Financiero</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Cartera de Proyectos</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Prog. de Servicios y Costos a Intervenciones a Pozos</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;">
+              <span style="color:#11CD78;font-size:0.7rem;margin-top:1px;flex-shrink:0;">▸</span>
+              <span style="font-size:0.68rem;color:rgba(255,255,255,0.8);font-weight:400;line-height:1.35;">Gestión de Adquisiciones y Compra de Bienes y Servicios</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Footer de la tarjeta -->
         <div style="width:100%;padding-top:10px;
           border-top:1px solid rgba(255,255,255,0.06);
@@ -1373,8 +1417,16 @@ async function sbDelete(tabla,id){
     if(!r.ok){
       const err=await r.text();
       console.error('sbDelete ERROR en '+tabla+':',err);
+      return false;
     }
-  }catch(e){console.error('sbDelete EXCEPCION en '+tabla+':',e.message);}
+    const data=await r.json();
+    // Si Supabase no devolvió ninguna fila afectada, el registro no se marcó (id no encontrado o RLS lo bloqueó)
+    if(!Array.isArray(data)||data.length===0){
+      console.error('sbDelete: 0 filas afectadas en '+tabla+' para id='+id+' — posible columna "eliminado" faltante o RLS bloqueando.');
+      return false;
+    }
+    return true;
+  }catch(e){console.error('sbDelete EXCEPCION en '+tabla+':',e.message);return false;}
 }
 
 // ── Mapeo tabla → variable local ──
@@ -1561,7 +1613,7 @@ const AÑO=new Date().getFullYear();
 function semISO(f){const d=new Date(Date.UTC(f.getFullYear(),f.getMonth(),f.getDate())),dy=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-dy);const y=d.getUTCFullYear(),s=Math.ceil(((d-new Date(Date.UTC(y,0,1)))/86400000+1)/7);return s;}
 const SEM=semISO(new Date());
 function semDates(a,s){const j4=new Date(Date.UTC(a,0,4)),dj=j4.getUTCDay()||7,l=new Date(j4);l.setUTCDate(j4.getUTCDate()-dj+1+(s-1)*7);const v=new Date(l);v.setUTCDate(l.getUTCDate()+4);const fmt=d=>`${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;return{l,v,label:`Sem. ${s} — ${fmt(l)} al ${fmt(v)}`,ini:fmt(l),fin:fmt(v)};}
-function semsAnio(a){const r=[];for(let s=1;s<=53;s++){try{const f=semDates(a,s);if(f.l.getUTCFullYear()===a||f.v.getUTCFullYear()===a)r.push(s);}catch{}}return r;}
+function semsAnio(a){const r=[];for(let s=1;s<=52;s++){try{const f=semDates(a,s);if(f.l.getUTCFullYear()===a||f.v.getUTCFullYear()===a)r.push(s);}catch{}}return r;}
 const DIAS=['LUN','MAR','MIÉ','JUE','VIE','SAB','DOM'];
 const SVCL={AV:'🌿 Áreas Verdes',DOM:'🏢 Domésticos',RB:'🗑️ Recolección de Basura'};
 const SVCC={AV:'#10b981',DOM:'#3b82f6',RB:'#f59e0b'};
@@ -2588,6 +2640,13 @@ function abrirRegDia(progId,locId,dia,fecha,domProg){
     return `<option value="${v}" ${reg.status===v?'selected':''}>${labels[v]}</option>`;
   }).join('');
   const tipoOpts=Object.entries(TIPODEV).map(([k,v])=>`<option value="${k}" ${reg.tipo===k?'selected':''}>${v}</option>`).join('');
+  // Localizaciones candidatas para el cambio: mismo servicio y área que la localización original, excluyéndola a ella misma
+  const _locCandidatas=LC.filter(l=>l.id!==locId&&(!l.eliminado)&&(l.servs||[]).includes(p.serv)&&(!loc||l.area===loc.area));
+  const _nuevaLocOptsHTML='<option value="">— Seleccionar localización —</option>'+_locCandidatas.map(l=>{
+    const _subL=SA.find(s=>s.id===l.subarea);
+    const _lbl=l.nombre+(_subL?' · '+_subL.nombre:'');
+    return `<option value="${l.id}" ${reg.nuevaLocId===l.id?'selected':''}>${_lbl}</option>`;
+  }).join('');
   const modal=document.createElement('div');
   modal.className='mov active';modal.style.zIndex='20000';modal.id='movRegDia';
   modal.innerHTML=`<div class="mc sm">
@@ -2608,7 +2667,8 @@ function abrirRegDia(progId,locId,dia,fecha,domProg){
               <div class="field s2"><label>Motivo / Justificación <span class="req">*</span></label><textarea id="rdMotivo" rows="3" placeholder="Describa el motivo...">${reg.motivo||''}</textarea></div>
               <div id="rdNuevaLocWrap" class="s2" style="display:${reg.tipo==='CAMBIO_LOC'?'block':'none'};">
                 <div class="field"><label>🏢 Nueva Localización <span class="req">*</span></label>
-                  <input type="text" id="rdNuevaLoc" placeholder="Nombre de la nueva localización" value="${reg.nuevaLoc||''}">
+                  <select id="rdNuevaLoc">${_nuevaLocOptsHTML}</select>
+                  ${!_locCandidatas.length?'<div style="font-size:.68rem;color:#b45309;margin-top:3px;">⚠️ No hay otras localizaciones del catálogo registradas para esta área/servicio.</div>':''}
                 </div>
                 <div class="field"><label>👤 Autoridad que ordenó el cambio</label>
                   <input type="text" id="rdAutoridad" placeholder="Nombre y cargo" value="${reg.autoridad||''}">
@@ -2650,15 +2710,17 @@ function guardarRegDia(progId,locId,dia){
   const tipo=document.getElementById('rdTipo')?.value||'';
   const motivo=document.getElementById('rdMotivo')?.value||'';
   const obs=document.getElementById('rdObs')?.value||'';
-  const nuevaLoc=document.getElementById('rdNuevaLoc')?.value?.trim()||'';
+  const nuevaLocId=document.getElementById('rdNuevaLoc')?.value||'';
+  const nuevaLocObj=nuevaLocId?LC.find(l=>l.id===nuevaLocId):null;
+  const nuevaLoc=nuevaLocObj?nuevaLocObj.nombre:'';
   const autoridad=document.getElementById('rdAutoridad')?.value?.trim()||'';
   const personalReal=parseInt(document.getElementById('rdPersonalReal')?.value)||null;
   const personalMotivo=document.getElementById('rdPersonalMotivo')?.value||'';
   if(status==='DESVIACION'&&(!tipo||!motivo.trim())){toast('⚠️ Indique tipo y motivo de la desviación.');return;}
-  if(status==='DESVIACION'&&tipo==='CAMBIO_LOC'&&!nuevaLoc){toast('⚠️ Indique el nombre de la nueva localización.');return;}
+  if(status==='DESVIACION'&&tipo==='CAMBIO_LOC'&&!nuevaLocId){toast('⚠️ Seleccione la nueva localización del catálogo.');return;}
   if(!p.ejecucion)p.ejecucion={};
   const domEjec=document.getElementById('rdDomEjec')?.value?.trim()||'';
-  const reg={status,tipo,motivo:motivo.trim(),obs:obs.trim(),domEjec,nuevaLoc,autoridad,personalReal,personalMotivo,registradoEn:new Date().toISOString()};
+  const reg={status,tipo,motivo:motivo.trim(),obs:obs.trim(),domEjec,nuevaLocId,nuevaLoc,autoridad,personalReal,personalMotivo,registradoEn:new Date().toISOString()};
   p.ejecucion[`${locId}_${dia}`]=reg;
   saveLocal(LS.P,PROG);save(LS.P,PROG);
   refrescarDatalistDom();
@@ -2913,7 +2975,13 @@ function guardarPersona(){
 }
 function eliminarPersona(id){
   document.getElementById('confirmMsg').textContent='¿Eliminar esta persona del catálogo?';
-  document.getElementById('btnConfirmOk').onclick=()=>{PE=PE.filter(x=>x.id!==id);saveLocal(LS.PE,PE);sbDelete('personas',id);renderPersonas();cerrarConfirm();toast('Persona eliminada.');};
+  document.getElementById('btnConfirmOk').onclick=async()=>{
+    cerrarConfirm();
+    toast('⏳ Eliminando...');
+    const ok=await sbDelete('personas',id);
+    if(!ok){toast('⛔ No se pudo eliminar en el servidor. El registro permanece sin cambios. Verifique su conexión o contacte soporte.');return;}
+    PE=PE.filter(x=>x.id!==id);saveLocal(LS.PE,PE);renderPersonas();toast('✅ Persona eliminada.');
+  };
   document.getElementById('movConfirm').classList.add('active');
 }
 
@@ -2978,10 +3046,13 @@ function guardarSubarea(){
     cerrarMovSubarea();renderOrgTree();
   }
 }
-function eliminarSubarea(id){
+async function eliminarSubarea(id){
+  toast('⏳ Eliminando...');
+  const ok=await sbDelete('subareas',id);
+  if(!ok){toast('⛔ No se pudo eliminar en el servidor. El registro permanece sin cambios.');return;}
   SA=SA.filter(x=>x.id!==id);
   LC.filter(l=>l.subarea===id).forEach(l=>{l.subarea='';});
-  saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);sbDelete('subareas',id);renderOrgTree();toast('Subárea eliminada.');
+  saveLocal(LS.SA,SA);saveLocal(LS.LC,LC);renderOrgTree();toast('✅ Subárea eliminada.');
 }
 
 function abrirModalLocalizacion(){
@@ -3068,10 +3139,14 @@ function guardarLocalizacion(){
 }
 function eliminarLoc(id){
   document.getElementById('confirmMsg').textContent='¿Eliminar esta localización? Se quitará de los programas que la usen.';
-  document.getElementById('btnConfirmOk').onclick=()=>{
-    LC=LC.filter(x=>x.id!==id);saveLocal(LS.LC,LC);sbDelete('localizaciones',id);
+  document.getElementById('btnConfirmOk').onclick=async()=>{
+    cerrarConfirm();
+    toast('⏳ Eliminando...');
+    const ok=await sbDelete('localizaciones',id);
+    if(!ok){toast('⛔ No se pudo eliminar en el servidor. El registro permanece sin cambios.');return;}
+    LC=LC.filter(x=>x.id!==id);saveLocal(LS.LC,LC);
     PROG.forEach(p=>{p.localizaciones=(p.localizaciones||[]).filter(l=>l.locId!==id);});
-    saveLocal(LS.P,PROG);renderOrgTree();cerrarConfirm();toast('Localización eliminada.');
+    saveLocal(LS.P,PROG);renderOrgTree();toast('✅ Localización eliminada.');
   };
   document.getElementById('movConfirm').classList.add('active');
 }
@@ -3114,7 +3189,12 @@ function guardarActividadBase(){
   }
   saveLocal(LS.AB,AB);cerrarMovActividad();renderCatalogos();
 }
-function eliminarActBase(id){AB=AB.filter(x=>x.id!==id);saveLocal(LS.AB,AB);sbDelete('actividades_base',id);renderCatalogos();toast('Actividad eliminada.');}
+async function eliminarActBase(id){
+  toast('⏳ Eliminando...');
+  const ok=await sbDelete('actividades_base',id);
+  if(!ok){toast('⛔ No se pudo eliminar en el servidor. El registro permanece sin cambios.');return;}
+  AB=AB.filter(x=>x.id!==id);saveLocal(LS.AB,AB);renderCatalogos();toast('✅ Actividad eliminada.');
+}
 
 // ══════════════════════════════════════════════════════════════
 // TENDENCIA
@@ -3828,15 +3908,21 @@ function renderFrecuencias(){
     if(serv&&p.serv!==serv)return;
     const fe=semDates(p.anio,p.semana);
     (p.localizaciones||[]).forEach(loc=>{
-      if(loc.locId!==locId)return;
       const key=loc.locId+'_'+loc.dia;
       const reg=(p.ejecucion||{})[key];
-      const status=reg?reg.status:'PENDIENTE';
       const diaIdx=['LUN','MAR','MIÉ','JUE','VIE'].indexOf(loc.dia);
       const base=new Date(fe.l);
       const fechaReal=new Date(base);
       fechaReal.setUTCDate(base.getUTCDate()+(diaIdx>=0?diaIdx:0));
-      atenciones.push({fecha:fechaReal,fechaStr:loc.fecha||'',serv:p.serv,semana:p.semana,anio:p.anio,dia:loc.dia,status,area:p.area,domestico:loc.domestico||''});
+      // Atención directa: la localización analizada estaba programada ese día
+      if(loc.locId===locId){
+        const status=reg?reg.status:'PENDIENTE';
+        atenciones.push({fecha:fechaReal,fechaStr:loc.fecha||'',serv:p.serv,semana:p.semana,anio:p.anio,dia:loc.dia,status,area:p.area,domestico:loc.domestico||''});
+      }
+      // Atención por sustitución: esta localización recibió el servicio por un Cambio de Localización desde otra
+      else if(reg&&reg.status==='DESVIACION'&&reg.tipo==='CAMBIO_LOC'&&reg.nuevaLocId===locId){
+        atenciones.push({fecha:fechaReal,fechaStr:loc.fecha||'',serv:p.serv,semana:p.semana,anio:p.anio,dia:loc.dia,status:'EJECUTADO',area:p.area,domestico:loc.domestico||'',sustituto:true,locOrigNombre:loc.nombre});
+      }
     });
   });
   atenciones.sort((a,b)=>a.fecha-b.fecha);
@@ -3932,10 +4018,10 @@ function frqRenderTimeline(atenciones){
     }
     html+=`<div style="flex:1;min-width:72px;display:flex;flex-direction:column;align-items:center;position:relative;">
       ${brechaHtml}
-      <div title="${SVCL[a.serv]||a.serv} — ${a.fechaStr} — ${a.status}" style="width:30px;height:30px;border-radius:50%;background:${stCol};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;font-size:.8rem;z-index:2;">${icono}</div>
+      <div title="${SVCL[a.serv]||a.serv} — ${a.fechaStr} — ${a.status}${a.sustituto?' — Sustituyó a: '+a.locOrigNombre:''}" style="width:30px;height:30px;border-radius:50%;background:${stCol};border:3px solid ${a.sustituto?'#7e22ce':'#fff'};box-shadow:0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;font-size:.8rem;z-index:2;position:relative;">${icono}${a.sustituto?'<span style="position:absolute;top:-4px;right:-4px;background:#7e22ce;color:#fff;border-radius:50%;width:14px;height:14px;font-size:.5rem;display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;">🔄</span>':''}</div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:.63rem;font-weight:700;color:var(--gd);margin-top:5px;text-align:center;">${a.dia}</div>
       <div style="font-size:.58rem;color:var(--gray);text-align:center;">${(a.fechaStr||'').slice(0,5)}</div>
-      <div style="font-size:.56rem;font-weight:700;color:${stCol};text-align:center;margin-top:1px;">${a.status==='EJECUTADO'?'✓ OK':a.status==='DESVIACION'?'⚠ DEV':'✗ PEND'}</div>
+      <div style="font-size:.56rem;font-weight:700;color:${stCol};text-align:center;margin-top:1px;">${a.sustituto?'🔄 SUST.':a.status==='EJECUTADO'?'✓ OK':a.status==='DESVIACION'?'⚠ DEV':'✗ PEND'}</div>
     </div>`;
   });
   html+=`</div></div>`;
