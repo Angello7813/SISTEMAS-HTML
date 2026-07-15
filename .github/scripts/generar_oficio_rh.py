@@ -139,12 +139,9 @@ def main():
     tipo_txt = TIPO_PAGO_TEXTO.get(ctx["tipo_pago"], ctx["tipo_pago"])
     ciudad_area = CIUDAD_POR_AREA.get(ctx["area"], "").replace(", Ver.", "")
     asunto_txt = f"Reporte de {tipo_txt.lower()} Semana {ctx['num_semana']}, Servicios Corporativos {ciudad_area}-{ctx['subarea_corta']}"
-    cuerpo_txt = (
-        f"Por medio del presente, le solicito gire sus instrucciones a quien corresponda "
-        f"para que se realicen los trámites correspondientes para el pago de {tipo_txt} del "
-        f"personal de {ctx['subarea_corta']} que se enlistan a continuación, correspondientes "
-        f"a la semana {ctx['num_semana']}."
-    )
+    # El cuerpo del oficio llega YA armado desde el navegador (el capturista
+    # pudo haberlo editado o dejarlo tal cual el texto sugerido por el sistema).
+    cuerpo_txt = PARAMS["cuerpo"]
     elaboro_txt = f"Elaboró: {titulo(elaboro.get('nombre',''))} Ext. {elaboro.get('extension','')}"
 
     reemplazos = {
