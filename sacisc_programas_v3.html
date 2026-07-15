@@ -359,11 +359,10 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
   </div>
 </header>
 <nav class="nav-tabs">
-  <button class="ntab" onclick="switchTab('tablero')" id="tab-tablero"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg><span>Tablero</span></button>
+  <button class="ntab active" onclick="switchTab('tablero')" id="tab-tablero"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg><span>Tablero</span></button>
   <button class="ntab" onclick="switchTab('programas')" id="tab-programas"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg><span>Programas</span></button>
   <button class="ntab" onclick="switchTab('ejecucion')" id="tab-ejecucion"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg><span>Ejecución Diaria</span></button>
   <button class="ntab" onclick="switchTab('catalogo')" id="tab-catalogo"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span>Catálogos</span></button>
-  <button class="ntab active" onclick="switchTab('tendencia')" id="tab-tendencia"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg><span>Tendencia</span></button>
   <button class="ntab" onclick="switchTab('frecuencias')" id="tab-frecuencias"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><span>Frecuencias</span></button>
 </nav>
 <main>
@@ -479,19 +478,6 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
 </div>
 
 <!-- TAB TENDENCIA -->
-<div class="tp" id="pane-tendencia">
-  <div class="panel">
-    <div class="ph"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> Tendencia de Cumplimiento Semanal
-      <div class="phr">
-        <button class="btn sm bghost" onclick="exportarHistoricoExcel()" style="background:#e8f3ef;color:#002f2a;border:1.5px solid #a0cfc3;display:inline-flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3" width="20" height="18" rx="2" fill="#1D6F42"/><path d="M8 8L12 12M12 12L16 8M12 12L8 16M12 12L16 16" stroke="white" stroke-width="2" stroke-linecap="round"/><rect x="2" y="3" width="20" height="4" rx="1" fill="#1D6F42"/></svg> Exportar Excel</button>
-        <select id="tAnio" onchange="renderTendencia()" class="bghost" style="border-radius:6px;padding:4px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;appearance:none;"><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option></select>
-        <select id="tArea" onchange="renderTendencia()" class="bghost" style="border-radius:6px;padding:4px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;appearance:none;"><option value="">Todas las áreas</option><option value="SCAD">SCAD</option><option value="SCEP">SCEP</option><option value="SCUI">SCUI</option><option value="SCCO">SCCO</option></select>
-        <select id="tSubarea" onchange="renderTendencia()" class="bghost" style="border-radius:6px;padding:4px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;appearance:none;min-width:150px;"><option value="">Todas las subáreas</option></select>
-      </div>
-    </div>
-    <div class="pb"><canvas id="chartTend" height="110" style="box-sizing: border-box; display: block; height: 110px; width: 1356px;" width="1356"></canvas></div>
-  </div>
-</div>
 <!-- TAB APERTURA -->
 <div class="tp" id="pane-apertura">
   <div class="panel">
@@ -1729,7 +1715,6 @@ function switchTab(tab){
   document.getElementById('pane-'+tab).classList.add('active');
   document.getElementById('tab-'+tab).classList.add('active');
   if(tab==='programas')renderProgramasTab();
-  if(tab==='tendencia')renderTendencia();
   if(tab==='catalogo'){renderCatalogos();renderOrgTree();renderPersonas();}
   if(tab==='ejecucion')cargarProgramasEjec();
   if(tab==='apertura'){cargarListaApertura();}
@@ -3172,74 +3157,11 @@ async function eliminarActBase(id){
 }
 
 // ══════════════════════════════════════════════════════════════
-// TENDENCIA
+// TENDENCIA — Panel eliminado (información ya disponible en el Gantt).
+// Se conserva como función vacía para no afectar las cadenas de
+// inicialización que la invocan en distintos puntos del sistema.
 // ══════════════════════════════════════════════════════════════
-let chartT=null;
-function renderTendencia(){
-  const anio=parseInt(document.getElementById('tAnio').value)||AÑO;
-  const area=document.getElementById('tArea').value;
-  // Poblar subárea según el área seleccionada (conservando selección previa si sigue siendo válida)
-  const tSub=document.getElementById('tSubarea');
-  if(tSub){
-    const _prev=tSub.value;
-    tSub.innerHTML='<option value="">Todas las subáreas</option>';
-    SA.filter(s=>!area||s.area===area).forEach(s=>{
-      const o=document.createElement('option');o.value=s.id;o.textContent=s.nombre;tSub.appendChild(o);
-    });
-    if(_prev&&Array.from(tSub.options).some(o=>o.value===_prev))tSub.value=_prev;
-  }
-  const subarea=tSub?tSub.value:'';
-  let d=PROG.filter(p=>p.anio===anio);if(area)d=d.filter(p=>p.area===area);if(subarea)d=d.filter(p=>(p.subareaId||'')===subarea);
-  const sems=[...new Set(d.map(p=>p.semana))].sort((a,b)=>a-b);
-  const av=sems.map(s=>{const r=d.filter(p=>p.semana===s&&p.serv==='AV');return r.length?Math.round(r.reduce((t,p)=>t+calcCump(p),0)/r.length):null;});
-  const dom=sems.map(s=>{const r=d.filter(p=>p.semana===s&&p.serv==='DOM');return r.length?Math.round(r.reduce((t,p)=>t+calcCump(p),0)/r.length):null;});
-  const rb_data=sems.map(s=>{const r=d.filter(p=>p.semana===s&&p.serv==='RB');return r.length?Math.round(r.reduce((t,p)=>t+calcCump(p),0)/r.length):null;});
-  const ctx=document.getElementById('chartTend').getContext('2d');
-  if(chartT)chartT.destroy();
-  chartT=new Chart(ctx,{type:'bar',data:{labels:sems.map(s=>`Sem. ${s}`),datasets:[
-    {label:'Áreas Verdes',data:av,backgroundColor:'rgba(16,185,129,.82)',borderColor:'#059669',borderWidth:1.5,borderRadius:4,borderSkipped:false},
-    {label:'Domésticos',data:dom,backgroundColor:'rgba(59,130,246,.82)',borderColor:'#2563eb',borderWidth:1.5,borderRadius:4,borderSkipped:false},
-    {label:'Rec. Basura',data:rb_data,backgroundColor:'rgba(245,158,11,.82)',borderColor:'#d97706',borderWidth:1.5,borderRadius:4,borderSkipped:false},
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{
-      legend:{display:true,position:'top',labels:{color:'#333',font:{family:"Barlow Condensed,sans-serif",size:12,weight:'600'},usePointStyle:true,pointStyle:'rect',padding:18}},
-      tooltip:{backgroundColor:'rgba(0,47,42,.92)',titleColor:'#fff',bodyColor:'rgba(255,255,255,.85)',padding:12,cornerRadius:8,
-        titleFont:{family:"Barlow Condensed,sans-serif",size:13,weight:'700'},
-        callbacks:{label:ctx=>' '+ctx.dataset.label+': '+(ctx.parsed.y!=null?ctx.parsed.y+'%':'Sin datos')}
-      },
-      datalabels:{display:false}
-    },
-    scales:{
-      x:{grid:{display:false},ticks:{color:'#444',font:{family:"Barlow Condensed,sans-serif",size:11,weight:'600'}}},
-      y:{min:0,max:115,grid:{color:'rgba(0,0,0,.06)'},
-        ticks:{color:'#1e5b4f',font:{family:"Barlow Condensed,sans-serif",size:11},callback:v=>v+'%'},
-        title:{display:true,text:'% Cumplimiento',color:'#1e5b4f',font:{family:"Barlow Condensed,sans-serif",size:11,weight:'600'}}
-      }
-    },
-    onHover:(evt,elements)=>{
-      evt.native.target.style.cursor=elements.length?'pointer':'default';
-    }
-  }});
-
-  // ── Click en barras — listener nativo sobre el canvas (más confiable que options.onClick) ──
-  const canvasTend=document.getElementById('chartTend');
-  canvasTend.onclick=function(evt){
-    if(!chartT)return;
-    const puntos=chartT.getElementsAtEventForMode(evt,'nearest',{intersect:true},true);
-    if(!puntos.length)return;
-    const el=puntos[0];
-    const semIdx=el.index;
-    const dsi=el.datasetIndex;
-    if(semIdx<0||semIdx>=sems.length)return;
-    const sem=sems[semIdx];
-    const serv=['AV','DOM','RB'][dsi];
-    if(!serv)return;
-    const anio2=parseInt(document.getElementById('tAnio').value)||AÑO;
-    const area2=document.getElementById('tArea').value;
-    const subarea2=document.getElementById('tSubarea')?document.getElementById('tSubarea').value:'';
-    abrirDrillDown(sem,serv,anio2,area2,subarea2);
-  };
-}
+function renderTendencia(){/* panel eliminado — ver Gantt en pane-programas */}
 
 // ══════════════════════════════════════════════════════════════
 // IMPRESIÓN — APERTURA
@@ -3751,77 +3673,6 @@ function cargarDatosSesion(d){
   toast('✅ Sesión restaurada correctamente.');
 }
 
-// ══════════════════════════════════════════════════════════════
-// EXPORTAR HISTÓRICO A EXCEL (SheetJS)
-// ══════════════════════════════════════════════════════════════
-async function exportarHistoricoExcel(){
-  // Cargar SheetJS dinámicamente si no está disponible
-  if(typeof XLSX==='undefined'){
-    await new Promise((res,rej)=>{
-      const s=document.createElement('script');
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload=res;s.onerror=rej;
-      document.head.appendChild(s);
-    });
-  }
-  const anio=parseInt(document.getElementById('tAnio').value)||AÑO;
-  const area=document.getElementById('tArea').value;
-  let datos=PROG.filter(p=>p.anio===anio);
-  if(area)datos=datos.filter(p=>p.area===area);
-  if(!datos.length){toast('⚠️ Sin datos para exportar con los filtros actuales.');return;}
-
-  // Hoja 1 — Resumen por Programa
-  const resumen=datos.map(p=>{
-    const fe=semDates(p.anio,p.semana);
-    const cab=getPer(p.caboId);const mnd=getPer(p.mandoId);
-    const cump=calcCump(p);const desv=countDesv(p);
-    const locs=p.localizaciones||[];
-    return{
-      'Año':p.anio,'Semana':p.semana,'Período':fe.label,
-      'Servicio':p.serv==='AV'?'Áreas Verdes':p.serv==='DOM'?'Domésticos':'Recolección de Basura',
-      'Área':p.area,'Estado':EST_LABEL[p.estado]||p.estado,
-      'Responsable':cab?cab.nombre:'—','Jefe de Area':mnd?mnd.nombre:'—',
-      'Localizaciones':locs.length,'Cumplimiento (%)':cump,
-      'Desviaciones':desv,'Observaciones':p.obs||''
-    };
-  });
-
-  // Hoja 2 — Detalle de Ejecución
-  const detalle=[];
-  datos.forEach(p=>{
-    const fe=semDates(p.anio,p.semana);
-    const cab=getPer(p.caboId);
-    const serv=p.serv==='AV'?'Áreas Verdes':p.serv==='DOM'?'Domésticos':'Recolección de Basura';
-    (p.localizaciones||[]).forEach(loc=>{
-      const key=`${loc.locId}_${loc.dia}`;
-      const reg=(p.ejecucion||{})[key]||{};
-      detalle.push({
-        'Año':p.anio,'Semana':p.semana,'Período':fe.label,
-        'Servicio':serv,'Área':p.area,
-        'Cabo':cab?cab.nombre:'—',
-        'Día':loc.dia,'Fecha':loc.fecha||'',
-        'Localización':loc.nombre,'Tipo':loc.tipo||'',
-        'Subárea':loc.subarNombre||'',
-        'Doméstico Asignado':loc.domestico||'',
-        'Estatus':reg.status||'PENDIENTE',
-        'Nota':reg.nota||''
-      });
-    });
-  });
-
-  const wb=XLSX.utils.book_new();
-  const ws1=XLSX.utils.json_to_sheet(resumen);
-  const ws2=XLSX.utils.json_to_sheet(detalle);
-  // Anchos de columna automáticos
-  ws1['!cols']=[{wch:6},{wch:8},{wch:32},{wch:22},{wch:8},{wch:12},{wch:28},{wch:28},{wch:14},{wch:16},{wch:14},{wch:30}];
-  ws2['!cols']=[{wch:6},{wch:8},{wch:32},{wch:22},{wch:8},{wch:28},{wch:6},{wch:12},{wch:22},{wch:18},{wch:18},{wch:20},{wch:14},{wch:25}];
-  XLSX.utils.book_append_sheet(wb,ws1,'Resumen');
-  XLSX.utils.book_append_sheet(wb,ws2,'Detalle Ejecución');
-  const fAnio=anio;const fArea=area||'TODAS';
-  XLSX.writeFile(wb,`SACISC_Tendencia_${fAnio}_${fArea}.xlsx`);
-  toast('✅ Excel exportado correctamente.');
-}
-// ══════════════════════════════════════════════════════════════
 // MÓDULO FRECUENCIAS
 // ══════════════════════════════════════════════════════════════
 let _frqChart=null;
@@ -4118,18 +3969,6 @@ function aplicarFiltroArea(){
 
   // ── Filtrar Ejecución ──
   // (ejecucion no tiene filtro de área propio — se filtra via PROG que ya filtra por área)
-
-  // ── Filtrar Tendencia ──
-  const tArea=document.getElementById('tArea');
-  if(tArea){
-    if(!esAdmin){
-      tArea.value=area;
-      tArea.disabled=true;
-    } else {
-      tArea.disabled=false;
-    }
-    renderTendencia();
-  }
 
   // ── Sobreescribir aplicarFiltros para forzar área ──
   if(!esAdmin){
