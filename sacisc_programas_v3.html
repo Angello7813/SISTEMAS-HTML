@@ -79,6 +79,8 @@ tbody td{padding:9px 13px;color:#333;}
 .gt-cell{padding:8px 11px;border-bottom:1px solid var(--bd);border-right:1px solid rgba(0,0,0,.04);display:flex;align-items:center;}
 .gt-cell:hover{background:#eaf3f0;}
 .gt-bcell{padding:5px 7px;border-bottom:1px solid var(--bd);border-right:1px solid rgba(0,0,0,.04);display:flex;align-items:center;min-height:38px;}
+.gt-row-click{cursor:pointer;}
+.gt-row-hover{background:#eaf3f0!important;}
 .gb-prog{height:9px;border-radius:3px;background:#cbd5e1;position:relative;width:100%;}
 .gb-real{height:9px;border-radius:3px;position:absolute;top:0;left:0;transition:width .4s;}
 .gbv{background:#10b981;}.gba{background:#f59e0b;}.gbr{background:#ef4444;}
@@ -1955,24 +1957,42 @@ function renderProgramasTab(){
   if(!d.length){gc.innerHTML='';eg.style.display='block';return;}
   eg.style.display='none';
   const sems=[...new Set(d.map(p=>p.semana))].sort((a,b)=>a-b);
-  const cols=`150px 90px 110px 80px ${sems.map(()=>'1fr').join(' ')}`;
+  const cols=`150px 90px 110px 80px ${sems.map(()=>'minmax(95px,1fr)').join(' ')}`;
   let h=`<div class="gt-wrap"><div class="gt-grid" style="grid-template-columns:${cols};">`;
   h+=`<div class="gt-hcell">Programa</div><div class="gt-hcell">Servicio</div><div class="gt-hcell">Subárea</div><div class="gt-hcell">Avance</div>`;
   sems.forEach(s=>{const f=semDates(anio,s);h+=`<div class="gt-hcell" style="text-align:center;">Sem. ${s}<br><span style="font-size:.62rem;opacity:.75;font-weight:400;">${f.ini}</span></div>`;});
-  d.forEach(p=>{
+  d.forEach((p,_rowIdx)=>{
     const pct=calcCump(p),gc2=pct>=80?'gbv':pct>=50?'gba':'gbr';
-    h+=`<div class="gt-cell"><strong style="font-size:.82rem;">${p.area}</strong></div>`;
-    h+=`<div class="gt-cell"><span class="chip ${p.serv==='AV'?'cv':p.serv==='DOM'?'cb':'co'}" style="font-size:.65rem;">${p.serv}</span></div>`;
     const _snGantt=p.subareaNom||(p.subareaId?(SA.find(s=>s.id===p.subareaId)||{}).nombre||'':'');
-    h+=`<div class="gt-cell" style="font-size:.72rem;color:var(--gm);font-weight:600;">${_snGantt||'<span style="color:var(--gray);">—</span>'}</div>`;
-    h+=`<div class="gt-cell"><span style="font-family:Barlow Condensed,sans-serif;font-size:.92rem;font-weight:700;color:${semColor(pct)};">${pct}%</span></div>`;
+    const _rowAttrs=`class="gt-cell gt-row-click" data-row-idx="${_rowIdx}" data-sem="${p.semana}" data-serv="${p.serv}" data-anio="${p.anio}" data-area="${p.area}" data-sub="${p.subareaId||''}"`;
+    h+=`<div ${_rowAttrs}><strong style="font-size:.82rem;">${p.area}</strong></div>`;
+    h+=`<div ${_rowAttrs}><span class="chip ${p.serv==='AV'?'cv':p.serv==='DOM'?'cb':'co'}" style="font-size:.65rem;">${p.serv}</span></div>`;
+    h+=`<div ${_rowAttrs} style="font-size:.72rem;color:var(--gm);font-weight:600;">${_snGantt||'<span style="color:var(--gray);">—</span>'}</div>`;
+    h+=`<div ${_rowAttrs}><span style="font-family:Barlow Condensed,sans-serif;font-size:.92rem;font-weight:700;color:${semColor(pct)};">${pct}%</span></div>`;
     sems.forEach(s=>{
-      if(s===p.semana)h+=`<div class="gt-bcell"><div style="width:100%;position:relative;padding-top:4px;"><div class="gb-prog"><div class="gb-real ${gc2}" style="width:${pct}%;"></div></div><span style="position:absolute;right:0;top:-11px;font-family:Barlow Condensed,sans-serif;font-size:.66rem;font-weight:700;color:#555;">${pct}%</span></div></div>`;
-      else h+=`<div class="gt-bcell"></div>`;
+      if(s===p.semana)h+=`<div class="gt-bcell gt-row-click" data-row-idx="${_rowIdx}" data-sem="${p.semana}" data-serv="${p.serv}" data-anio="${p.anio}" data-area="${p.area}" data-sub="${p.subareaId||''}"><div style="width:100%;position:relative;padding-top:4px;"><div class="gb-prog"><div class="gb-real ${gc2}" style="width:${pct}%;"></div></div><span style="position:absolute;right:0;top:-11px;font-family:Barlow Condensed,sans-serif;font-size:.66rem;font-weight:700;color:#555;">${pct}%</span></div></div>`;
+      else h+=`<div class="gt-bcell" data-row-idx="${_rowIdx}"></div>`;
     });
   });
   h+=`</div></div>`;
   gc.innerHTML=h;
+  // Event delegation — clic en la fila abre el drill-down (mismo modal que Tendencia)
+  gc.onclick=function(e){
+    const cell=e.target.closest('.gt-row-click');
+    if(!cell)return;
+    abrirDrillDown(parseInt(cell.dataset.sem),cell.dataset.serv,parseInt(cell.dataset.anio),cell.dataset.area,cell.dataset.sub);
+  };
+  // Resaltar toda la fila (incluidas celdas vacías de otras semanas) al pasar el cursor
+  gc.onmouseover=function(e){
+    const cell=e.target.closest('[data-row-idx]');
+    if(!cell)return;
+    gc.querySelectorAll('[data-row-idx="'+cell.dataset.rowIdx+'"]').forEach(c=>c.classList.add('gt-row-hover'));
+  };
+  gc.onmouseout=function(e){
+    const cell=e.target.closest('[data-row-idx]');
+    if(!cell)return;
+    gc.querySelectorAll('[data-row-idx="'+cell.dataset.rowIdx+'"]').forEach(c=>c.classList.remove('gt-row-hover'));
+  };
 }
 
 // ══════════════════════════════════════════════════════════════
