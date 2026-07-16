@@ -421,6 +421,9 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="18" rx="2" fill="#1D6F42"/><rect x="2" y="3" width="20" height="4" rx="1" fill="#155234"/><path d="M8 10h8M8 14h8M8 18h5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
           Excel Detallado
         </button>
+        <button onclick="corregirFestivosHistoricos()" title="Revisa todos los programas y marca automáticamente No Aplica en días festivos de servicios que no laboran" style="background:#fff7ed;color:#9a3412;border:1.5px solid #fdba74;border-radius:6px;padding:5px 12px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
+          🎉 Corregir Festivos
+        </button>
       </div>
     </div>
     <div class="pb" style="display:none;">
@@ -2261,8 +2264,11 @@ function agregarLocPrograma(){
   const partes=diaVal.split('|');
   const [dia,fecha]=partes;
   const esFest=partes[2]==='FESTIVO';
-  // Verificar festivo — bloquear salvo que sea emergencia autorizada
-  if(esFest){
+  const _locCandTmp=LC.find(l=>l.id===locId);
+  const _subCandTmp=_locCandTmp?SA.find(s=>s.id===_locCandTmp.subarea):null;
+  const _laboraFest=servicioLaboraFestivo(sv,_subCandTmp?_subCandTmp.nombre:'');
+  // Verificar festivo — bloquear salvo que sea emergencia autorizada, EXCEPTO servicios que sí laboran festivos (Domésticos Hospital)
+  if(esFest&&!_laboraFest){
     const selDia=document.getElementById('lpDia');
     const opt=selDia.options[selDia.selectedIndex];
     const festLabel=opt?opt.dataset.festivoLabel:'Día festivo';
@@ -2270,7 +2276,7 @@ function agregarLocPrograma(){
     // Si hay checkbox de emergencia activo, permitir con advertencia
     const chkEmerg=document.getElementById('lpEmergencia');
     if(!chkEmerg||!chkEmerg.checked){
-      toast('⛔ '+dia+' '+fecha+' es día festivo ('+festLabel+'). Active "Emergencia autorizada" si es imprescindible.');
+      toast('⛔ '+dia+' '+fecha+' es día festivo ('+festLabel+'). Este servicio no labora festivos — active "Emergencia autorizada" si es imprescindible.');
       return;
     }
     // Proceder con advertencia
@@ -2487,6 +2493,7 @@ function guardarPrograma(){
   };
   if(ei){const idx=PROG.findIndex(p=>p.id===ei);if(idx>=0)PROG[idx]=obj;else PROG.push(obj);}
   else PROG.push(obj);
+  aplicarAutoFestivos(obj);
   save(LS.P,PROG);cerrarMovPrograma();aplicarFiltros();renderProgramasTab();renderTendencia();
   toast('✅ Programa guardado correctamente.');
 }
@@ -2547,9 +2554,11 @@ function abrirEjecucion(id){
   Object.entries(byDia).sort((a,b)=>DIAS.indexOf(a[0])-DIAS.indexOf(b[0])).forEach(([dia,entries])=>{
     const sd=semDates(p.anio,p.semana);
     const diaFecha=entries[0]?.fecha||dia;
+    const festDia=getFestivoDeFechaStr(diaFecha);
     html+=`<div style="margin-bottom:16px;">
-      <div style="font-family:Barlow Condensed,sans-serif;font-size:.88rem;font-weight:700;color:var(--gd);background:#f0f9f6;border-left:3px solid var(--gm);padding:7px 12px;border-radius:0 7px 7px 0;margin-bottom:8px;">
-        📅 ${dia} — ${diaFecha}
+      <div style="font-family:Barlow Condensed,sans-serif;font-size:.88rem;font-weight:700;color:var(--gd);background:#f0f9f6;border-left:3px solid var(--gm);padding:7px 12px;border-radius:0 7px 7px 0;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span>📅 ${dia} — ${diaFecha}</span>
+        ${festDia?`<span style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;border-radius:9px;padding:1px 9px;font-size:.65rem;font-weight:700;">🎉 ${festDia.label}</span>`:''}
       </div>`;
     entries.forEach(loc=>{
       const sub=SA.find(s=>s.id===loc.subarea);
@@ -2565,6 +2574,7 @@ function abrirEjecucion(id){
           <div style="font-size:.72rem;color:var(--gray);margin-top:2px;">${loc.tipo}${sub?' · '+sub.nombre:''} · ${p.area}</div>
           ${p.serv==='DOM'&&loc.domestico?`<div style="font-size:.76rem;color:var(--exec);margin-top:3px;">👤 Prog: <strong>${loc.domestico}</strong></div>`:''}
           ${reg.status==='DESVIACION'&&reg.tipo?`<div style="font-size:.73rem;color:#c2410c;margin-top:2px;">⚠️ ${TIPODEV[reg.tipo]||reg.tipo}: ${reg.motivo}</div>`:''}
+          ${reg.status==='NO_APLICA'&&reg.motivo?`<div style="font-size:.73rem;color:#6b7280;margin-top:2px;">ℹ️ ${reg.motivo}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:.76rem;font-weight:700;color:${reg.status==='EJECUTADO'?'#065f46':reg.status==='DESVIACION'?'#c2410c':reg.status==='NO_APLICA'?'#6b7280':'var(--gray)'};">${stLabel}</span>
@@ -4324,6 +4334,7 @@ function confirmarReplica(){
     updatedAt:new Date().toISOString()
   };
   PROG.push(nuevo);
+  aplicarAutoFestivos(nuevo);
   save(LS.P,PROG);
   cerrarReplica();
   aplicarFiltros();renderProgramasTab();renderTendencia();
@@ -4690,6 +4701,70 @@ function getFestivoDia(anio,mes,dia){
   return null;
 }
 
+// ── Regla operativa: ¿este servicio/subárea labora en día festivo? ──
+// Áreas Verdes: nunca labora festivos (Hospital ni Factoria).
+// Recolección de Basura: nunca labora festivos.
+// Domésticos: SOLO labora festivos en Hospital (personal fijo 24/7, 3 turnos) — en Factoria no labora.
+function servicioLaboraFestivo(serv,subareaNom){
+  const sn=(subareaNom||'').toUpperCase();
+  if(serv==='DOM'&&sn.includes('HOSPITAL'))return true;
+  return false;
+}
+
+// ── Festivo a partir de fecha en formato "DD/MM/YYYY" (como se guarda en loc.fecha) ──
+function getFestivoDeFechaStr(fechaStr){
+  if(!fechaStr)return null;
+  const p=fechaStr.split('/');
+  if(p.length!==3)return null;
+  const dia=parseInt(p[0]),mes=parseInt(p[1]),anio=parseInt(p[2]);
+  if(!dia||!mes||!anio)return null;
+  return getFestivoDia(anio,mes,dia);
+}
+
+// ── Recorre las localizaciones de un programa y marca automáticamente como
+//    NO_APLICA (con leyenda del festivo) los días festivos de servicios que
+//    no laboran, siempre que aún no tengan un registro de ejecución capturado.
+//    Idempotente: nunca sobreescribe un registro ya existente (EJECUTADO,
+//    DESVIACION, NO_APLICA manual, etc.) — solo llena los que están vacíos. ──
+function aplicarAutoFestivos(prog){
+  if(!prog||!prog.localizaciones)return 0;
+  const subareaNom=prog.subareaNom||(prog.subareaId?((SA.find(s=>s.id===prog.subareaId)||{}).nombre||''):'');
+  if(servicioLaboraFestivo(prog.serv,subareaNom))return 0; // este servicio/subárea sí labora festivos — nada que hacer
+  if(!prog.ejecucion)prog.ejecucion={};
+  let marcados=0;
+  prog.localizaciones.forEach(loc=>{
+    const fest=getFestivoDeFechaStr(loc.fecha);
+    if(!fest)return;
+    const key=`${loc.locId}_${loc.dia}`;
+    if(prog.ejecucion[key])return; // ya tiene registro — no tocar
+    prog.ejecucion[key]={status:'NO_APLICA',tipo:'',motivo:'Día festivo — '+fest.label+' — servicio no labora',obs:'',autoFestivo:true,registradoEn:new Date().toISOString()};
+    marcados++;
+  });
+  return marcados;
+}
+
+// ── Barrido histórico: recorre TODOS los programas existentes y aplica la
+//    auto-inhabilitación de festivos donde aún no se había capturado nada.
+//    Acción explícita disparada por el usuario — nunca se ejecuta sola. ──
+async function corregirFestivosHistoricos(){
+  if(!confirm('Esto revisará todos los programas registrados y marcará como "No Aplica" las localizaciones en día festivo de servicios que no laboran ese día (siempre que aún no tengan un registro capturado). Los registros ya capturados NO se tocan. ¿Continuar?'))return;
+  toast('⏳ Revisando programas...');
+  let programasAfectados=0,localizacionesMarcadas=0;
+  const afectados=[];
+  PROG.forEach(prog=>{
+    if(prog.eliminado)return;
+    const n=aplicarAutoFestivos(prog);
+    if(n>0){programasAfectados++;localizacionesMarcadas+=n;afectados.push(prog);}
+  });
+  if(programasAfectados===0){toast('✅ Nada que corregir — todos los programas ya están al día con los festivos.');return;}
+  save(LS.P,PROG);
+  if(_sbListo){
+    try{await sbUpsert('programas',afectados.map(prog2sb));}catch(e){console.error('Error subiendo corrección de festivos:',e);}
+  }
+  renderProgramasTab();renderTendencia();
+  toast(`✅ Corregidos ${localizacionesMarcadas} registro(s) en ${programasAfectados} programa(s).`);
+}
+
 function esFestivo(anio,mes,dia){
   return getFestivoDia(anio,mes,dia)!==null;
 }
@@ -4794,9 +4869,12 @@ function confirmarReplicaCierre(){
   const ahora=new Date().toISOString();
   let replicados=0;
   let omitidos=0;
+  const _subNomDestRC=dest.subareaNom||(dest.subareaId?((SA.find(s=>s.id===dest.subareaId)||{}).nombre||''):'');
+  const _laboraFestRC=servicioLaboraFestivo(dest.serv,_subNomDestRC);
 
   // Por cada localización del destino:
   // - Si ya tiene estatus distinto de PENDIENTE → respetar, no tocar
+  // - Si cae en día festivo y el servicio no labora → marcar NO_APLICA (no EJECUTADO)
   // - Si está PENDIENTE o sin registro → marcar EJECUTADO con obs del origen
   locsDest.forEach(locD=>{
     const key=locD.locId+'_'+locD.dia;
@@ -4805,6 +4883,14 @@ function confirmarReplicaCierre(){
     // Si ya tiene estatus registrado (EJECUTADO, DESVIACION, NO_APLICA) → no tocar
     if(regDest&&regDest.status&&regDest.status!=='PENDIENTE'){
       omitidos++;
+      return;
+    }
+
+    // Día festivo y el servicio no labora → NO_APLICA, no EJECUTADO
+    const festRC=!_laboraFestRC?getFestivoDeFechaStr(locD.fecha):null;
+    if(festRC){
+      ejecDest[key]={status:'NO_APLICA',tipo:'',motivo:'Día festivo — '+festRC.label+' — servicio no labora',obs:'',autoFestivo:true,registradoEn:ahora};
+      replicados++;
       return;
     }
 
@@ -4959,10 +5045,12 @@ function abrirDrillDown(sem,serv,anio,area,subarea){
       const stCls=st==='EJECUTADO'?'ej':st==='DESVIACION'?'dev':'pend';
       const stLbl=st==='EJECUTADO'?'✅ Ejecutado':st==='DESVIACION'?'⚠️ Desviación':st==='NO_APLICA'?'N/A':'⏳ Pendiente';
       const obsAd=reg.obs?(' · '+reg.obs):'';
-      const nota=st==='DESVIACION'?(({'CAMBIO_LOC':'Cambio localización','AUSENCIA':'Ausencia','CANCELACION':'Cancelación','EMERGENCIA':'Emergencia'}[reg.tipo]||reg.tipo||'')+(reg.motivo?' — '+reg.motivo:'')+obsAd):obsAd||'—';
+      const nota=(st==='DESVIACION'||st==='NO_APLICA')?(({'CAMBIO_LOC':'Cambio localización','AUSENCIA':'Ausencia','CANCELACION':'Cancelación','EMERGENCIA':'Emergencia'}[reg.tipo]||reg.motivo||reg.tipo||'')+obsAd):obsAd||'—';
       const domCol=prog.serv==='DOM'&&!((prog.subareaNom||'').toUpperCase().includes('HOSPITAL'))?`<td style="font-size:.75rem;">${reg.domEjec||loc.domestico||'—'}</td>`:'';
+      const festLoc=getFestivoDeFechaStr(loc.fecha);
+      const festBadge=festLoc?`<br><span style="display:inline-block;margin-top:2px;background:#fff7ed;color:#9a3412;border:1px solid #fdba74;border-radius:8px;padding:1px 6px;font-size:.6rem;font-weight:700;">🎉 ${festLoc.label}</span>`:'';
       html+=`<tr>
-        <td><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--gd);">${loc.dia}</span><br><span style="font-size:.68rem;color:var(--gray);">${loc.fecha||''}</span></td>
+        <td><span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;color:var(--gd);">${loc.dia}</span><br><span style="font-size:.68rem;color:var(--gray);">${loc.fecha||''}</span>${festBadge}</td>
         <td class="dd-loc-name">📍 ${loc.nombre}</td>
         ${domCol}
         <td><span class="dd-status ${stCls}">${stLbl}</span></td>
