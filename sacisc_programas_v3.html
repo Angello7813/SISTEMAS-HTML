@@ -22,10 +22,13 @@ header{background:var(--wh);border-bottom:3px solid var(--gm);padding:0 28px;dis
 .hbtn:hover{background:#d8f0e8;border-color:var(--gm);}
 .hbtn.pri{background:var(--gm);color:#fff;border-color:var(--gm);}
 .hbtn.pri:hover{background:var(--gd);}
-.nav-tabs{background:var(--wh);border-bottom:2px solid var(--bd);padding:0 28px;display:flex;gap:2px;position:sticky;top:80px;z-index:200;box-shadow:0 1px 4px var(--sh);}
-.ntab{display:flex;align-items:center;gap:6px;padding:13px 18px;font-family:'Barlow Condensed',sans-serif;font-size:0.86rem;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:var(--gray);border:none;background:transparent;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .18s;}
-.ntab:hover{color:var(--gm);}
-.ntab.active{color:var(--gd);border-bottom-color:var(--gm);}
+.nav-tabs{background:var(--wh);border-bottom:1px solid var(--bd);padding:10px 28px;display:flex;gap:5px;position:sticky;top:80px;z-index:200;box-shadow:0 2px 14px var(--sh);}
+.ntab{display:flex;align-items:center;gap:7px;padding:10px 17px;font-family:'Barlow Condensed',sans-serif;font-size:0.83rem;font-weight:700;letter-spacing:0.045em;text-transform:uppercase;color:var(--gray);border:none;background:transparent;border-radius:10px;cursor:pointer;transition:all .22s cubic-bezier(.4,0,.2,1);position:relative;}
+.ntab svg{transition:transform .22s cubic-bezier(.4,0,.2,1);flex-shrink:0;}
+.ntab:hover{color:var(--gm);background:#eef6f3;}
+.ntab:hover svg{transform:translateY(-1px);}
+.ntab.active{color:#fff;background:linear-gradient(135deg,var(--gl),var(--gm) 60%,var(--gd));box-shadow:0 4px 12px rgba(30,91,79,.32),inset 0 1px 0 rgba(255,255,255,.12);}
+.ntab.active svg{transform:scale(1.08);}
 main{flex:1;max-width:1440px;width:100%;margin:0 auto;padding:24px 20px;}
 .tp{display:none;}.tp.active{display:block;}
 .panel{background:var(--wh);border-radius:11px;box-shadow:0 1px 5px var(--sh);margin-bottom:20px;overflow:hidden;}
@@ -362,7 +365,6 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
 <nav class="nav-tabs">
   <button class="ntab active" onclick="switchTab('tablero')" id="tab-tablero"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg><span>Tablero</span></button>
   <button class="ntab" onclick="switchTab('programas')" id="tab-programas"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg><span>Programas</span></button>
-  <button class="ntab" onclick="switchTab('ejecucion')" id="tab-ejecucion"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg><span>Ejecución Diaria</span></button>
   <button class="ntab" onclick="switchTab('catalogo')" id="tab-catalogo"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span>Catálogos</span></button>
   <button class="ntab" onclick="switchTab('frecuencias')" id="tab-frecuencias"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><span>Frecuencias</span></button>
 </nav>
@@ -437,20 +439,6 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
 </div>
 
 <!-- TAB EJECUCIÓN -->
-<div class="tp" id="pane-ejecucion">
-  <div class="panel">
-    <div class="ph"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"></polyline></svg> Registro de Ejecución Diaria</div>
-    <div class="pb">
-      <div class="fg g3" style="margin-bottom:16px;">
-        <div class="field"><label>Año</label><select id="eAnio" onchange="cargarProgramasEjec()"><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option></select></div>
-        <div class="field"><label>Semana</label><select id="eSemana" onchange="cargarProgramasEjec()"><option value="">— Todas —</option><option value="1">Sem. 1 — 29/12/2025 al 02/01/2026</option><option value="2">Sem. 2 — 05/01/2026 al 09/01/2026</option><option value="3">Sem. 3 — 12/01/2026 al 16/01/2026</option><option value="4">Sem. 4 — 19/01/2026 al 23/01/2026</option><option value="5">Sem. 5 — 26/01/2026 al 30/01/2026</option><option value="6">Sem. 6 — 02/02/2026 al 06/02/2026</option><option value="7">Sem. 7 — 09/02/2026 al 13/02/2026</option><option value="8">Sem. 8 — 16/02/2026 al 20/02/2026</option><option value="9">Sem. 9 — 23/02/2026 al 27/02/2026</option><option value="10">Sem. 10 — 02/03/2026 al 06/03/2026</option><option value="11">Sem. 11 — 09/03/2026 al 13/03/2026</option><option value="12">Sem. 12 — 16/03/2026 al 20/03/2026</option><option value="13">Sem. 13 — 23/03/2026 al 27/03/2026</option><option value="14">Sem. 14 — 30/03/2026 al 03/04/2026</option><option value="15">Sem. 15 — 06/04/2026 al 10/04/2026</option><option value="16">Sem. 16 — 13/04/2026 al 17/04/2026</option><option value="17">Sem. 17 — 20/04/2026 al 24/04/2026</option><option value="18">Sem. 18 — 27/04/2026 al 01/05/2026</option><option value="19">Sem. 19 — 04/05/2026 al 08/05/2026</option><option value="20">Sem. 20 — 11/05/2026 al 15/05/2026</option><option value="21">Sem. 21 — 18/05/2026 al 22/05/2026</option><option value="22">Sem. 22 — 25/05/2026 al 29/05/2026</option><option value="23">Sem. 23 — 01/06/2026 al 05/06/2026</option><option value="24">Sem. 24 — 08/06/2026 al 12/06/2026</option><option value="25">Sem. 25 — 15/06/2026 al 19/06/2026</option><option value="26">Sem. 26 — 22/06/2026 al 26/06/2026</option><option value="27">Sem. 27 — 29/06/2026 al 03/07/2026</option><option value="28">Sem. 28 — 06/07/2026 al 10/07/2026</option><option value="29">Sem. 29 — 13/07/2026 al 17/07/2026</option><option value="30">Sem. 30 — 20/07/2026 al 24/07/2026</option><option value="31">Sem. 31 — 27/07/2026 al 31/07/2026</option><option value="32">Sem. 32 — 03/08/2026 al 07/08/2026</option><option value="33">Sem. 33 — 10/08/2026 al 14/08/2026</option><option value="34">Sem. 34 — 17/08/2026 al 21/08/2026</option><option value="35">Sem. 35 — 24/08/2026 al 28/08/2026</option><option value="36">Sem. 36 — 31/08/2026 al 04/09/2026</option><option value="37">Sem. 37 — 07/09/2026 al 11/09/2026</option><option value="38">Sem. 38 — 14/09/2026 al 18/09/2026</option><option value="39">Sem. 39 — 21/09/2026 al 25/09/2026</option><option value="40">Sem. 40 — 28/09/2026 al 02/10/2026</option><option value="41">Sem. 41 — 05/10/2026 al 09/10/2026</option><option value="42">Sem. 42 — 12/10/2026 al 16/10/2026</option><option value="43">Sem. 43 — 19/10/2026 al 23/10/2026</option><option value="44">Sem. 44 — 26/10/2026 al 30/10/2026</option><option value="45">Sem. 45 — 02/11/2026 al 06/11/2026</option><option value="46">Sem. 46 — 09/11/2026 al 13/11/2026</option><option value="47">Sem. 47 — 16/11/2026 al 20/11/2026</option><option value="48">Sem. 48 — 23/11/2026 al 27/11/2026</option><option value="49">Sem. 49 — 30/11/2026 al 04/12/2026</option><option value="50">Sem. 50 — 07/12/2026 al 11/12/2026</option><option value="51">Sem. 51 — 14/12/2026 al 18/12/2026</option><option value="52">Sem. 52 — 21/12/2026 al 25/12/2026</option><option value="53">Sem. 53 — 28/12/2026 al 01/01/2027</option></select></div>
-        <div class="field"><label>Servicio</label><select id="eServicio" onchange="cargarProgramasEjec()"><option value="">— Todos —</option><option value="AV">Áreas Verdes</option><option value="DOM">Domésticos</option><option value="RB">🗑️ Recolección de Basura</option></select></div>
-      </div>
-<div id="listaProgEjec"></div>
-    </div>
-  </div>
-</div>
-
 <!-- TAB CATÁLOGOS -->
 <div class="tp" id="pane-catalogo">
   <div class="panel">
@@ -1291,10 +1279,6 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
     </div>
     <div class="mf">
       <button class="btn bsec" onclick="document.getElementById('movDrillDown').classList.remove('active')">Cerrar</button>
-      <button class="btn bpri" onclick="irAEjecucion()">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-        Ir a Ejecución Diaria
-      </button>
     </div>
   </div>
 </div>
@@ -1710,7 +1694,6 @@ function switchTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
   if(tab==='programas')renderProgramasTab();
   if(tab==='catalogo'){renderCatalogos();renderOrgTree();renderPersonas();}
-  if(tab==='ejecucion')cargarProgramasEjec();
   if(tab==='apertura'){cargarListaApertura();}
   if(tab==='frecuencias'){frqInicializar();}
 }
@@ -2491,6 +2474,7 @@ function guardarPrograma(){
 // EJECUCIÓN DIARIA
 // ══════════════════════════════════════════════════════════════
 function cargarProgramasEjec(){
+  if(!document.getElementById('eAnio'))return; // panel Ejecución Diaria eliminado — ver botón Ejecutar en Tablero
   const anio=parseInt(document.getElementById('eAnio').value)||AÑO;
   const semActual=document.getElementById('eSemana').value;
   poblarSemanasE(anio,semActual);
@@ -4981,17 +4965,6 @@ function abrirDrillDown(sem,serv,anio,area,subarea){
   document.getElementById('movDrillDown').classList.add('active');
 }
 
-function irAEjecucion(){
-  document.getElementById('movDrillDown').classList.remove('active');
-  // Cambiar a tab Ejecución Diaria
-  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
-  const tabEjec=document.querySelector('[data-tab="pane-ejecucion"]');
-  const paneEjec=document.getElementById('pane-ejecucion');
-  if(tabEjec)tabEjec.classList.add('active');
-  if(paneEjec)paneEjec.classList.add('active');
-  cargarProgramasEjec();
-}
 
 </script>
 </body>
