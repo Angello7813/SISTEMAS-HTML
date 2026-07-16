@@ -412,6 +412,10 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
       <div class="phr">
         <select id="gAnio" onchange="renderProgramasTab()" style="border-radius:6px;padding:4px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;appearance:none;background:#e8f3ef;color:#002f2a;border:1.5px solid #a0cfc3;"><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option></select>
         <select id="gSemana" onchange="renderProgramasTab()" style="border-radius:6px;padding:4px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;appearance:none;background:#e8f3ef;color:#002f2a;border:1.5px solid #a0cfc3;min-width:140px;"><option value="">— Todas las semanas —</option></select>
+        <span id="gSemanaHastaWrap" style="display:none;align-items:center;gap:5px;">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-size:.75rem;font-weight:700;color:#666;">a</span>
+          <select id="gSemanaHasta" onchange="renderProgramasTab()" style="border-radius:6px;padding:4px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;appearance:none;background:#e8f3ef;color:#002f2a;border:1.5px solid #a0cfc3;min-width:140px;"><option value="">— Semana fin —</option></select>
+        </span>
         <select id="gServicio" onchange="renderProgramasTab()" style="border-radius:6px;padding:4px 9px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;appearance:none;background:#e8f3ef;color:#002f2a;border:1.5px solid #a0cfc3;"><option value="">— Todos los servicios —</option><option value="AV">🌿 Áreas Verdes</option><option value="DOM">🏢 Domésticos</option><option value="RB">🗑️ Recolección de Basura</option></select>
         <button onclick="exportarExcelDetallado()" style="background:#1D6F42;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-family:'Barlow Condensed',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="18" rx="2" fill="#1D6F42"/><rect x="2" y="3" width="20" height="4" rx="1" fill="#155234"/><path d="M8 10h8M8 14h8M8 18h5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -1682,6 +1686,21 @@ function poblarSemanasG(a){
   s.innerHTML='<option value="">— Todas las semanas —</option>';
   semsAnio(a).forEach(n=>{const f=semDates(a,n);const o=document.createElement('option');o.value=n;o.textContent='Sem. '+n+' — '+f.ini;s.appendChild(o);});
   if(prev)s.value=prev;
+  // Selector "Hasta" — solo semanas posteriores o iguales a la de inicio, y solo visible si hay una semana de inicio elegida
+  const sh=document.getElementById('gSemanaHasta'),wrap=document.getElementById('gSemanaHastaWrap');
+  if(sh&&wrap){
+    const prevH=sh.value;
+    const desde=parseInt(s.value)||0;
+    if(desde){
+      wrap.style.display='inline-flex';
+      sh.innerHTML='<option value="">— Semana fin —</option>';
+      semsAnio(a).filter(n=>n>=desde).forEach(n=>{const f=semDates(a,n);const o=document.createElement('option');o.value=n;o.textContent='Sem. '+n+' — '+f.ini;sh.appendChild(o);});
+      if(prevH&&parseInt(prevH)>=desde)sh.value=prevH;
+    } else {
+      wrap.style.display='none';
+      sh.value='';
+    }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1835,9 +1854,11 @@ function renderProgramasTab(){
   poblarSemanasG(anio);
   const fsv=document.getElementById('gServicio').value;
   const fsem=document.getElementById('gSemana')?parseInt(document.getElementById('gSemana').value)||0:0;
+  const fsemHasta=document.getElementById('gSemanaHasta')?parseInt(document.getElementById('gSemanaHasta').value)||0:0;
   let d=PROG.filter(p=>p.anio===anio);
   if(fsv)d=d.filter(p=>p.serv===fsv);
-  if(fsem)d=d.filter(p=>p.semana===fsem);
+  if(fsem&&fsemHasta)d=d.filter(p=>p.semana>=fsem&&p.semana<=fsemHasta);
+  else if(fsem)d=d.filter(p=>p.semana===fsem);
   d.sort((a,b)=>a.semana-b.semana||(a.serv.localeCompare(b.serv))||((a.subareaNom||'').localeCompare(b.subareaNom||'')));
   const tb=document.getElementById('tbProgramas');
   if(!d.length){
