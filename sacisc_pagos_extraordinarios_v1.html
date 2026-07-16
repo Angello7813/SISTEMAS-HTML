@@ -2910,7 +2910,23 @@ async function editarFolio(folioId) {
 }
 
 
+let guardandoFolioEnProceso = false;
+
 async function guardarFolio() {
+  if (guardandoFolioEnProceso) return; // evita doble clic mandando 2 solicitudes a la vez
+  guardandoFolioEnProceso = true;
+  const btnGuardar = document.querySelector('#wpanel-5 button[onclick="guardarFolio()"]');
+  if (btnGuardar) btnGuardar.disabled = true;
+
+  try {
+    await guardarFolioInterno();
+  } finally {
+    guardandoFolioEnProceso = false;
+    if (btnGuardar) btnGuardar.disabled = false;
+  }
+}
+
+async function guardarFolioInterno() {
   const statusEl = document.getElementById('statusFolio');
   statusEl.className = 'cat-status';
   statusEl.textContent = editandoFolioId ? 'Actualizando folio...' : 'Guardando folio...';
@@ -2969,12 +2985,30 @@ async function guardarFolio() {
       });
       if (!respDel.ok) { statusEl.className='cat-status err'; statusEl.textContent = '❌ ' + (await respDel.text()); return; }
     } else {
-      const respFolio = await fetch(`${SUPABASE_URL}/rest/v1/pe_folios`, {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type':'application/json', 'Prefer':'return=representation' },
-        body: JSON.stringify(folioObj)
-      });
-      if (!respFolio.ok) { statusEl.className='cat-status err'; statusEl.textContent = '❌ ' + (await respFolio.text()); return; }
+      // Reintenta automaticamente si dos capturas casi simultaneas calcularon
+      // el mismo "siguiente folio" (choque de numeros, caso raro pero real).
+      let intentos = 0;
+      let respFolio;
+      while (intentos < 5) {
+        respFolio = await fetch(`${SUPABASE_URL}/rest/v1/pe_folios`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type':'application/json', 'Prefer':'return=representation' },
+          body: JSON.stringify(folioObj)
+        });
+        if (respFolio.ok) break;
+        const textoError = await respFolio.text();
+        const esChoqueDeFolio = textoError.includes('23505') && textoError.includes('pe_folios_area_subarea_anio_folio_key');
+        if (!esChoqueDeFolio || intentos === 4) {
+          statusEl.className='cat-status err';
+          statusEl.textContent = esChoqueDeFolio
+            ? '❌ No se pudo asignar un folio disponible después de varios intentos. Vuelve a intentar en unos segundos.'
+            : '❌ ' + textoError;
+          return;
+        }
+        // Alguien mas ya tomo ese numero: recalcula el siguiente disponible y reintenta
+        folioObj.folio = await siguienteFolioDisponible();
+        intentos++;
+      }
       [folioGuardado] = await respFolio.json();
     }
 
