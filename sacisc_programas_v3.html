@@ -1398,8 +1398,8 @@ let PROG=loadLocal(LS.P), AB=loadLocal(LS.AB), SA=loadLocal(LS.SA), LC=loadLocal
 let _sbListo=false;
 
 // ── Convertir snake_case (Supabase) ↔ camelCase (app) ──
-function prog2sb(p){return{id:p.id,serv:p.serv,area:p.area,anio:p.anio,semana:p.semana,cabo_id:p.caboId,mando_id:p.mandoId,obs:p.obs||'',localizaciones:p.localizaciones||[],actividades:p.actividades||[],ejecucion:p.ejecucion||{},estado:p.estado||'PROGRAMADO',cierre_data:p.cierreData||null,actualizado_en:new Date().toISOString(),subarea_id:p.subareaId||'',subarea_nom:p.subareaNom||'',personal_ideal:p.personalIdeal||null}}
-function sb2prog(r){return{id:r.id,serv:r.serv,area:r.area,anio:r.anio,semana:r.semana,caboId:r.cabo_id,mandoId:r.mando_id,obs:r.obs||'',localizaciones:r.localizaciones||[],actividades:r.actividades||[],ejecucion:r.ejecucion||{},estado:r.estado||'PROGRAMADO',cierreData:r.cierre_data||null,updatedAt:r.actualizado_en||null,eliminado:r.eliminado||false,subareaId:r.subarea_id||'',subareaNom:r.subarea_nom||'',personalIdeal:r.personal_ideal||null}}
+function prog2sb(p){return{id:p.id,serv:p.serv,area:p.area,anio:p.anio,semana:p.semana,cabo_id:p.caboId,mando_id:p.mandoId,obs:p.obs||'',localizaciones:p.localizaciones||[],actividades:p.actividades||[],ejecucion:p.ejecucion||{},estado:p.estado||'PROGRAMADO',cierre_data:p.cierreData||null,actualizado_en:new Date().toISOString(),subarea_id:p.subareaId||'',subarea_nom:p.subareaNom||'',personal_ideal:p.personalIdeal||null,extras:p.extras||[]}}
+function sb2prog(r){return{id:r.id,serv:r.serv,area:r.area,anio:r.anio,semana:r.semana,caboId:r.cabo_id,mandoId:r.mando_id,obs:r.obs||'',localizaciones:r.localizaciones||[],actividades:r.actividades||[],ejecucion:r.ejecucion||{},estado:r.estado||'PROGRAMADO',cierreData:r.cierre_data||null,updatedAt:r.actualizado_en||null,eliminado:r.eliminado||false,subareaId:r.subarea_id||'',subareaNom:r.subarea_nom||'',personalIdeal:r.personal_ideal||null,extras:r.extras||[]}}
 function per2sb(p){return{id:p.id,nombre:p.nombre,cargo:p.cargo,rol:p.rol,area:p.area||'',ficha:p.ficha||'',eliminado:p.eliminado||false};}
 function sub2sb(s){return{id:s.id,area:s.area,nombre:s.nombre,descripcion:s.desc||'',eliminado:s.eliminado||false};}
 function loc2sb(l){return{id:l.id,area:l.area,subarea:l.subarea||'',nombre:l.nombre,tipo:l.tipo,servs:l.servs||[],descripcion:l.desc||'',eliminado:l.eliminado||false};}
@@ -5056,7 +5056,7 @@ function abrirDrillDown(sem,serv,anio,area,subarea){
       <div class="dd-kbox" style="border-color:#a7f3d0;"><div class="dd-kval" style="color:#065f46;">${ejecutadas}</div><div class="dd-klbl">Atendidas</div></div>
       <div class="dd-kbox" style="border-color:#fed7aa;"><div class="dd-kval" style="color:#c2410c;">${desviaciones}</div><div class="dd-klbl">Desviaciones</div></div>
       <div class="dd-kbox" style="border-color:#e5e7eb;"><div class="dd-kval" style="color:#6b7280;">${pendientes}</div><div class="dd-klbl">Pendientes</div></div>
-      ${extras?`<div class="dd-kbox" style="border-color:#c7d2fe;"><div class="dd-kval" style="color:#3730a3;">+${extras}</div><div class="dd-klbl">Extras</div></div>`:''}
+      <div class="dd-kbox" style="border-color:${extras?'#c7d2fe':'#e5e7eb'};"><div class="dd-kval" style="color:${extras?'#3730a3':'#9ca3af'};">${extras?'+'+extras:'0'}</div><div class="dd-klbl">Serv. Adicional</div></div>
       ${prog.personalIdeal?`<div class="dd-kbox" style="border-color:#fde68a;"><div class="dd-kval" style="color:#92400e;">${prog.personalIdeal}👥</div><div class="dd-klbl">Personal prog.</div></div>`:''}
     </div>`;
 
