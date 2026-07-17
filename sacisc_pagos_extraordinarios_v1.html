@@ -894,6 +894,7 @@
 
   <!-- ═══════ PANTALLA DE CAPTURA ═══════ -->
   <div id="pantallaCaptura" class="hidden">
+    <datalist id="historialLaboresLista"></datalist>
     <span class="back-link" onclick="cerrarCaptura()">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       Volver al módulo
@@ -2333,7 +2334,22 @@ async function abrirCaptura() {
   document.getElementById('subareaCapturaNombre').textContent = subareaActual;
   resetCaptura();
   renderTipoPagoCards();
-  await Promise.all([cargarHorariosCat(), cargarSemanasCat(), cargarTrabajadoresCat(), cargarFirmantesCat(), cargarAusenciasCat()]);
+  await Promise.all([cargarHorariosCat(), cargarSemanasCat(), cargarTrabajadoresCat(), cargarFirmantesCat(), cargarAusenciasCat(), cargarHistorialLabores()]);
+}
+
+// Historial de "Labores Desarrolladas" ya usadas antes en Tiempo Extra/Insalubre
+// de esta sub-area, para ofrecerlas como autocompletado (Doblete sigue usando
+// solo el texto sugerido estructurado, no este historial).
+async function cargarHistorialLabores() {
+  try {
+    const q = `select=labores_desarrolladas,pe_folios!inner(area,subarea,tipo_pago)&pe_folios.area=eq.${encodeURIComponent(areaValidada)}&pe_folios.subarea=eq.${encodeURIComponent(subareaActual)}&pe_folios.tipo_pago=in.(TIEMPO_EXTRA,INSALUBRE)&labores_desarrolladas=not.is.null&limit=200`;
+    const filas = await sbGet('pe_folio_dias', q);
+    const unicos = [...new Set(filas.map(f => (f.labores_desarrolladas || '').trim()).filter(Boolean))];
+    const dl = document.getElementById('historialLaboresLista');
+    if (dl) dl.innerHTML = unicos.map(t => `<option value="${t.replace(/"/g,'&quot;')}"></option>`).join('');
+  } catch (e) {
+    // Si falla, simplemente no hay autocompletado -- no bloquea la captura normal.
+  }
 }
 
 function cerrarCaptura() {
@@ -2541,11 +2557,18 @@ function renderDiaCard(d, idx, fecha) {
       ${data.dobletes >= 2 ? renderAusenteBox(d.clave, 2, data.ausente2) : ''}
     `;
   } else if (capturaState.tipoPago === 'TIEMPO_EXTRA' || capturaState.tipoPago === 'INSALUBRE') {
+    const esInsalubre = capturaState.tipoPago === 'INSALUBRE';
     inputsHtml = `
       <div class="dia-grid">
         <div class="field"><label>Hora inicio</label><input type="number" min="0" max="24" placeholder="ej. 15" id="ini-${d.clave}" value="${data.iniRaw ?? ''}" onchange="onHorasDiaChange('${d.clave}')"></div>
         <div class="field"><label>Hora término</label><input type="number" min="0" max="24" placeholder="ej. 18" id="fin-${d.clave}" value="${data.finRaw ?? ''}" onchange="onHorasDiaChange('${d.clave}')"></div>
       </div>
+      ${esInsalubre ? `
+      <div class="field" style="margin-top:10px;">
+        <label>Horas de Insalubre (1 a 4)</label>
+        <input type="number" min="1" max="4" placeholder="ej. 2" id="insalubre-horas-${d.clave}" value="${data.horas || ''}" onchange="onHorasInsalubreManualChange('${d.clave}', this.value)">
+        <p style="font-size:0.72rem;color:var(--gray);margin-top:4px;">Independiente del rango de hora inicio/término — se captura a mano.</p>
+      </div>` : ''}
       ${data.horas || data.minutos ? `<div class="dia-calc-badge">${data.horas}h ${data.minutos}min${capturaState.tipoPago==='TIEMPO_EXTRA' ? ' · ' + data.comidas + ' comida(s)' : ''}</div>` : ''}
     `;
   }
@@ -2559,8 +2582,11 @@ function renderDiaCard(d, idx, fecha) {
       ${inputsHtml}
       <div class="field" style="margin-top:12px;">
         <label>Labores Desarrolladas</label>
-        <textarea class="paste-box" style="min-height:50px;" id="lab-${d.clave}" oninput="capturaState.dias['${d.clave}'].labores=this.value">${data.labores}</textarea>
-        ${capturaState.tipoPago === 'DOBLETE' && (data.dobletes >= 1) ? `<div class="labores-suggest" onclick="sugerirLabores('${d.clave}')">💡 Usar texto sugerido</div>` : ''}
+        ${capturaState.tipoPago === 'DOBLETE'
+          ? `<textarea class="paste-box" style="min-height:50px;" id="lab-${d.clave}" oninput="capturaState.dias['${d.clave}'].labores=this.value">${data.labores}</textarea>
+             ${(data.dobletes >= 1) ? `<div class="labores-suggest" onclick="sugerirLabores('${d.clave}')">💡 Usar texto sugerido</div>` : ''}`
+          : `<input type="text" list="historialLaboresLista" id="lab-${d.clave}" value="${(data.labores||'').replace(/"/g,'&quot;')}" placeholder="Escribe o elige de tu historial..." oninput="capturaState.dias['${d.clave}'].labores=this.value">
+             <p style="font-size:0.72rem;color:var(--gray);margin-top:4px;">Empieza a escribir para ver sugerencias de labores que ya usaste antes.</p>`}
       </div>
     </div>`;
 }
@@ -2691,18 +2717,34 @@ function onHorasDiaChange(diaClave) {
   const data = capturaState.dias[diaClave];
   data.iniRaw = iniStr;
   data.finRaw = finStr;
+
+  if (capturaState.tipoPago === 'INSALUBRE') {
+    // En Insalubre, inicio/termino SOLO se guardan como referencia (para las
+    // columnas HORARIO INICIO/TERMINO del Formato 7) -- las horas de
+    // insalubre NO se calculan de este rango, se capturan aparte a mano.
+    renderDias();
+    return;
+  }
+
   if (isNaN(ini) || isNaN(fin)) { data.horas = 0; data.minutos = 0; data.comidas = 0; renderDias(); return; }
   let diff = fin - ini;
   if (diff < 0) diff += 24; // cruza medianoche
   data.horas = Math.floor(diff);
   data.minutos = Math.round((diff - data.horas) * 60);
-  if (capturaState.tipoPago === 'TIEMPO_EXTRA') {
-    if (diff >= 2 && diff <= 4) data.comidas = 1;
-    else if (diff >= 5 && diff <= 8) data.comidas = 2;
-    else data.comidas = 0;
-  } else {
-    data.comidas = 0; // insalubre no aplica comidas
-  }
+  if (diff >= 2 && diff <= 4) data.comidas = 1;
+  else if (diff >= 5 && diff <= 8) data.comidas = 2;
+  else data.comidas = 0;
+  renderDias();
+}
+
+function onHorasInsalubreManualChange(diaClave, valor) {
+  const data = capturaState.dias[diaClave];
+  let n = parseInt(valor, 10);
+  if (isNaN(n)) n = 0;
+  if (n < 0) n = 0;
+  if (n > 4) n = 4; // rango valido: 1 a 4 horas
+  data.horas = n;
+  data.minutos = 0;
   renderDias();
 }
 
