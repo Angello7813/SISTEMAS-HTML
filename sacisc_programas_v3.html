@@ -3633,11 +3633,32 @@ async function recargarDesdeSB(){
 }
 
 // ── Auto-refresh cada 60 segundos ──
+// Fusiona por fecha de actualización en vez de sobrescribir a ciegas: si la
+// versión local de un programa es más reciente que la que trae el servidor
+// (por ejemplo, algo que se acaba de guardar y aún no terminó de propagarse
+// en Supabase), se conserva la local — nunca se pierde un cambio recién hecho.
 setInterval(async function(){
   if(!document.hidden&&_sbListo){
     try{
       const progs=await sbGet('programas');
-      PROG=progs.map(sb2prog);
+      const localById={};
+      PROG.forEach(function(p){localById[p.id]=p;});
+      const idsServidor={};
+      const merged=progs.map(function(r){
+        idsServidor[r.id]=true;
+        const local=localById[r.id];
+        if(local&&local.updatedAt&&r.actualizado_en){
+          const localTime=new Date(local.updatedAt).getTime();
+          const servidorTime=new Date(r.actualizado_en).getTime();
+          if(localTime>servidorTime)return local; // la versión local es más nueva — conservarla
+        }
+        return sb2prog(r);
+      });
+      // Programas locales que aún no existan en el servidor (recién creados, en proceso de sincronizar) — no perderlos
+      PROG.forEach(function(p){
+        if(!idsServidor[p.id])merged.push(p);
+      });
+      PROG=merged;
       saveLocal(LS.P,PROG);
       aplicarFiltros();renderProgramasTab();
     }catch(e){console.warn('auto-refresh',e);}
