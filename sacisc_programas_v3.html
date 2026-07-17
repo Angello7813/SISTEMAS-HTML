@@ -258,6 +258,7 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
 .dd-status{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;}
 .dd-status.ej{background:#d1fae5;color:#065f46;}
 .dd-status.dev{background:#fff7ed;color:#c2410c;}
+.dd-status.noej{background:#fee2e2;color:#b91c1c;}
 .dd-status.pend{background:#f3f4f6;color:#6b7280;}
 .dd-kpis{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
 .dd-kbox{flex:1;min-width:100px;border:1.5px solid #e0ede9;border-radius:8px;padding:10px 14px;text-align:center;}
@@ -2576,20 +2577,21 @@ function abrirEjecucion(id){
       const sub=SA.find(s=>s.id===loc.subarea);
       const key=`${loc.locId}_${loc.dia}`;
       const reg=(p.ejecucion||{})[key]||{status:'PENDIENTE'};
-      const stCls=reg.status==='EJECUTADO'?'ejecutado':reg.status==='DESVIACION'?'desviacion':reg.status==='NO_APLICA'?'no-aplica':'';
-      const stLabel=reg.status==='EJECUTADO'?'✅ Ejecutado':reg.status==='DESVIACION'?'⚠️ Desviación':reg.status==='NO_APLICA'?'N/A — No aplica':'⏳ Pendiente';
-      const stBg=reg.status==='EJECUTADO'?'#d1fae5':reg.status==='DESVIACION'?'#fff7ed':reg.status==='NO_APLICA'?'#f3f4f6':'#fff';
-      const stBd=reg.status==='EJECUTADO'?'#6ee7b7':reg.status==='DESVIACION'?'#fed7aa':reg.status==='NO_APLICA'?'#d1d5db':'var(--bd)';
+      const stCls=reg.status==='EJECUTADO'?'ejecutado':reg.status==='DESVIACION'?'desviacion':reg.status==='NO_EJECUTADO'?'no-ejecutado':reg.status==='NO_APLICA'?'no-aplica':'';
+      const stLabel=reg.status==='EJECUTADO'?'✅ Ejecutado':reg.status==='DESVIACION'?'⚠️ Desviación':reg.status==='NO_EJECUTADO'?'❌ No ejecutado':reg.status==='NO_APLICA'?'N/A — No aplica':'⏳ Pendiente';
+      const stBg=reg.status==='EJECUTADO'?'#d1fae5':reg.status==='DESVIACION'?'#fff7ed':reg.status==='NO_EJECUTADO'?'#fee2e2':reg.status==='NO_APLICA'?'#f3f4f6':'#fff';
+      const stBd=reg.status==='EJECUTADO'?'#6ee7b7':reg.status==='DESVIACION'?'#fed7aa':reg.status==='NO_EJECUTADO'?'#fca5a5':reg.status==='NO_APLICA'?'#d1d5db':'var(--bd)';
       html+=`<div style="background:#fff;border:1.5px solid ${stBd};border-radius:9px;padding:11px 15px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:${stBg};">
         <div>
           <div style="font-weight:700;font-size:.9rem;color:var(--gd);">📍 ${loc.nombre}</div>
           <div style="font-size:.72rem;color:var(--gray);margin-top:2px;">${loc.tipo}${sub?' · '+sub.nombre:''} · ${p.area}</div>
           ${p.serv==='DOM'&&loc.domestico?`<div style="font-size:.76rem;color:var(--exec);margin-top:3px;">👤 Prog: <strong>${loc.domestico}</strong></div>`:''}
           ${reg.status==='DESVIACION'&&reg.tipo?`<div style="font-size:.73rem;color:#c2410c;margin-top:2px;">⚠️ ${TIPODEV[reg.tipo]||reg.tipo}: ${reg.motivo}</div>`:''}
+          ${reg.status==='NO_EJECUTADO'&&reg.obs?`<div style="font-size:.73rem;color:#b91c1c;margin-top:2px;">❌ Motivo: ${reg.obs}</div>`:''}
           ${reg.status==='NO_APLICA'&&reg.motivo?`<div style="font-size:.73rem;color:#6b7280;margin-top:2px;">ℹ️ ${reg.motivo}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:.76rem;font-weight:700;color:${reg.status==='EJECUTADO'?'#065f46':reg.status==='DESVIACION'?'#c2410c':reg.status==='NO_APLICA'?'#6b7280':'var(--gray)'};">${stLabel}</span>
+          <span style="font-size:.76rem;font-weight:700;color:${reg.status==='EJECUTADO'?'#065f46':reg.status==='DESVIACION'?'#c2410c':reg.status==='NO_EJECUTADO'?'#b91c1c':reg.status==='NO_APLICA'?'#6b7280':'var(--gray)'};">${stLabel}</span>
           <button class="btn sm bpri" onclick="abrirRegDia('${id}','${loc.locId}','${loc.dia}','${(loc.fecha||'').replace(/'/g,'&apos;')}','${(loc.domestico||'').replace(/'/g,'&apos;')}')">Registrar</button>
         </div>
       </div>`;
@@ -2630,8 +2632,8 @@ function abrirRegDia(progId,locId,dia,fecha,domProg){
   const loc=p.localizaciones.find(l=>l.locId===locId);
   const _subNomRP2=p.subareaNom||((p.subareaId?((SA.find(s=>s.id===p.subareaId)||{}).nombre||''):''));
   const _esHospProg=_subNomRP2.toUpperCase().includes('HOSPITAL');
-  const optsHTML=['EJECUTADO','DESVIACION','NO_APLICA','PENDIENTE'].map(v=>{
-    const labels={EJECUTADO:'✅ Ejecutado',DESVIACION:'⚠️ Desviación',NO_APLICA:'N/A — No aplica',PENDIENTE:'— Pendiente'};
+  const optsHTML=['EJECUTADO','DESVIACION','NO_EJECUTADO','NO_APLICA','PENDIENTE'].map(v=>{
+    const labels={EJECUTADO:'✅ Ejecutado',DESVIACION:'⚠️ Desviación',NO_EJECUTADO:'❌ No ejecutado',NO_APLICA:'N/A — No aplica',PENDIENTE:'— Pendiente'};
     return `<option value="${v}" ${reg.status===v?'selected':''}>${labels[v]}</option>`;
   }).join('');
   const tipoOpts=Object.entries(TIPODEV).map(([k,v])=>`<option value="${k}" ${reg.tipo===k?'selected':''}>${v}</option>`).join('');
@@ -2713,6 +2715,7 @@ function guardarRegDia(progId,locId,dia){
   const personalMotivo=document.getElementById('rdPersonalMotivo')?.value||'';
   if(status==='DESVIACION'&&(!tipo||!motivo.trim())){toast('⚠️ Indique tipo y motivo de la desviación.');return;}
   if(status==='DESVIACION'&&tipo==='CAMBIO_LOC'&&!nuevaLocId){toast('⚠️ Seleccione la nueva localización del catálogo.');return;}
+  if(status==='NO_EJECUTADO'&&!obs.trim()){toast('⚠️ Indique el motivo por el cual no se ejecutó en Observaciones adicionales.');return;}
   if(!p.ejecucion)p.ejecucion={};
   const domEjec=document.getElementById('rdDomEjec')?.value?.trim()||'';
   const reg={status,tipo,motivo:motivo.trim(),obs:obs.trim(),domEjec,nuevaLocId,nuevaLoc,autoridad,personalReal,personalMotivo,registradoEn:new Date().toISOString()};
@@ -3374,7 +3377,8 @@ function abrirDocCierre(id){
 
   const ejTotal=locs.filter(function(loc){const r=(p.ejecucion||{})[loc.locId+'_'+loc.dia];return r&&r.status==='EJECUTADO';}).length;
   const devTotal=locs.filter(function(loc){const r=(p.ejecucion||{})[loc.locId+'_'+loc.dia];return r&&r.status==='DESVIACION';}).length;
-  const pendTotal=Math.max(0,locs.length-ejTotal-devTotal);
+  const noEjecTotal=locs.filter(function(loc){const r=(p.ejecucion||{})[loc.locId+'_'+loc.dia];return r&&r.status==='NO_EJECUTADO';}).length;
+  const pendTotal=Math.max(0,locs.length-ejTotal-devTotal-noEjecTotal);
 
   // Ordenar por fecha real
   const _locsOrdCie=[...locs].sort(function(a,b){
@@ -3386,13 +3390,13 @@ function abrirDocCierre(id){
     const sub=SA.find(function(s){return s.id===loc.subarea;});
     const r=(p.ejecucion||{})[loc.locId+'_'+loc.dia];
     const st=r?r.status:'PENDIENTE';
-    const sym=st==='EJECUTADO'?'OK':st==='DESVIACION'?'DESV':st==='NO_APLICA'?'N/A':'---';
+    const sym=st==='EJECUTADO'?'OK':st==='DESVIACION'?'DESV':st==='NO_EJECUTADO'?'NO EJEC':st==='NO_APLICA'?'N/A':'---';
     const obsAd=r&&r.obs?(' | Obs: '+r.obs):'';
-    const nota=st==='DESVIACION'?(TIPODEV[r.tipo]||r.tipo)+(r.motivo?' - '+r.motivo:'')+obsAd:st==='EJECUTADO'?('Ejecutado segun programa'+obsAd):'Sin registro';
+    const nota=st==='DESVIACION'?(TIPODEV[r.tipo]||r.tipo)+(r.motivo?' - '+r.motivo:'')+obsAd:st==='EJECUTADO'?('Ejecutado segun programa'+obsAd):st==='NO_EJECUTADO'?('No ejecutado - Motivo: '+(r.obs||'Sin especificar')):st==='NO_APLICA'?((r.motivo||'No aplica')+obsAd):'Sin registro';
     const domEjec=r?r.domEjec||'':loc.domestico||'';
     const sub2=sub?' - '+sub.nombre:'';
     const bg=i%2?'background:#f4f9f7;':'background:#fff;';
-    const stColor=st==='EJECUTADO'?'color:#065f46;':st==='DESVIACION'?'color:#c2410c;':'color:#6b7280;';
+    const stColor=st==='EJECUTADO'?'color:#065f46;':st==='DESVIACION'?'color:#c2410c;':st==='NO_EJECUTADO'?'color:#b91c1c;font-weight:700;':'color:#6b7280;';
     const domTd=p.serv==='DOM'?('<td style="padding:5px 7px;font-size:7.5pt;">'+(domEjec||'-')+'</td>'):'';
     locRows+='<tr style="border-bottom:1px solid #e0ede9;'+bg+'">'
       +'<td style="padding:5px 7px;text-align:center;font-weight:700;">'+loc.dia+'<br><span style="font-size:6pt;font-weight:400;color:#555;">'+(loc.fecha||'')+'</span></td>'
@@ -3436,6 +3440,7 @@ function abrirDocCierre(id){
     +'<div class="kbox"><div class="lbl">Cumplimiento</div><div class="val" style="color:'+sc+';">'+pct+'%</div></div>'
     +'<div class="kbox" style="border-color:#a7f3d0;"><div class="lbl">Ejecutados</div><div class="val" style="color:#065f46;">'+ejTotal+'</div></div>'
     +'<div class="kbox" style="border-color:#fed7aa;"><div class="lbl">Desviaciones</div><div class="val" style="color:#c2410c;">'+devTotal+'</div></div>'
+    +'<div class="kbox" style="border-color:#fca5a5;"><div class="lbl">No Ejecutados</div><div class="val" style="color:#b91c1c;">'+noEjecTotal+'</div></div>'
     +'<div class="kbox" style="border-color:#fecaca;"><div class="lbl">Pendientes</div><div class="val" style="color:#991b1b;">'+pendTotal+'</div></div>'
     +'</div></div>'
     +'<div class="sec"><div class="sect">Detalle de Ejecucion por Localizacion</div>'
@@ -5056,6 +5061,7 @@ function abrirDrillDown(sem,serv,anio,area,subarea){
     // KPIs del programa
     const ejecutadas=locs.filter(l=>{const r=ejec[l.locId+'_'+l.dia];return r&&(r.status==='EJECUTADO'||r.status==='DESVIACION'||r.status==='NO_APLICA');}).length;
     const desviaciones=locs.filter(l=>{const r=ejec[l.locId+'_'+l.dia];return r&&r.status==='DESVIACION';}).length;
+    const noEjecutadas=locs.filter(l=>{const r=ejec[l.locId+'_'+l.dia];return r&&r.status==='NO_EJECUTADO';}).length;
     const pendientes=locs.filter(l=>{const r=ejec[l.locId+'_'+l.dia];return !r||!r.status||r.status==='PENDIENTE';}).length;
 
     html+=`<div style="margin-bottom:18px;">`;
@@ -5076,6 +5082,7 @@ function abrirDrillDown(sem,serv,anio,area,subarea){
       <div class="dd-kbox"><div class="dd-kval">${locs.length}</div><div class="dd-klbl">Programadas</div></div>
       <div class="dd-kbox" style="border-color:#a7f3d0;"><div class="dd-kval" style="color:#065f46;">${ejecutadas}</div><div class="dd-klbl">Atendidas</div></div>
       <div class="dd-kbox" style="border-color:#fed7aa;"><div class="dd-kval" style="color:#c2410c;">${desviaciones}</div><div class="dd-klbl">Desviaciones</div></div>
+      <div class="dd-kbox" style="border-color:#fca5a5;"><div class="dd-kval" style="color:#b91c1c;">${noEjecutadas}</div><div class="dd-klbl">No Ejecutadas</div></div>
       <div class="dd-kbox" style="border-color:#e5e7eb;"><div class="dd-kval" style="color:#6b7280;">${pendientes}</div><div class="dd-klbl">Pendientes</div></div>
       <div class="dd-kbox" style="border-color:${extras?'#c7d2fe':'#e5e7eb'};"><div class="dd-kval" style="color:${extras?'#3730a3':'#9ca3af'};">${extras?'+'+extras:'0'}</div><div class="dd-klbl">Serv. Adicional</div></div>
       ${prog.personalIdeal?`<div class="dd-kbox" style="border-color:#fde68a;"><div class="dd-kval" style="color:#92400e;">${prog.personalIdeal}👥</div><div class="dd-klbl">Personal prog.</div></div>`:''}
@@ -5095,10 +5102,10 @@ function abrirDrillDown(sem,serv,anio,area,subarea){
       const key=loc.locId+'_'+loc.dia;
       const reg=ejec[key]||{};
       const st=reg.status||'PENDIENTE';
-      const stCls=st==='EJECUTADO'?'ej':st==='DESVIACION'?'dev':'pend';
-      const stLbl=st==='EJECUTADO'?'✅ Ejecutado':st==='DESVIACION'?'⚠️ Desviación':st==='NO_APLICA'?'N/A':'⏳ Pendiente';
+      const stCls=st==='EJECUTADO'?'ej':st==='DESVIACION'?'dev':st==='NO_EJECUTADO'?'noej':'pend';
+      const stLbl=st==='EJECUTADO'?'✅ Ejecutado':st==='DESVIACION'?'⚠️ Desviación':st==='NO_EJECUTADO'?'❌ No ejecutado':st==='NO_APLICA'?'N/A':'⏳ Pendiente';
       const obsAd=reg.obs?(' · '+reg.obs):'';
-      const nota=(st==='DESVIACION'||st==='NO_APLICA')?(({'CAMBIO_LOC':'Cambio localización','AUSENCIA':'Ausencia','CANCELACION':'Cancelación','EMERGENCIA':'Emergencia'}[reg.tipo]||reg.motivo||reg.tipo||'')+obsAd):obsAd||'—';
+      const nota=(st==='DESVIACION'||st==='NO_APLICA')?(({'CAMBIO_LOC':'Cambio localización','AUSENCIA':'Ausencia','CANCELACION':'Cancelación','EMERGENCIA':'Emergencia'}[reg.tipo]||reg.motivo||reg.tipo||'')+obsAd):st==='NO_EJECUTADO'?('Motivo: '+(reg.obs||'Sin especificar')):obsAd||'—';
       const domCol=prog.serv==='DOM'&&!((prog.subareaNom||'').toUpperCase().includes('HOSPITAL'))?`<td style="font-size:.75rem;">${reg.domEjec||loc.domestico||'—'}</td>`:'';
       const festLoc=getFestivoDeFechaStr(loc.fecha);
       const festBadge=festLoc?`<br><span style="display:inline-block;margin-top:2px;background:#fff7ed;color:#9a3412;border:1px solid #fdba74;border-radius:8px;padding:1px 6px;font-size:.6rem;font-weight:700;">🎉 ${festLoc.label}</span>`:'';
