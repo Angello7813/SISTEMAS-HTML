@@ -21861,8 +21861,8 @@ function renderPronostico() {
           const hoy       = new Date();
           const mesActual = hoy.getMonth() + 1; // 1-12
           const dia       = hoy.getDate();
-          // El mes actual se incluye solo si ya es día 25 o más
-          const mesMax    = dia >= 25 ? mesActual : mesActual - 1;
+          // El mes actual se incluye solo si ya es día 20 o más
+          const mesMax    = dia >= 20 ? mesActual : mesActual - 1;
           const sel = document.getElementById('pronMesBase');
           if (!sel) return;
           for (let m = 1; m <= mesMax; m++) {
