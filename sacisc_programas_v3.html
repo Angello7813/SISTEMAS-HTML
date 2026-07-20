@@ -1805,19 +1805,7 @@ function renderCards(datos){
           <div class="pck"><div class="pkv">${locs}</div><div class="pkl">Locs.</div></div>
           <div class="pck" style="background:${pct>=80?'#d1fae5':'#f3f4f6'};border-color:${pct>=80?'#a7f3d0':'#e0ede9'};"><div class="pkv" style="color:${pct>=80?'#065f46':'var(--gd)'};">${pct}%</div><div class="pkl">Avance</div></div>
           <div class="pck" style="${desv>0?'background:#fff7ed;border-color:#fed7aa;':''}"><div class="pkv" style="${desv>0?'color:#c2410c;':''}">${desv}</div><div class="pkl">Desv.</div></div>
-          ${(()=>{
-            const _regs=Object.values(p.ejecucion||{}).filter(x=>x&&(x.personalProg!=null||x.personalReal!=null));
-            const _progRegs=_regs.filter(x=>x.personalProg!=null);
-            const _avgProg=_progRegs.length?Math.round(_progRegs.reduce((s,x)=>s+x.personalProg,0)/_progRegs.length):p.personalIdeal||null;
-            if(_avgProg==null)return '<div class="pck"><div class="pkv">'+p.semana+'</div><div class="pkl">Semana</div></div>';
-            const _realRegs=_regs.filter(x=>x.personalReal!=null);
-            const _avgReal=_realRegs.length?Math.round(_realRegs.reduce((s,x)=>s+x.personalReal,0)/_realRegs.length):null;
-            const _def=_avgReal!==null?_avgReal-_avgProg:null;
-            const _col=_def!==null&&_def<0?'color:#c2410c;':'color:var(--gd);';
-            const _bg=_def!==null&&_def<0?'background:#fff7ed;border-color:#fed7aa;':'';
-            const _val=_avgReal!==null?_avgReal+'/'+_avgProg:_avgProg+'👥';
-            return '<div class="pck" style="'+_bg+'"><div class="pkv" style="'+_col+'">'+_val+'</div><div class="pkl">Personal</div></div>';
-          })()}
+          <div class="pck"><div class="pkv">${p.semana}</div><div class="pkl">Semana</div></div>
         </div>
         <div class="pc-resp">
           ${cab?`<div class="pc-rrow"><div class="av ${p.serv==='AV'?'av-av':p.serv==='RB'?'av-rb':'av-dom'}" style="width:24px;height:24px;font-size:.68rem;">${initials(cab.nombre)}</div><div class="pc-rname">${cab.nombre}</div><div class="pc-rrole">${p.serv==='AV'?'Cabo AV':p.serv==='RB'?'Cabo RB':'Cabo DOM'}</div></div>`:'<div style="font-size:.73rem;color:var(--err);">⚠ Sin cabo asignado</div>'}
@@ -5068,11 +5056,6 @@ function abrirDrillDown(sem,serv,anio,area,subarea){
     const desviaciones=locs.filter(l=>{const r=ejec[l.locId+'_'+l.dia];return r&&r.status==='DESVIACION';}).length;
     const noEjecutadas=locs.filter(l=>{const r=ejec[l.locId+'_'+l.dia];return r&&r.status==='NO_EJECUTADO';}).length;
     const pendientes=locs.filter(l=>{const r=ejec[l.locId+'_'+l.dia];return !r||!r.status||r.status==='PENDIENTE';}).length;
-    const _persRegs=Object.values(ejec).filter(x=>x&&(x.personalProg!=null||x.personalReal!=null));
-    const _persProgRegs=_persRegs.filter(x=>x.personalProg!=null);
-    const personalPromProg=_persProgRegs.length?Math.round(_persProgRegs.reduce((s,x)=>s+x.personalProg,0)/_persProgRegs.length):(prog.personalIdeal||null);
-    const _persRealRegs=_persRegs.filter(x=>x.personalReal!=null);
-    const personalPromReal=_persRealRegs.length?Math.round(_persRealRegs.reduce((s,x)=>s+x.personalReal,0)/_persRealRegs.length):null;
 
     html+=`<div style="margin-bottom:18px;">`;
     // Header del programa
@@ -5095,7 +5078,6 @@ function abrirDrillDown(sem,serv,anio,area,subarea){
       <div class="dd-kbox" style="border-color:#fca5a5;"><div class="dd-kval" style="color:#b91c1c;">${noEjecutadas}</div><div class="dd-klbl">No Ejecutadas</div></div>
       <div class="dd-kbox" style="border-color:#e5e7eb;"><div class="dd-kval" style="color:#6b7280;">${pendientes}</div><div class="dd-klbl">Pendientes</div></div>
       <div class="dd-kbox" style="border-color:${extras?'#c7d2fe':'#e5e7eb'};"><div class="dd-kval" style="color:${extras?'#3730a3':'#9ca3af'};">${extras?'+'+extras:'0'}</div><div class="dd-klbl">Serv. Adicional</div></div>
-      ${personalPromProg!=null?`<div class="dd-kbox" style="border-color:#fde68a;"><div class="dd-kval" style="color:#92400e;">${personalPromReal!=null?personalPromReal+'/'+personalPromProg:personalPromProg+'👥'}</div><div class="dd-klbl">Personal prog.</div></div>`:''}
     </div>`;
 
     // Tabla detalle de localizaciones
