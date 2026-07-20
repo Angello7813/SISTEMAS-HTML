@@ -906,18 +906,6 @@ hr.fd{border:none;border-top:1px solid rgba(255,255,255,.1);margin:16px 0;}
       <div class="field"><label>Año <span class="req">*</span></label><select id="pAnio" onchange="poblarSemanasM(this.value)"><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option><option value="2030">2030</option></select></div>
       <div class="field"><label>Semana <span class="req">*</span></label><select id="pSemana"><option value="">— Seleccionar —</option><option value="1">Sem. 1 — 29/12/2025 al 02/01/2026</option><option value="2">Sem. 2 — 05/01/2026 al 09/01/2026</option><option value="3">Sem. 3 — 12/01/2026 al 16/01/2026</option><option value="4">Sem. 4 — 19/01/2026 al 23/01/2026</option><option value="5">Sem. 5 — 26/01/2026 al 30/01/2026</option><option value="6">Sem. 6 — 02/02/2026 al 06/02/2026</option><option value="7">Sem. 7 — 09/02/2026 al 13/02/2026</option><option value="8">Sem. 8 — 16/02/2026 al 20/02/2026</option><option value="9">Sem. 9 — 23/02/2026 al 27/02/2026</option><option value="10">Sem. 10 — 02/03/2026 al 06/03/2026</option><option value="11">Sem. 11 — 09/03/2026 al 13/03/2026</option><option value="12">Sem. 12 — 16/03/2026 al 20/03/2026</option><option value="13">Sem. 13 — 23/03/2026 al 27/03/2026</option><option value="14">Sem. 14 — 30/03/2026 al 03/04/2026</option><option value="15">Sem. 15 — 06/04/2026 al 10/04/2026</option><option value="16">Sem. 16 — 13/04/2026 al 17/04/2026</option><option value="17">Sem. 17 — 20/04/2026 al 24/04/2026</option><option value="18">Sem. 18 — 27/04/2026 al 01/05/2026</option><option value="19">Sem. 19 — 04/05/2026 al 08/05/2026</option><option value="20">Sem. 20 — 11/05/2026 al 15/05/2026</option><option value="21">Sem. 21 — 18/05/2026 al 22/05/2026</option><option value="22">Sem. 22 — 25/05/2026 al 29/05/2026</option><option value="23">Sem. 23 — 01/06/2026 al 05/06/2026</option><option value="24">Sem. 24 — 08/06/2026 al 12/06/2026</option><option value="25">Sem. 25 — 15/06/2026 al 19/06/2026</option><option value="26">Sem. 26 — 22/06/2026 al 26/06/2026</option><option value="27">Sem. 27 — 29/06/2026 al 03/07/2026</option><option value="28">Sem. 28 — 06/07/2026 al 10/07/2026</option><option value="29">Sem. 29 — 13/07/2026 al 17/07/2026</option><option value="30">Sem. 30 — 20/07/2026 al 24/07/2026</option><option value="31">Sem. 31 — 27/07/2026 al 31/07/2026</option><option value="32">Sem. 32 — 03/08/2026 al 07/08/2026</option><option value="33">Sem. 33 — 10/08/2026 al 14/08/2026</option><option value="34">Sem. 34 — 17/08/2026 al 21/08/2026</option><option value="35">Sem. 35 — 24/08/2026 al 28/08/2026</option><option value="36">Sem. 36 — 31/08/2026 al 04/09/2026</option><option value="37">Sem. 37 — 07/09/2026 al 11/09/2026</option><option value="38">Sem. 38 — 14/09/2026 al 18/09/2026</option><option value="39">Sem. 39 — 21/09/2026 al 25/09/2026</option><option value="40">Sem. 40 — 28/09/2026 al 02/10/2026</option><option value="41">Sem. 41 — 05/10/2026 al 09/10/2026</option><option value="42">Sem. 42 — 12/10/2026 al 16/10/2026</option><option value="43">Sem. 43 — 19/10/2026 al 23/10/2026</option><option value="44">Sem. 44 — 26/10/2026 al 30/10/2026</option><option value="45">Sem. 45 — 02/11/2026 al 06/11/2026</option><option value="46">Sem. 46 — 09/11/2026 al 13/11/2026</option><option value="47">Sem. 47 — 16/11/2026 al 20/11/2026</option><option value="48">Sem. 48 — 23/11/2026 al 27/11/2026</option><option value="49">Sem. 49 — 30/11/2026 al 04/12/2026</option><option value="50">Sem. 50 — 07/12/2026 al 11/12/2026</option><option value="51">Sem. 51 — 14/12/2026 al 18/12/2026</option><option value="52">Sem. 52 — 21/12/2026 al 25/12/2026</option><option value="53">Sem. 53 — 28/12/2026 al 01/01/2027</option></select></div>
       <div class="field s4"><label>Observaciones generales</label><input type="text" id="pObs" list="dlObs" placeholder="Observaciones del programa..." autocomplete="off"><datalist id="dlObs"><option value="LIMPIEZA GENERAL DE OFICINAS"></option><option value="RECOLECCION SEMANAL DE RESIDUOS"></option></datalist></div>
-      <div class="field" style="margin-top:10px;">
-        <div class="sd" style="margin-bottom:8px;">Personal Programado</div>
-        <div style="display:flex;gap:10px;align-items:center;">
-          <div style="flex:0 0 160px;">
-            <label style="font-size:.72rem;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:.06em;">👥 Personal ideal requerido <span class="req">*</span></label>
-            <input type="number" id="pPersonalIdeal" min="1" max="999" placeholder="Ej: 5" style="width:100%;border:1.5px solid var(--bd);border-radius:7px;padding:9px 12px;font-size:.88rem;margin-top:4px;">
-          </div>
-          <div style="flex:1;background:#f0f9f6;border-radius:7px;padding:7px 12px;border:1.5px solid #a0cfc3;font-size:.72rem;color:var(--gray);">
-            <strong style="color:var(--gm);">ℹ️</strong> Documenta cuando RH no autoriza cobertura, bloquea plazas o hay ausencias. Queda en el reporte de cierre.
-          </div>
-        </div>
-      </div>
     </div>
     <div class="sd">Responsables</div>
     <div class="fg g2" style="margin-bottom:18px;">
@@ -1818,13 +1806,16 @@ function renderCards(datos){
           <div class="pck" style="background:${pct>=80?'#d1fae5':'#f3f4f6'};border-color:${pct>=80?'#a7f3d0':'#e0ede9'};"><div class="pkv" style="color:${pct>=80?'#065f46':'var(--gd)'};">${pct}%</div><div class="pkl">Avance</div></div>
           <div class="pck" style="${desv>0?'background:#fff7ed;border-color:#fed7aa;':''}"><div class="pkv" style="${desv>0?'color:#c2410c;':''}">${desv}</div><div class="pkl">Desv.</div></div>
           ${(()=>{
-            if(!p.personalIdeal)return '<div class="pck"><div class="pkv">'+p.semana+'</div><div class="pkl">Semana</div></div>';
-            const _regs=Object.values(p.ejecucion||{}).filter(x=>x&&x.personalReal!=null);
-            const _avg=_regs.length?Math.round(_regs.reduce((s,x)=>s+x.personalReal,0)/_regs.length):null;
-            const _def=_avg!==null?_avg-p.personalIdeal:null;
+            const _regs=Object.values(p.ejecucion||{}).filter(x=>x&&(x.personalProg!=null||x.personalReal!=null));
+            const _progRegs=_regs.filter(x=>x.personalProg!=null);
+            const _avgProg=_progRegs.length?Math.round(_progRegs.reduce((s,x)=>s+x.personalProg,0)/_progRegs.length):p.personalIdeal||null;
+            if(_avgProg==null)return '<div class="pck"><div class="pkv">'+p.semana+'</div><div class="pkl">Semana</div></div>';
+            const _realRegs=_regs.filter(x=>x.personalReal!=null);
+            const _avgReal=_realRegs.length?Math.round(_realRegs.reduce((s,x)=>s+x.personalReal,0)/_realRegs.length):null;
+            const _def=_avgReal!==null?_avgReal-_avgProg:null;
             const _col=_def!==null&&_def<0?'color:#c2410c;':'color:var(--gd);';
             const _bg=_def!==null&&_def<0?'background:#fff7ed;border-color:#fed7aa;':'';
-            const _val=_avg!==null?_avg+'/'+p.personalIdeal:p.personalIdeal+'👥';
+            const _val=_avgReal!==null?_avgReal+'/'+_avgProg:_avgProg+'👥';
             return '<div class="pck" style="'+_bg+'"><div class="pkv" style="'+_col+'">'+_val+'</div><div class="pkl">Personal</div></div>';
           })()}
         </div>
@@ -1961,7 +1952,6 @@ function abrirNuevoPrograma(){
   // Limpiar primero
   document.getElementById('pServ').value='';
   if(document.getElementById('pSubarea'))document.getElementById('pSubarea').value='';
-  if(document.getElementById('pPersonalIdeal'))document.getElementById('pPersonalIdeal').value='';
   document.getElementById('pAnio').value=AÑO;poblarSemanasM(AÑO);
   setTimeout(()=>{document.getElementById('pSemana').value=SEM;actualizarLocProgramador();},80);
   document.getElementById('pObs').value='';
@@ -2008,8 +1998,6 @@ function editarPrograma(id){
   document.getElementById('pAnio').value=p.anio;poblarSemanasM(p.anio);
   setTimeout(()=>{document.getElementById('pSemana').value=p.semana;actualizarLocProgramador();},120);
   document.getElementById('pObs').value=p.obs||'';
-  const pPersEl=document.getElementById('pPersonalIdeal');
-  if(pPersEl)pPersEl.value=p.personalIdeal||'';
   document.getElementById('lbCabo').innerHTML=`Cabo ${p.serv==='AV'?'Áreas Verdes':p.serv==='DOM'?'Domésticos':'Recolección de Basura'} <span class="req">*</span>`;
   poblarCabosM(p.serv);poblarMandosM(p.area);
   setTimeout(()=>{
@@ -2492,11 +2480,13 @@ function guardarPrograma(){
     }
   }
   const locsList=_locsTemp;
-  const personalIdeal=parseInt(document.getElementById('pPersonalIdeal').value)||0;
+  // Personal programado ahora se captura a nivel de ejecución diaria (ver abrirRegDia).
+  // Se conserva el valor legado únicamente si el programa ya lo tenía de antes (edición).
+  const personalIdealLegado=ei?((PROG.find(p=>p.id===ei)||{}).personalIdeal||null):null;
   const obj={
     id:ei||uid(),serv,area,anio,semana,caboId,mandoId,
     subareaId:subareaId||'',subareaNom:subareaNom||'',
-    personalIdeal:personalIdeal,
+    personalIdeal:personalIdealLegado,
     obs:document.getElementById('pObs').value.trim(),
     localizaciones:locsList,actividades:_actsTemp,
     ejecucion:ei?((PROG.find(p=>p.id===ei)||{}).ejecucion||{}):{},
@@ -2675,14 +2665,23 @@ function abrirRegDia(progId,locId,dia,fecha,domProg){
           </div>
         </div>
         <div class="field s2" style="background:#f0f9f6;border-radius:8px;padding:10px 12px;border:1.5px solid #a0cfc3;">
-          <label style="color:var(--gm);">👥 Personal que se presentó hoy</label>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
-            <input type="number" id="rdPersonalReal" min="0" max="999" placeholder="—"
-              value="${reg.personalReal!=null?reg.personalReal:p.personalIdeal||''}"
-              style="width:75px;text-align:center;border:1.5px solid var(--bd);border-radius:7px;padding:8px;font-size:.95rem;font-weight:700;">
-            <span style="font-size:.75rem;color:var(--gray);">de <strong>${p.personalIdeal||'?'}</strong> programados</span>
+          <label style="color:var(--gm);">👥 Control de Personal del día</label>
+          <div style="display:flex;gap:14px;align-items:flex-end;margin-top:6px;flex-wrap:wrap;">
+            <div>
+              <div style="font-size:.68rem;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Programado hoy</div>
+              <input type="number" id="rdPersonalProg" min="0" max="999" placeholder="—"
+                value="${reg.personalProg!=null?reg.personalProg:''}"
+                style="width:75px;text-align:center;border:1.5px solid var(--bd);border-radius:7px;padding:8px;font-size:.95rem;font-weight:700;">
+            </div>
+            <div style="font-size:1.1rem;color:var(--gray);padding-bottom:8px;">→</div>
+            <div>
+              <div style="font-size:.68rem;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Real trabajó</div>
+              <input type="number" id="rdPersonalReal" min="0" max="999" placeholder="—"
+                value="${reg.personalReal!=null?reg.personalReal:''}"
+                style="width:75px;text-align:center;border:1.5px solid var(--bd);border-radius:7px;padding:8px;font-size:.95rem;font-weight:700;">
+            </div>
           </div>
-          <select id="rdPersonalMotivo" style="width:100%;margin-top:6px;border:1.5px solid var(--bd);border-radius:7px;padding:7px;font-size:.78rem;">
+          <select id="rdPersonalMotivo" style="width:100%;margin-top:8px;border:1.5px solid var(--bd);border-radius:7px;padding:7px;font-size:.78rem;">
             <option value="">— Motivo si hay déficit —</option>
             <option value="OK" ${reg.personalMotivo==='OK'?'selected':''}>Sin déficit</option>
             <option value="AUSENCIA" ${reg.personalMotivo==='AUSENCIA'?'selected':''}>Ausencia justificada</option>
@@ -2711,6 +2710,7 @@ function guardarRegDia(progId,locId,dia){
   const nuevaLocObj=nuevaLocId?LC.find(l=>l.id===nuevaLocId):null;
   const nuevaLoc=nuevaLocObj?nuevaLocObj.nombre:'';
   const autoridad=document.getElementById('rdAutoridad')?.value?.trim()||'';
+  const personalProg=parseInt(document.getElementById('rdPersonalProg')?.value)||null;
   const personalReal=parseInt(document.getElementById('rdPersonalReal')?.value)||null;
   const personalMotivo=document.getElementById('rdPersonalMotivo')?.value||'';
   if(status==='DESVIACION'&&(!tipo||!motivo.trim())){toast('⚠️ Indique tipo y motivo de la desviación.');return;}
@@ -2718,7 +2718,7 @@ function guardarRegDia(progId,locId,dia){
   if(status==='NO_EJECUTADO'&&!obs.trim()){toast('⚠️ Indique el motivo por el cual no se ejecutó en Observaciones adicionales.');return;}
   if(!p.ejecucion)p.ejecucion={};
   const domEjec=document.getElementById('rdDomEjec')?.value?.trim()||'';
-  const reg={status,tipo,motivo:motivo.trim(),obs:obs.trim(),domEjec,nuevaLocId,nuevaLoc,autoridad,personalReal,personalMotivo,registradoEn:new Date().toISOString()};
+  const reg={status,tipo,motivo:motivo.trim(),obs:obs.trim(),domEjec,nuevaLocId,nuevaLoc,autoridad,personalProg,personalReal,personalMotivo,dia,registradoEn:new Date().toISOString()};
   p.ejecucion[`${locId}_${dia}`]=reg;
   saveLocal(LS.P,PROG);save(LS.P,PROG);
   refrescarDatalistDom();
@@ -3299,7 +3299,7 @@ function generarHtmlApertura(p,fe,cab,mnd,folio,hoy,acts,locs,locRows,actRows){
     +'<div class="sec"><div class="sect">Datos del Programa</div>'
     +'<table><tbody>'
     +'<tr><td style="width:50%;"><strong>Area Usuaria:</strong> '+p.area+(p.subareaNom?' &mdash; Subárea: <strong>'+p.subareaNom+'</strong>':'')+'</td><td><strong>Servicio:</strong> '+servLabel+'</td></tr>'
-      +'<tr><td><strong>Personal programado:</strong> '+(p.personalIdeal?p.personalIdeal+' empleado(s)':'No especificado')+'</td><td><strong>Responsable:</strong> '+cabNom+'</td></tr>'
+      +'<tr><td><strong>Personal programado:</strong> '+(p.personalIdeal?p.personalIdeal+' empleado(s) (valor histórico)':'Se define día a día en la ejecución')+'</td><td><strong>Responsable:</strong> '+cabNom+'</td></tr>'
     +'<tr><td><strong>'+caboLabel+':</strong> '+cabNom+'</td><td><strong>Jefe de Area:</strong> '+mndNom+'</td></tr>'
     +'<tr><td colspan="2"><strong>Observaciones:</strong> '+(p.obs||'Ninguna')+'</td></tr>'
     +'</tbody></table></div>'
@@ -3449,7 +3449,6 @@ function abrirDocCierre(id){
     +obsRow
     +'<div class="sec"><div class="sect">Firmas de Cierre y Validacion</div>'
     +(function(){
-  if(!p.personalIdeal)return '';
   var DIAS_ORD=['LUN','MAR','MIE','JUE','VIE','SAB','DOM'];
   var MOTIVOS={'OK':'Sin déficit','AUSENCIA':'Ausencia justificada','PLAZA_BLOQUEADA':'Plaza bloqueada por RH','RH_NO_AUTORIZO':'RH no autorizó cobertura','CONTRATACION_PENDIENTE':'Contratación pendiente','OTRO':'Otro'};
   var ejec=p.ejecucion||{};
@@ -3457,25 +3456,31 @@ function abrirDocCierre(id){
   var diasProg=[...new Set(locs.map(function(l){return l.dia;}))].sort(function(a,b){return DIAS_ORD.indexOf(a)-DIAS_ORD.indexOf(b);});
   if(!diasProg.length)return '';
   var diasConPers={};
-  Object.values(ejec).forEach(function(r){if(r&&r.personalReal!=null&&r.dia)diasConPers[r.dia]={real:r.personalReal,motivo:r.personalMotivo||''};});
-  var totalIdeal=0,totalReal=0,diasConDato=0;
+  Object.values(ejec).forEach(function(r){if(r&&(r.personalProg!=null||r.personalReal!=null)&&r.dia)diasConPers[r.dia]={prog:r.personalProg,real:r.personalReal,motivo:r.personalMotivo||''};});
+  // Si no hay ningún dato diario capturado y tampoco hay valor legado de cabecera, no se muestra la sección
+  var _hayDatoDiario=Object.keys(diasConPers).length>0;
+  if(!_hayDatoDiario&&!p.personalIdeal)return '';
+  var totalProg=0,totalReal=0,diasConProgDato=0,diasConRealDato=0;
   var rows=diasProg.map(function(dia){
     var dp=diasConPers[dia]||{};
+    // Programado: usa el valor capturado ese día; si no existe, cae al valor legado de cabecera (programas anteriores a este cambio)
+    var progDia=dp.prog!=null?dp.prog:(p.personalIdeal||null);
+    var progTxt=progDia!=null?progDia:'—';
     var real=dp.real!=null?dp.real:'—';
     var motivo=dp.motivo?MOTIVOS[dp.motivo]||dp.motivo:'';
-    var deficit=(dp.real!=null)?dp.real-p.personalIdeal:null;
+    var deficit=(dp.real!=null&&progDia!=null)?dp.real-progDia:null;
     var color=deficit===null?'#555':deficit<0?'#c2410c':'#065f46';
-    totalIdeal+=p.personalIdeal;
-    if(dp.real!=null){totalReal+=dp.real;diasConDato++;}
+    if(progDia!=null){totalProg+=progDia;diasConProgDato++;}
+    if(dp.real!=null){totalReal+=dp.real;diasConRealDato++;}
     return '<tr style="border-bottom:1px solid #e0ede9;">'
       +'<td style="padding:5px 7px;font-weight:700;font-size:7.5pt;">'+dia+'</td>'
-      +'<td style="padding:5px 7px;font-size:7.5pt;text-align:center;">'+p.personalIdeal+'</td>'
+      +'<td style="padding:5px 7px;font-size:7.5pt;text-align:center;">'+progTxt+'</td>'
       +'<td style="padding:5px 7px;font-size:7.5pt;text-align:center;font-weight:700;color:'+color+';">'+real+'</td>'
       +'<td style="padding:5px 7px;font-size:7pt;color:#555;">'+motivo+'</td>'
       +'</tr>';
   }).join('');
-  var deficit=totalIdeal-totalReal;
-  var pctDef=totalIdeal?Math.round((deficit/totalIdeal)*100):0;
+  var deficit=totalProg-totalReal;
+  var pctDef=totalProg?Math.round((deficit/totalProg)*100):0;
   return '<div style="margin-bottom:14px;">'
     +'<div style="background:#002f2a;color:#fff;font-size:7pt;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:4px 10px;border-radius:3px;margin-bottom:7px;print-color-adjust:exact;-webkit-print-color-adjust:exact;">&#128101; Control de Personal &#8212; Programado vs Real</div>'
     +'<table style="width:100%;border-collapse:collapse;margin-bottom:8px;">'
@@ -3487,7 +3492,7 @@ function abrirDocCierre(id){
     +'</tr></thead><tbody>'+rows+'</tbody>'
     +'<tfoot><tr style="background:#f0f9f6;">'
     +'<td style="padding:5px 7px;font-size:7pt;font-weight:700;">TOTAL</td>'
-    +'<td style="padding:5px 7px;font-size:7pt;font-weight:700;text-align:center;">'+totalIdeal+' j/h</td>'
+    +'<td style="padding:5px 7px;font-size:7pt;font-weight:700;text-align:center;">'+totalProg+' j/h</td>'
     +'<td style="padding:5px 7px;font-size:7pt;font-weight:700;text-align:center;color:'+(deficit>0?'#c2410c':'#065f46')+';">'+totalReal+' j/h</td>'
     +'<td style="padding:5px 7px;font-size:7pt;color:#555;">'+(deficit>0?'Déficit: '+deficit+' j/h (-'+pctDef+'%)':'Personal completo')+'</td>'
     +'</tr></tfoot>'
@@ -5063,6 +5068,11 @@ function abrirDrillDown(sem,serv,anio,area,subarea){
     const desviaciones=locs.filter(l=>{const r=ejec[l.locId+'_'+l.dia];return r&&r.status==='DESVIACION';}).length;
     const noEjecutadas=locs.filter(l=>{const r=ejec[l.locId+'_'+l.dia];return r&&r.status==='NO_EJECUTADO';}).length;
     const pendientes=locs.filter(l=>{const r=ejec[l.locId+'_'+l.dia];return !r||!r.status||r.status==='PENDIENTE';}).length;
+    const _persRegs=Object.values(ejec).filter(x=>x&&(x.personalProg!=null||x.personalReal!=null));
+    const _persProgRegs=_persRegs.filter(x=>x.personalProg!=null);
+    const personalPromProg=_persProgRegs.length?Math.round(_persProgRegs.reduce((s,x)=>s+x.personalProg,0)/_persProgRegs.length):(prog.personalIdeal||null);
+    const _persRealRegs=_persRegs.filter(x=>x.personalReal!=null);
+    const personalPromReal=_persRealRegs.length?Math.round(_persRealRegs.reduce((s,x)=>s+x.personalReal,0)/_persRealRegs.length):null;
 
     html+=`<div style="margin-bottom:18px;">`;
     // Header del programa
@@ -5085,7 +5095,7 @@ function abrirDrillDown(sem,serv,anio,area,subarea){
       <div class="dd-kbox" style="border-color:#fca5a5;"><div class="dd-kval" style="color:#b91c1c;">${noEjecutadas}</div><div class="dd-klbl">No Ejecutadas</div></div>
       <div class="dd-kbox" style="border-color:#e5e7eb;"><div class="dd-kval" style="color:#6b7280;">${pendientes}</div><div class="dd-klbl">Pendientes</div></div>
       <div class="dd-kbox" style="border-color:${extras?'#c7d2fe':'#e5e7eb'};"><div class="dd-kval" style="color:${extras?'#3730a3':'#9ca3af'};">${extras?'+'+extras:'0'}</div><div class="dd-klbl">Serv. Adicional</div></div>
-      ${prog.personalIdeal?`<div class="dd-kbox" style="border-color:#fde68a;"><div class="dd-kval" style="color:#92400e;">${prog.personalIdeal}👥</div><div class="dd-klbl">Personal prog.</div></div>`:''}
+      ${personalPromProg!=null?`<div class="dd-kbox" style="border-color:#fde68a;"><div class="dd-kval" style="color:#92400e;">${personalPromReal!=null?personalPromReal+'/'+personalPromProg:personalPromProg+'👥'}</div><div class="dd-klbl">Personal prog.</div></div>`:''}
     </div>`;
 
     // Tabla detalle de localizaciones
