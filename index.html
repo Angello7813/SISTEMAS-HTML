@@ -19338,23 +19338,50 @@ function renderPronostico() {
       let saldoArrastre = 0, hayArrastre = false;
       let invIniMes = 0, entMes = 0, consMesBase = 0;
       if (_blkMon) {
-        // Entradas reales = ÚNICAMENTE vales con estatus SURTIDO de VALES_RETIRO (Hoja2)
-        // Hoja5 (blk.surtimientos) puede incluir pipas EN SURTIMIENTO o PENDIENTES
-        // que aún no entraron físicamente al tanque — NO deben contarse aquí
         const _vblkPron = VALES_RETIRO[est+'||'+prod]?.meses?.[mesBase];
-        let _entSurtidoVR = 0;
+        let _entSurtidoVR = 0, _entPendVR = 0;
         if (_vblkPron?.vales?.length) {
           _vblkPron.vales.forEach(v => {
             if (!v.vol || v.vol<=0) return;
-            if (String(v.estatus||'').toUpperCase().trim()==='SURTIDO') _entSurtidoVR += v.vol;
+            const _es = String(v.estatus||'').toUpperCase().trim();
+            if (_es==='SURTIDO') _entSurtidoVR += v.vol;
+            if (_es==='PENDIENTE'||_es.includes('EN SURT')) _entPendVR += v.vol;
           });
         }
-        // Si VALES_RETIRO no tiene datos de ese mes, usar Hoja5 como único fallback
         const _entHoja5 = (_blkMon.surtimientos||[]).reduce((s,x)=>s+x.vol,0);
-        entMes      = (_vblkPron?.vales?.length>0) ? _entSurtidoVR : _entHoja5;
-        consMesBase = realSerie[mesBase]||0;
-        invIniMes   = _blkMon.invInicial||0;
-        saldoArrastre = invIniMes + entMes - consMesBase;
+        entMes    = (_vblkPron?.vales?.length>0) ? _entSurtidoVR : _entHoja5;
+        invIniMes = _blkMon.invInicial||0;
+
+        // ── Para el mes en curso: proyectar al cierre del mes ────────────
+        // No basta con el consumo real hasta hoy — hay días restantes por consumir
+        const _hoy      = new Date();
+        const _mesHoy   = _hoy.getMonth()+1;
+        const _diaHoy   = _hoy.getDate();
+        const _esMesAct = mesBase === _mesHoy;
+
+        if (_esMesAct) {
+          // Consumo real acumulado hasta hoy
+          const _consReal = realSerie[mesBase]||0;
+          // Promedio diario real (días con despacho del mes actual)
+          const _consMapKey = est+'||'+prod;
+          const _bAct = consMap[_consMapKey]?.[mesBase];
+          const _diasDesp = _bAct?.dias?.size || _diaHoy || 1;
+          const _promDia  = _diasDesp > 0 ? _consReal / _diasDesp : 0;
+          // Días restantes del mes
+          const _diasEnMes  = new Date(_hoy.getFullYear(), mesBase, 0).getDate();
+          const _diasRest   = Math.max(0, _diasEnMes - _diaHoy);
+          // Entradas proyectadas = surtidas + pendientes (llegarán antes del 31)
+          const _entProyect = entMes + _entPendVR;
+          // Consumo proyectado al cierre del mes
+          const _consProyect = _consReal + (_promDia * _diasRest);
+          consMesBase   = _consProyect;
+          entMes        = _entProyect;
+          saldoArrastre = invIniMes + entMes - consMesBase;
+        } else {
+          // Mes cerrado — usar datos reales directamente
+          consMesBase   = realSerie[mesBase]||0;
+          saldoArrastre = invIniMes + entMes - consMesBase;
+        }
         hayArrastre = true;
       }
 
