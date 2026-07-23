@@ -424,7 +424,7 @@
             <select id="invSeccionSel">
               <option value="SERVICIOS GENERALES">Servicios Generales</option>
               <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-              <option value="RESERVA">Reserva (8%)</option>
+              <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
             </select>
           </div>
           <div>
@@ -545,7 +545,7 @@
             <select id="salSeccion" onchange="refrescarStocksTodasLasFilas();actualizarAvisoMigracionSeccion();">
               <option value="SERVICIOS GENERALES">Servicios Generales</option>
               <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-              <option value="RESERVA">Reserva (8%)</option>
+              <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
             </select>
           </div>
           <div class="field" id="wrapSalSeccionDestino">
@@ -553,13 +553,13 @@
             <select id="salSeccionDestino" onchange="actualizarAvisoMigracionSeccion()">
               <option value="SERVICIOS GENERALES">Servicios Generales</option>
               <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-              <option value="RESERVA">Reserva (8%)</option>
+              <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
             </select>
           </div>
 
           <div class="field">
             <label>Área despachadora</label>
-            <select id="salAreaDesp" onchange="actualizarSubareas('salAreaDesp','salSubareaDesp');refrescarStocksTodasLasFilas();"></select>
+            <select id="salAreaDesp" onchange="actualizarSubareas('salAreaDesp', 'salSubareaDesp', true);refrescarStocksTodasLasFilas();"></select>
           </div>
           <div class="field">
             <label>Subárea despachadora</label>
@@ -671,7 +671,7 @@
                 <option value="">Todas</option>
                 <option value="SERVICIOS GENERALES">Servicios Generales</option>
                 <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-                <option value="RESERVA">Reserva (8%)</option>
+                <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
               </select>
             </div>
             <button class="btn-secondary" onclick="limpiarFiltrosHistorial()">Limpiar filtros</button>
@@ -734,7 +734,7 @@
             <select id="entSeccion">
               <option value="SERVICIOS GENERALES">Servicios Generales</option>
               <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-              <option value="RESERVA">Reserva (8%)</option>
+              <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
             </select>
           </div>
           <div></div>
@@ -831,7 +831,7 @@
                 <option value="">Todas</option>
                 <option value="SERVICIOS GENERALES">Servicios Generales</option>
                 <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-                <option value="RESERVA">Reserva (8%)</option>
+                <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
               </select>
             </div>
             <button class="btn-secondary" onclick="limpiarFiltrosHistorialEntradas()">Limpiar filtros</button>
@@ -883,7 +883,7 @@
               <option value="">Todas</option>
               <option value="SERVICIOS GENERALES">Servicios Generales</option>
               <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-              <option value="RESERVA">Reserva (8%)</option>
+              <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
             </select>
           </div>
           <div class="field" style="margin-bottom:0;">
@@ -975,7 +975,7 @@
             <select id="recFormatoSeccionSel">
               <option value="SERVICIOS GENERALES">Servicios Generales</option>
               <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-              <option value="RESERVA">Reserva (8%)</option>
+              <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
             </select>
           </div>
           <button class="btn-primary" onclick="imprimirFormatoRecuento()">🖨️ Generar Formato</button>
@@ -996,7 +996,7 @@
             <select id="recCapturaSeccionSel" onchange="recCapturaLimpiarTabla()">
               <option value="SERVICIOS GENERALES">Servicios Generales</option>
               <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-              <option value="RESERVA">Reserva (8%)</option>
+              <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
             </select>
           </div>
           <div class="field" style="margin-bottom:0;">
@@ -1063,7 +1063,7 @@
                 <option value="">Todas</option>
                 <option value="SERVICIOS GENERALES">Servicios Generales</option>
                 <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-                <option value="RESERVA">Reserva (8%)</option>
+                <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
               </select>
             </div>
             <button class="btn-secondary" onclick="limpiarFiltrosHistorialRecuentos()">Limpiar filtros</button>
@@ -1107,7 +1107,7 @@
             <select id="ejdSeccionSel" onchange="cargarTablaEjercicio()">
               <option value="SERVICIOS GENERALES">Servicios Generales</option>
               <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-              <option value="RESERVA">Reserva (8%)</option>
+              <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
             </select>
           </div>
           <div class="field" style="margin-bottom:0;">
@@ -1174,7 +1174,7 @@
                 <option value="">Todas</option>
                 <option value="SERVICIOS GENERALES">Servicios Generales</option>
                 <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-                <option value="RESERVA">Reserva (8%)</option>
+                <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
               </select>
             </div>
             <div class="field" style="margin-bottom:0;">
@@ -1320,7 +1320,7 @@
                 <option value="">Todas</option>
                 <option value="SERVICIOS GENERALES">Servicios Generales</option>
                 <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-                <option value="RESERVA">Reserva (8%)</option>
+                <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
               </select>
             </div>
             <div class="field" style="margin-bottom:0;">
@@ -1826,7 +1826,7 @@
           <option value="">Todas las secciones</option>
           <option value="SERVICIOS GENERALES">Servicios Generales</option>
           <option value="SERVICIOS DE SALUD">Servicios de Salud</option>
-          <option value="RESERVA">Reserva (8%)</option>
+          <option value="RESERVA" class="opt-reserva">Reserva (8%)</option>
         </select>
       </div>
       <div class="field">
@@ -2514,6 +2514,7 @@ function entrarADashboard() {
   inicializarRecuentos();
   inicializarEjercicioDispersion();
   inicializarReportes();
+  actualizarVisibilidadOpcionesReserva();
   document.getElementById('dashboard').classList.add('active');
 }
 
@@ -2796,7 +2797,7 @@ async function eliminarSubarea(clave, subIdx) {
     AREAS_COATZACOALCOS[clave].subareas.splice(subIdx, 1);
     persistirAreas();
     renderArbolAreas();
-    actualizarSubareas('salAreaDesp', 'salSubareaDesp');
+    actualizarSubareas('salAreaDesp', 'salSubareaDesp', true);
     actualizarSubareas('salAreaDest', 'salSubareaDest');
   } catch (err) {
     console.error(err);
@@ -2915,7 +2916,7 @@ function poblarSelectsAreasSalida() {
     }
   }
 
-  actualizarSubareas('salAreaDesp', 'salSubareaDesp');
+  actualizarSubareas('salAreaDesp', 'salSubareaDesp', true);
   actualizarSubareas('salAreaDest', 'salSubareaDest');
 
   const selFiltro = document.getElementById('histFiltroAreaDest');
@@ -2933,13 +2934,18 @@ function poblarSelectsAreasSalida() {
   if (document.getElementById('entFolioSalidaSel')) poblarSelectFolioSalidaPendiente();
 }
 
-function actualizarSubareas(selAreaId, selSubareaId) {
+function actualizarSubareas(selAreaId, selSubareaId, soloDespacho) {
   const areaClave = document.getElementById(selAreaId).value;
   const selSub = document.getElementById(selSubareaId);
   const area = AREAS_COATZACOALCOS[areaClave];
   const subareas = area ? area.subareas : [];
+  // Solo "Servicios Corporativos" de cada área puede despachar — los hospitales,
+  // sectores, factorías y consultorios reciben material, pero no lo despachan.
+  const opciones = subareas
+    .map((sa, idx) => ({ sa, idx }))
+    .filter(({ sa }) => !soloDespacho || sa.nombre.toUpperCase().includes('SERVICIOS CORPORATIVOS'));
   selSub.innerHTML = '<option value="">Selecciona...</option>' +
-    subareas.map((sa, idx) => `<option value="${idx}">${sa.nombre}</option>`).join('');
+    opciones.map(({ sa, idx }) => `<option value="${idx}">${sa.nombre}</option>`).join('');
   if (selSubareaId === 'salSubareaDest') {
     actualizarInstalaciones(selAreaId, selSubareaId, 'salInstalacion');
   }
@@ -3414,7 +3420,7 @@ function abrirEdicionFolio(folio) {
     actualizarAvisoMigracionSeccion();
   }
   document.getElementById('salAreaDesp').value = f.areaDesp;
-  actualizarSubareas('salAreaDesp', 'salSubareaDesp');
+  actualizarSubareas('salAreaDesp', 'salSubareaDesp', true);
   const subDespIdx = AREAS_COATZACOALCOS[f.areaDesp].subareas.findIndex(sa => sa.nombre === f.subareaDesp);
   document.getElementById('salSubareaDesp').value = subDespIdx;
 
@@ -5087,6 +5093,17 @@ function reservaHabilitada() {
   return ESTADO.claveArea === 'SCAD' || esMaestro();
 }
 
+// La sección RESERVA (8%) es piloto de SCAD: se oculta la opción en todos los
+// selects de Sección para cualquier otra área que no sea SCAD ni acceso maestro.
+function actualizarVisibilidadOpcionesReserva() {
+  const mostrar = reservaHabilitada();
+  document.querySelectorAll('option.opt-reserva').forEach(opt => {
+    opt.hidden = !mostrar;
+    opt.disabled = !mostrar;
+    if (!mostrar && opt.selected) opt.parentElement.value = opt.parentElement.options[0].value;
+  });
+}
+
 let modoReserva = null;
 let calculoReservaActual = [];
 
@@ -5188,7 +5205,7 @@ function generarFolioReserva(origen) {
   document.getElementById('salSeccionDestino').value = 'RESERVA';
   actualizarAvisoMigracionSeccion();
   document.getElementById('salAreaDesp').value = 'SCAD';
-  actualizarSubareas('salAreaDesp', 'salSubareaDesp');
+  actualizarSubareas('salAreaDesp', 'salSubareaDesp', true);
   document.getElementById('salAreaDest').value = 'SCAD';
   actualizarSubareas('salAreaDest', 'salSubareaDest');
 
@@ -6017,7 +6034,7 @@ function cargarEjercicioEnSalida() {
   actualizarAvisoMigracionSeccion();
 
   document.getElementById('salAreaDesp').value = 'SCAD';
-  actualizarSubareas('salAreaDesp', 'salSubareaDesp');
+  actualizarSubareas('salAreaDesp', 'salSubareaDesp', true);
 
   document.getElementById('salAreaDest').value = ejd.areaDest;
   actualizarSubareas('salAreaDest', 'salSubareaDest');
