@@ -308,7 +308,7 @@
    CONFIGURACIÓN — completar con los datos reales del proyecto Supabase
    ===================================================================== */
 const SUPABASE_URL = "https://epqyabsdgsthbtuluarq.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_RcSictggIciEBwzLcxqt_w_DX3HUon0";
+const SUPABASE_ANON_KEY = "PEGAR_AQUI_LA_ANON_KEY_PUBLICA";
 const STORAGE_BUCKET = "acc-adjuntos"; // crear este bucket en Supabase Storage
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -517,24 +517,34 @@ document.getElementById("form-solicitud").addEventListener("submit", async (e) =
     const { error: errPersonal } = await sb.from("acc_solicitud_personal").insert(filasPersonal);
     if (errPersonal) throw errPersonal;
 
-    // Adjuntos (si el usuario seleccionó archivo)
+    // Adjuntos (si el usuario seleccionó archivo) — se manejan aparte:
+    // si fallan, la solicitud YA quedó creada y no debe reintentarse desde cero.
     const adjuntos = [
       { id: "f-adj-tarjeta", tipo: "tarjeta_circulacion" },
       { id: "f-adj-licencia", tipo: "licencia" },
       { id: "f-adj-ine", tipo: "ine" },
       { id: "f-adj-poliza", tipo: "poliza" }
     ];
+    const fallosAdjuntos = [];
     for (const a of adjuntos) {
       const file = document.getElementById(a.id).files[0];
       if (file) {
-        const ruta = await subirAdjunto(folio, a.tipo, file);
-        await sb.from("acc_solicitud_adjuntos").insert({
-          solicitud_id: solicitud.id, tipo: a.tipo, ruta_archivo: ruta
-        });
+        try {
+          const ruta = await subirAdjunto(folio, a.tipo, file);
+          await sb.from("acc_solicitud_adjuntos").insert({
+            solicitud_id: solicitud.id, tipo: a.tipo, ruta_archivo: ruta
+          });
+        } catch (errAdj) {
+          fallosAdjuntos.push(a.tipo);
+        }
       }
     }
 
-    msg.innerHTML = `<div class="msg ok">Solicitud enviada. Tu folio es <span class="folio-chip">${folio}</span>. Recibirás la autorización a través de SACISC.</div>`;
+    if (fallosAdjuntos.length > 0) {
+      msg.innerHTML = `<div class="msg error">Tu folio <span class="folio-chip">${folio}</span> ya quedó registrado, pero no se pudieron subir estos documentos: ${fallosAdjuntos.join(", ")}. No vuelvas a enviar el formulario completo — contacta al administrador para agregarlos a esta misma solicitud.</div>`;
+    } else {
+      msg.innerHTML = `<div class="msg ok">Solicitud enviada. Tu folio es <span class="folio-chip">${folio}</span>. Recibirás la autorización a través de SACISC.</div>`;
+    }
     document.getElementById("form-solicitud").reset();
     document.getElementById("personal-rows").innerHTML = "";
     agregarFilaPersona();
