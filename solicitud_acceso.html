@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SACISC · Solicitud de Acceso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --dark: #1e5b4f;
+    --dark2: #164a3f;
+    --green: #2d9e7e;
+    --tint: #e8f5f1;
+    --tint2: #d3ede4;
+    --ink: #1c2b28;
+    --gray: #5b6b68;
+    --line: #d7e2df;
+    --white: #ffffff;
+    --amber: #b8790f;
+    --red: #b3413a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:#f4f7f6; color:var(--ink);
+    font-family:'Inter',sans-serif; font-size:14px; line-height:1.45;
+  }
+  h1,h2,h3,.brand-title{font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:.2px;}
+  .topbar{
+    background:var(--dark); color:var(--white);
+    padding:14px 20px; display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:20; box-shadow:0 2px 8px rgba(0,0,0,.12);
+  }
+  .topbar .brand{display:flex; flex-direction:column; line-height:1.1;}
+  .topbar .brand-title{font-size:20px;}
+  .topbar .brand-sub{font-size:10.5px; color:#bfe6da; letter-spacing:.5px;}
+  .topbar .user-box{display:flex; align-items:center; gap:12px; font-size:12.5px;}
+  .topbar button.logout{
+    background:transparent; border:1px solid rgba(255,255,255,.4); color:#fff;
+    padding:6px 12px; border-radius:20px; font-size:12px; cursor:pointer; font-family:'Inter';
+  }
+  .topbar button.logout:hover{background:rgba(255,255,255,.12);}
+
+  .wrap{max-width:920px; margin:0 auto; padding:20px 16px 60px;}
+
+  /* ---------- Login ---------- */
+  #login-screen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(160deg, var(--dark) 0%, var(--dark2) 100%);
+    padding:20px;
+  }
+  .login-card{
+    background:var(--white); border-radius:14px; padding:36px 32px; width:100%; max-width:380px;
+    box-shadow:0 20px 50px rgba(0,0,0,.25);
+  }
+  .login-card .brand-title{color:var(--dark); font-size:26px; margin:0 0 2px;}
+  .login-card .brand-sub{color:var(--gray); font-size:12px; margin-bottom:22px; display:block;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; color:var(--dark); margin-bottom:5px;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:10px 12px; border:1.4px solid var(--line); border-radius:8px;
+    font-family:'Inter'; font-size:14px; color:var(--ink); background:#fff;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline:none; border-color:var(--green); box-shadow:0 0 0 3px rgba(45,158,126,.15);
+  }
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--dark); color:#fff; border:none; border-radius:9px;
+    padding:11px 20px; font-family:'Inter'; font-weight:600; font-size:13.5px; cursor:pointer;
+    transition:background .15s;
+  }
+  .btn:hover{background:var(--dark2);}
+  .btn.full{width:100%;}
+  .btn.secondary{background:var(--tint); color:var(--dark);}
+  .btn.secondary:hover{background:var(--tint2);}
+  .btn.ghost{background:transparent; color:var(--dark); border:1.4px solid var(--line);}
+  .btn:disabled{opacity:.55; cursor:not-allowed;}
+  .msg{font-size:12.5px; margin-top:10px; padding:9px 12px; border-radius:8px;}
+  .msg.error{background:#fbeceb; color:var(--red);}
+  .msg.ok{background:var(--tint); color:var(--dark);}
+
+  /* ---------- App ---------- */
+  #app{display:none;}
+  .tabs{display:flex; gap:8px; margin:18px 0 20px;}
+  .tab-btn{
+    background:#fff; border:1.4px solid var(--line); color:var(--gray);
+    padding:9px 18px; border-radius:20px; font-weight:600; font-size:13px; cursor:pointer; font-family:'Inter';
+  }
+  .tab-btn.active{background:var(--dark); border-color:var(--dark); color:#fff;}
+
+  .card{
+    background:#fff; border:1px solid var(--line); border-radius:12px; padding:22px 24px; margin-bottom:20px;
+    box-shadow:0 1px 3px rgba(28,43,40,.05);
+  }
+  .card h2{font-size:19px; color:var(--dark); margin:0 0 4px;}
+  .card .card-sub{font-size:12.5px; color:var(--gray); margin:0 0 18px;}
+
+  .grid{display:grid; gap:14px;}
+  .grid.cols-2{grid-template-columns:1fr 1fr;}
+  .grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+  @media(max-width:640px){ .grid.cols-2, .grid.cols-3{grid-template-columns:1fr;} }
+
+  .section-label{
+    font-size:11.5px; font-weight:700; color:var(--gray); text-transform:uppercase;
+    letter-spacing:.6px; margin:22px 0 10px; padding-top:14px; border-top:1px solid var(--line);
+  }
+  .section-label:first-of-type{border-top:none; margin-top:0; padding-top:0;}
+
+  .persona-row{
+    display:grid; grid-template-columns:1fr 1fr auto; gap:10px; align-items:end; margin-bottom:10px;
+  }
+  @media(max-width:640px){ .persona-row{grid-template-columns:1fr;} }
+  .remove-btn{
+    background:#fbeceb; color:var(--red); border:none; border-radius:8px; width:38px; height:38px;
+    cursor:pointer; font-size:16px; line-height:1;
+  }
+  .add-link{
+    background:none; border:none; color:var(--green); font-weight:600; font-size:13px; cursor:pointer;
+    padding:6px 0; font-family:'Inter';
+  }
+
+  .file-drop{
+    border:1.6px dashed var(--line); border-radius:9px; padding:12px; font-size:12.5px; color:var(--gray);
+    background:#fafcfb;
+  }
+  .file-drop small{display:block; margin-top:3px; color:#8a9a97;}
+
+  .hint{font-size:11.5px; color:#8a9a97; margin-top:4px;}
+
+  .actions-bar{display:flex; justify-content:flex-end; gap:10px; margin-top:22px;}
+
+  /* ---------- Mis solicitudes ---------- */
+  table.solicitudes{width:100%; border-collapse:collapse; font-size:12.8px;}
+  table.solicitudes th{
+    text-align:left; background:var(--tint); color:var(--dark); font-size:11px; text-transform:uppercase;
+    letter-spacing:.4px; padding:9px 10px; border-bottom:1px solid var(--line);
+  }
+  table.solicitudes td{padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
+  .badge{
+    display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;
+  }
+  .badge.pendiente{background:#fdf2e2; color:var(--amber);}
+  .badge.autorizado{background:var(--tint); color:var(--dark);}
+  .badge.rechazado{background:#fbeceb; color:var(--red);}
+  .badge.expirado{background:#ececec; color:var(--gray);}
+  .badge.cerrado{background:#e3e9e8; color:var(--gray);}
+  .empty-state{text-align:center; padding:40px 20px; color:var(--gray); font-size:13px;}
+
+  .folio-chip{
+    display:inline-block; background:var(--dark); color:#fff; font-weight:700; font-size:12.5px;
+    padding:5px 12px; border-radius:7px; letter-spacing:.3px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="brand-title">SACISC</div>
+    <span class="brand-sub">Solicitud de Acceso · Control de Accesos</span>
+    <div class="field">
+      <label>Correo institucional PEMEX</label>
+      <input type="email" id="login-email" placeholder="nombre.apellido@pemex.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn full" id="btn-login">Iniciar sesión</button>
+    <div id="login-msg"></div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-title">SACISC</span>
+      <span class="brand-sub">Solicitud de Acceso</span>
+    </div>
+    <div class="user-box">
+      <span id="user-name-label"></span>
+      <button class="logout" id="btn-logout">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="nueva">Nueva solicitud</button>
+      <button class="tab-btn" data-tab="mias">Mis solicitudes</button>
+    </div>
+
+    <!-- ---------- TAB: NUEVA SOLICITUD ---------- -->
+    <div id="tab-nueva">
+      <form id="form-solicitud">
+
+        <div class="card">
+          <h2>Datos generales</h2>
+          <p class="card-sub">Coordinación solicitante y datos de la visita.</p>
+          <div class="grid cols-2">
+            <div class="field">
+              <label>Coordinación que solicita el ingreso</label>
+              <select id="f-coordinacion" required></select>
+            </div>
+            <div class="field">
+              <label>Lugar a donde se presentará</label>
+              <input type="text" id="f-lugar" placeholder="Ej. Oficinas de GMOPI" required>
+            </div>
+          </div>
+          <div class="grid cols-3">
+            <div class="field">
+              <label>Fecha de inicio</label>
+              <input type="date" id="f-fecha-inicio" required>
+            </div>
+            <div class="field">
+              <label>Fecha de término</label>
+              <input type="date" id="f-fecha-termino" required>
+            </div>
+            <div class="field">
+              <label>Hora de ingreso</label>
+              <input type="time" id="f-hora" required>
+            </div>
+          </div>
+          <div class="field">
+            <label>Motivo del ingreso</label>
+            <input type="text" id="f-motivo" placeholder="Ej. Reunión de contrato 3606" required>
+          </div>
+          <p class="hint">La vigencia (inicio–término) permite que la misma autorización cubra visitas de varios días, sin generar una solicitud nueva cada día.</p>
+        </div>
+
+        <div class="card">
+          <h2>Personal que ingresa</h2>
+          <p class="card-sub">Agrega una fila por cada persona (proveedor, contratista o personal Pemex).</p>
+          <div id="personal-rows"></div>
+          <button type="button" class="add-link" id="btn-add-persona">+ Agregar persona</button>
+        </div>
+
+        <div class="card">
+          <h2>Unidad y conductor</h2>
+          <p class="card-sub">Datos del vehículo que ingresará a la instalación.</p>
+          <div class="grid cols-3">
+            <div class="field"><label>Marca</label><input type="text" id="f-marca"></div>
+            <div class="field"><label>Placa</label><input type="text" id="f-placa"></div>
+            <div class="field"><label>Color</label><input type="text" id="f-color"></div>
+          </div>
+          <div class="grid cols-2">
+            <div class="field"><label>Serie</label><input type="text" id="f-serie"></div>
+            <div class="field"><label>Conductor</label><input type="text" id="f-conductor"></div>
+          </div>
+          <div class="field"><label>No. de cajón asignado (opcional)</label><input type="text" id="f-cajon"></div>
+
+          <div class="section-label">Póliza de seguro</div>
+          <div class="field"><label>Nombre de la aseguradora</label><input type="text" id="f-aseguradora"></div>
+          <div class="grid cols-2">
+            <div class="field"><label>Vigencia — fecha inicial</label><input type="date" id="f-poliza-inicio"></div>
+            <div class="field"><label>Vigencia — fecha final</label><input type="date" id="f-poliza-fin"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Documentos de evidencia</h2>
+          <p class="card-sub">Adjunta los PDF solicitados. Se eliminan automáticamente 5 días después de subirse; los datos capturados permanecen.</p>
+          <div class="grid cols-2">
+            <div class="field">
+              <label>Tarjeta de circulación (PDF)</label>
+              <div class="file-drop"><input type="file" id="f-adj-tarjeta" accept="application/pdf"></div>
+            </div>
+            <div class="field">
+              <label>Licencia de conducir (PDF)</label>
+              <div class="file-drop"><input type="file" id="f-adj-licencia" accept="application/pdf"></div>
+            </div>
+            <div class="field">
+              <label>INE (PDF)</label>
+              <div class="file-drop"><input type="file" id="f-adj-ine" accept="application/pdf"></div>
+            </div>
+            <div class="field">
+              <label>Póliza de seguro (PDF)</label>
+              <div class="file-drop"><input type="file" id="f-adj-poliza" accept="application/pdf"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="submit-msg"></div>
+        <div class="actions-bar">
+          <button type="button" class="btn ghost" id="btn-reset">Limpiar formulario</button>
+          <button type="submit" class="btn" id="btn-submit">Enviar solicitud</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ---------- TAB: MIS SOLICITUDES ---------- -->
+    <div id="tab-mias" style="display:none;">
+      <div class="card">
+        <h2>Mis solicitudes</h2>
+        <p class="card-sub">Historial y estatus de las solicitudes que has capturado.</p>
+        <div id="solicitudes-container"><div class="empty-state">Cargando…</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIGURACIÓN — completar con los datos reales del proyecto Supabase
+   ===================================================================== */
+const SUPABASE_URL = "https://epqyabsdgsthbtuluarq.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_RcSictggIciEBwzLcxqt_w_DX3HUon0";
+const STORAGE_BUCKET = "acc-adjuntos"; // crear este bucket en Supabase Storage
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;      // sesión de Supabase Auth
+let currentUsuarioArea = null; // fila de acc_usuarios_area ligada al correo
+
+/* ---------------------------------------------------------------------
+   LOGIN
+   --------------------------------------------------------------------- */
+document.getElementById("btn-login").addEventListener("click", async () => {
+  const email = document.getElementById("login-email").value.trim();
+  const pass = document.getElementById("login-pass").value;
+  const msg = document.getElementById("login-msg");
+  msg.innerHTML = "";
+
+  if (!email || !pass) {
+    msg.innerHTML = '<div class="msg error">Ingresa tu correo y contraseña.</div>';
+    return;
+  }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    msg.innerHTML = `<div class="msg error">No fue posible iniciar sesión: ${error.message}</div>`;
+    return;
+  }
+  await afterLogin(data.user);
+});
+
+document.getElementById("btn-logout").addEventListener("click", async () => {
+  await sb.auth.signOut();
+  location.reload();
+});
+
+async function afterLogin(user) {
+  currentUser = user;
+
+  // Buscar el registro de usuario de área ligado a este correo
+  const { data: usuarioArea, error } = await sb
+    .from("acc_usuarios_area")
+    .select("id, nombre, coordinacion_id, activo")
+    .eq("correo_pemex", user.email)
+    .single();
+
+  if (error || !usuarioArea || !usuarioArea.activo) {
+    document.getElementById("login-msg").innerHTML =
+      '<div class="msg error">Tu cuenta no está habilitada para capturar solicitudes. Contacta al administrador del sistema.</div>';
+    await sb.auth.signOut();
+    return;
+  }
+
+  currentUsuarioArea = usuarioArea;
+  document.getElementById("user-name-label").textContent = usuarioArea.nombre;
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+
+  await cargarCoordinaciones();
+  agregarFilaPersona(); // primera fila por default
+  await cargarMisSolicitudes();
+}
+
+// Revisar si ya hay sesión activa al cargar la página
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if (data.session) await afterLogin(data.session.user);
+})();
+
+/* ---------------------------------------------------------------------
+   TABS
+   --------------------------------------------------------------------- */
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    document.getElementById("tab-nueva").style.display = tab === "nueva" ? "block" : "none";
+    document.getElementById("tab-mias").style.display = tab === "mias" ? "block" : "none";
+    if (tab === "mias") cargarMisSolicitudes();
+  });
+});
+
+/* ---------------------------------------------------------------------
+   CATÁLOGO DE COORDINACIONES
+   --------------------------------------------------------------------- */
+async function cargarCoordinaciones() {
+  const sel = document.getElementById("f-coordinacion");
+  sel.innerHTML = '<option value="">Selecciona…</option>';
+  const { data, error } = await sb
+    .from("acc_coordinaciones")
+    .select("id, nombre")
+    .eq("activo", true)
+    .order("nombre");
+  if (error || !data) return;
+  data.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.nombre;
+    sel.appendChild(opt);
+  });
+  // preselecciona la coordinación del usuario si ya la tiene asignada
+  if (currentUsuarioArea && currentUsuarioArea.coordinacion_id) {
+    sel.value = currentUsuarioArea.coordinacion_id;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   FILAS DE PERSONAL (dinámicas)
+   --------------------------------------------------------------------- */
+function agregarFilaPersona() {
+  const cont = document.getElementById("personal-rows");
+  const row = document.createElement("div");
+  row.className = "persona-row";
+  row.innerHTML = `
+    <div class="field" style="margin-bottom:0;">
+      <label>Compañía / Proveedor</label>
+      <input type="text" class="p-compania" placeholder="Nombre de la compañía">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>Nombre completo</label>
+      <input type="text" class="p-nombre" placeholder="Nombre del personal" required>
+    </div>
+    <button type="button" class="remove-btn" title="Quitar">×</button>
+  `;
+  row.querySelector(".remove-btn").addEventListener("click", () => {
+    if (document.querySelectorAll("#personal-rows .persona-row").length > 1) {
+      row.remove();
+    }
+  });
+  cont.appendChild(row);
+}
+document.getElementById("btn-add-persona").addEventListener("click", agregarFilaPersona);
+
+/* ---------------------------------------------------------------------
+   FOLIO — consecutivo simple por año (ver nota de mejora al final)
+   --------------------------------------------------------------------- */
+async function generarFolio() {
+  const anio = new Date().getFullYear();
+  const { count } = await sb
+    .from("acc_solicitudes_vehicular")
+    .select("id", { count: "exact", head: true })
+    .gte("creado_en", `${anio}-01-01`);
+  const consecutivo = String((count || 0) + 1).padStart(6, "0");
+  return `SACISC-VEH-${anio}-${consecutivo}`;
+}
+
+/* ---------------------------------------------------------------------
+   SUBIDA DE ADJUNTOS
+   --------------------------------------------------------------------- */
+async function subirAdjunto(folio, tipo, file) {
+  if (!file) return null;
+  const ruta = `${folio}/${tipo}-${Date.now()}.pdf`;
+  const { error } = await sb.storage.from(STORAGE_BUCKET).upload(ruta, file, {
+    contentType: "application/pdf"
+  });
+  if (error) throw error;
+  return ruta;
+}
+
+/* ---------------------------------------------------------------------
+   ENVÍO DEL FORMULARIO
+   --------------------------------------------------------------------- */
+document.getElementById("form-solicitud").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btn-submit");
+  const msg = document.getElementById("submit-msg");
+  msg.innerHTML = "";
+  btn.disabled = true;
+  btn.textContent = "Enviando…";
+
+  try {
+    const coordinacionId = document.getElementById("f-coordinacion").value;
+    if (!coordinacionId) throw new Error("Selecciona la coordinación que solicita el ingreso.");
+
+    const personas = Array.from(document.querySelectorAll("#personal-rows .persona-row")).map(row => ({
+      compania: row.querySelector(".p-compania").value.trim(),
+      nombre_completo: row.querySelector(".p-nombre").value.trim()
+    })).filter(p => p.nombre_completo);
+
+    if (personas.length === 0) throw new Error("Agrega al menos una persona que ingresará.");
+
+    const folio = await generarFolio();
+
+    const { data: solicitud, error: errSol } = await sb.from("acc_solicitudes_vehicular").insert({
+      folio,
+      coordinacion_id: coordinacionId,
+      usuario_area_id: currentUsuarioArea.id,
+      fecha_inicio: document.getElementById("f-fecha-inicio").value,
+      fecha_termino: document.getElementById("f-fecha-termino").value,
+      hora_ingreso: document.getElementById("f-hora").value,
+      lugar_presentacion: document.getElementById("f-lugar").value,
+      motivo: document.getElementById("f-motivo").value,
+      marca: document.getElementById("f-marca").value,
+      placa: document.getElementById("f-placa").value,
+      color: document.getElementById("f-color").value,
+      serie: document.getElementById("f-serie").value,
+      conductor: document.getElementById("f-conductor").value,
+      cajon_asignado: document.getElementById("f-cajon").value,
+      aseguradora: document.getElementById("f-aseguradora").value,
+      poliza_fecha_inicial: document.getElementById("f-poliza-inicio").value || null,
+      poliza_fecha_final: document.getElementById("f-poliza-fin").value || null,
+      estatus: "pendiente"
+    }).select().single();
+
+    if (errSol) throw errSol;
+
+    const filasPersonal = personas.map(p => ({ solicitud_id: solicitud.id, ...p }));
+    const { error: errPersonal } = await sb.from("acc_solicitud_personal").insert(filasPersonal);
+    if (errPersonal) throw errPersonal;
+
+    // Adjuntos (si el usuario seleccionó archivo)
+    const adjuntos = [
+      { id: "f-adj-tarjeta", tipo: "tarjeta_circulacion" },
+      { id: "f-adj-licencia", tipo: "licencia" },
+      { id: "f-adj-ine", tipo: "ine" },
+      { id: "f-adj-poliza", tipo: "poliza" }
+    ];
+    for (const a of adjuntos) {
+      const file = document.getElementById(a.id).files[0];
+      if (file) {
+        const ruta = await subirAdjunto(folio, a.tipo, file);
+        await sb.from("acc_solicitud_adjuntos").insert({
+          solicitud_id: solicitud.id, tipo: a.tipo, ruta_archivo: ruta
+        });
+      }
+    }
+
+    msg.innerHTML = `<div class="msg ok">Solicitud enviada. Tu folio es <span class="folio-chip">${folio}</span>. Recibirás la autorización a través de SACISC.</div>`;
+    document.getElementById("form-solicitud").reset();
+    document.getElementById("personal-rows").innerHTML = "";
+    agregarFilaPersona();
+    await cargarCoordinaciones();
+
+  } catch (err) {
+    msg.innerHTML = `<div class="msg error">No se pudo enviar la solicitud: ${err.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Enviar solicitud";
+  }
+});
+
+document.getElementById("btn-reset").addEventListener("click", () => {
+  document.getElementById("form-solicitud").reset();
+  document.getElementById("personal-rows").innerHTML = "";
+  agregarFilaPersona();
+  document.getElementById("submit-msg").innerHTML = "";
+});
+
+/* ---------------------------------------------------------------------
+   MIS SOLICITUDES
+   --------------------------------------------------------------------- */
+async function cargarMisSolicitudes() {
+  const cont = document.getElementById("solicitudes-container");
+  cont.innerHTML = '<div class="empty-state">Cargando…</div>';
+
+  const { data, error } = await sb
+    .from("acc_solicitudes_vehicular")
+    .select("folio, fecha_inicio, fecha_termino, motivo, placa, estatus, creado_en")
+    .eq("usuario_area_id", currentUsuarioArea.id)
+    .order("creado_en", { ascending: false });
+
+  if (error) {
+    cont.innerHTML = `<div class="empty-state">No se pudieron cargar tus solicitudes: ${error.message}</div>`;
+    return;
+  }
+  if (!data || data.length === 0) {
+    cont.innerHTML = '<div class="empty-state">Aún no has capturado ninguna solicitud.</div>';
+    return;
+  }
+
+  const rows = data.map(s => `
+    <tr>
+      <td><span class="folio-chip">${s.folio}</span></td>
+      <td>${formatFecha(s.fecha_inicio)} – ${formatFecha(s.fecha_termino)}</td>
+      <td>${s.motivo || "—"}</td>
+      <td>${s.placa || "—"}</td>
+      <td><span class="badge ${s.estatus}">${etiquetaEstatus(s.estatus)}</span></td>
+    </tr>
+  `).join("");
+
+  cont.innerHTML = `
+    <table class="solicitudes">
+      <thead>
+        <tr><th>Folio</th><th>Vigencia</th><th>Motivo</th><th>Placa</th><th>Estatus</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function formatFecha(f) {
+  if (!f) return "—";
+  const [y, m, d] = f.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function etiquetaEstatus(e) {
+  return {
+    pendiente: "Pendiente",
+    autorizado: "Autorizado",
+    rechazado: "Rechazado",
+    expirado: "Expirado",
+    cerrado: "Cerrado"
+  }[e] || e;
+}
+</script>
+</body>
+</html>
