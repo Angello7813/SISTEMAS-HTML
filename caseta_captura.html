@@ -198,7 +198,23 @@
 <!-- ================= SETUP (primera vez, elegir caseta) ================= -->
 <div id="setup-screen" class="center-screen">
   <div class="card">
-    <div class="brand">SACISC</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
+      <svg viewBox="0 0 64 58" style="width:30px;height:27px;flex-shrink:0;">
+      <defs>
+        <linearGradient id="sac_g1s" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#1e5b4f"/><stop offset="100%" stop-color="#2d9e7e"/>
+        </linearGradient>
+        <linearGradient id="sac_g2s" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#2d9e7e"/><stop offset="100%" stop-color="#4ecba0"/>
+        </linearGradient>
+      </defs>
+      <polygon points="32,4 52,15 52,37 32,48 12,37 12,15" fill="url(#sac_g1s)"/>
+      <polygon points="32,10 48,19.5 48,32.5 32,42 16,32.5 16,19.5" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <path d="M24 20 C24 20 40 20 40 26 C40 32 24 28 24 34 C24 40 40 40 40 40" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="12" y="51" width="40" height="2.5" rx="1.25" fill="url(#sac_g2s)" opacity="0.8"/>
+    </svg>
+      <div class="brand">SACISC</div>
+    </div>
     <span class="sub">Configuración inicial de este celular</span>
     <p style="font-size:13.5px;color:var(--gray);margin-bottom:16px;">Selecciona la caseta a la que pertenece este dispositivo. Solo se configura una vez.</p>
     <button class="setup-btn" data-caseta="peatonal">Caseta Peatonal<small>Contratistas y proveedores a pie</small></button>
@@ -210,7 +226,23 @@
 <!-- ================= LOGIN (PIN) ================= -->
 <div id="login-screen" class="center-screen" style="display:none;">
   <div class="card">
-    <div class="brand">SACISC</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
+      <svg viewBox="0 0 64 58" style="width:30px;height:27px;flex-shrink:0;">
+      <defs>
+        <linearGradient id="sac_g1l" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#1e5b4f"/><stop offset="100%" stop-color="#2d9e7e"/>
+        </linearGradient>
+        <linearGradient id="sac_g2l" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#2d9e7e"/><stop offset="100%" stop-color="#4ecba0"/>
+        </linearGradient>
+      </defs>
+      <polygon points="32,4 52,15 52,37 32,48 12,37 12,15" fill="url(#sac_g1l)"/>
+      <polygon points="32,10 48,19.5 48,32.5 32,42 16,32.5 16,19.5" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <path d="M24 20 C24 20 40 20 40 26 C40 32 24 28 24 34 C24 40 40 40 40 40" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="12" y="51" width="40" height="2.5" rx="1.25" fill="url(#sac_g2l)" opacity="0.8"/>
+    </svg>
+      <div class="brand">SACISC</div>
+    </div>
     <span class="sub" id="login-caseta-label">Caseta</span>
     <div class="pin-display" id="pin-display">
       <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
@@ -236,9 +268,25 @@
 <!-- ================= APP ================= -->
 <div id="app">
   <div class="topbar">
-    <div>
-      <div class="brand">SACISC</div>
-      <div class="sub">Caseta de control</div>
+    <div style="display:flex;align-items:center;gap:9px;">
+      <svg viewBox="0 0 64 58" style="width:30px;height:27px;flex-shrink:0;">
+      <defs>
+        <linearGradient id="sac_g1a" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#1e5b4f"/><stop offset="100%" stop-color="#2d9e7e"/>
+        </linearGradient>
+        <linearGradient id="sac_g2a" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#2d9e7e"/><stop offset="100%" stop-color="#4ecba0"/>
+        </linearGradient>
+      </defs>
+      <polygon points="32,4 52,15 52,37 32,48 12,37 12,15" fill="url(#sac_g1a)"/>
+      <polygon points="32,10 48,19.5 48,32.5 32,42 16,32.5 16,19.5" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <path d="M24 20 C24 20 40 20 40 26 C40 32 24 28 24 34 C24 40 40 40 40 40" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="12" y="51" width="40" height="2.5" rx="1.25" fill="url(#sac_g2a)" opacity="0.8"/>
+    </svg>
+      <div>
+        <div class="brand">SACISC</div>
+        <div class="sub">Caseta de control</div>
+      </div>
     </div>
     <div class="caseta-tag" id="caseta-tag">—</div>
   </div>
@@ -529,6 +577,8 @@ function tplPeatonalEntrada() {
     <input type="text" id="v-motivo" placeholder="Ej. Mantenimiento, entrega, reunión">
     <label>Área destino</label>
     <input type="text" id="v-area" placeholder="Ej. Servicio a Pozos">
+    <label>Persona a quien visita</label>
+    <input type="text" id="v-persona-visita" placeholder="Nombre de quien recibe la visita">
   </div>
   <div class="section-card" id="personas-container">
     <h2>Persona(s) que ingresan</h2>
@@ -579,6 +629,7 @@ async function registrarEntradaPeatonal() {
     const empresa = document.getElementById("v-empresa").value.trim();
     const motivo = document.getElementById("v-motivo").value.trim();
     const area = document.getElementById("v-area").value.trim();
+    const personaVisita = document.getElementById("v-persona-visita").value.trim();
     const bloques = Array.from(document.querySelectorAll(".persona-block"));
 
     const personas = [];
@@ -614,7 +665,8 @@ async function registrarEntradaPeatonal() {
     const folio = generarFolioPeatonal();
     const payload = {
       p_folio: folio, p_caseta: CASETA, p_guardia_id: GUARDIA.id,
-      p_empresa: empresa, p_motivo: motivo, p_area_destino: area, p_personas: personas
+      p_empresa: empresa, p_motivo: motivo, p_area_destino: area,
+      p_persona_visita: personaVisita, p_personas: personas
     };
 
     if (!navigator.onLine) {
@@ -675,6 +727,7 @@ async function buscarFoliosPeatonal() {
     <div class="search-result">
       <div class="sr-name">${p.nombre_completo} ${p.tipo === 'maestro' ? '· Grupo' : ''}</div>
       <div class="sr-meta">${p.empresa || ''} · Gafete ${p.gafete_numero || '—'} · Folio ${p.folio}</div>
+      <div class="sr-meta">Visita a: ${p.persona_visita || '—'}</div>
       <div class="sr-photos">
         ${p.foto_identificacion_url ? `<img src="${p.foto_identificacion_url}">` : ''}
         ${p.foto_equipo_frente_url ? `<img src="${p.foto_equipo_frente_url}">` : ''}
