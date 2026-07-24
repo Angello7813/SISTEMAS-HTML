@@ -630,17 +630,9 @@ function agregarFilaPersona() {
 document.getElementById("btn-add-persona").addEventListener("click", agregarFilaPersona);
 
 /* ---------------------------------------------------------------------
-   FOLIO — consecutivo simple por año (ver nota de mejora al final)
+   FOLIO — ahora se genera en la base de datos (trigger + secuencia),
+   nunca en el navegador, para evitar colisiones.
    --------------------------------------------------------------------- */
-async function generarFolio() {
-  const anio = new Date().getFullYear();
-  const { count } = await sb
-    .from("acc_solicitudes_vehicular")
-    .select("id", { count: "exact", head: true })
-    .gte("creado_en", `${anio}-01-01`);
-  const consecutivo = String((count || 0) + 1).padStart(6, "0");
-  return `SACISC-VEH-${anio}-${consecutivo}`;
-}
 
 /* ---------------------------------------------------------------------
    SUBIDA DE ADJUNTOS
@@ -677,10 +669,7 @@ document.getElementById("form-solicitud").addEventListener("submit", async (e) =
 
     if (personas.length === 0) throw new Error("Agrega al menos una persona que ingresará.");
 
-    const folio = await generarFolio();
-
     const { data: solicitud, error: errSol } = await sb.from("acc_solicitudes_vehicular").insert({
-      folio,
       coordinacion_id: coordinacionId,
       usuario_area_id: currentUsuarioArea.id,
       fecha_inicio: document.getElementById("f-fecha-inicio").value,
@@ -701,6 +690,7 @@ document.getElementById("form-solicitud").addEventListener("submit", async (e) =
     }).select().single();
 
     if (errSol) throw errSol;
+    const folio = solicitud.folio;
 
     const filasPersonal = personas.map(p => ({ solicitud_id: solicitud.id, ...p }));
     const { error: errPersonal } = await sb.from("acc_solicitud_personal").insert(filasPersonal);
