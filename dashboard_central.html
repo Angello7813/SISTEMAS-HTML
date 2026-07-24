@@ -157,9 +157,11 @@
     <h3 id="qr-modal-folio">Folio</h3>
     <p>Comparte este código con el área solicitante para el ingreso.</p>
     <canvas id="qr-canvas"></canvas>
-    <div style="margin-top:16px;">
-      <button class="btn secondary full" id="btn-cerrar-qr-modal">Cerrar</button>
+    <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap;">
+      <a class="btn secondary" style="flex:1; text-align:center; text-decoration:none;" id="btn-enviar-correo" href="#" target="_blank">Enviar aviso por correo</a>
+      <button class="btn" style="flex:1;" id="btn-descargar-qr">Descargar QR</button>
     </div>
+    <button class="btn secondary full" style="margin-top:8px;" id="btn-cerrar-qr-modal">Cerrar</button>
   </div>
 </div>
 
@@ -711,7 +713,7 @@ async function renderPendientes() {
 
   const { data, error } = await sb
     .from("acc_solicitudes_vehicular")
-    .select("id, folio, fecha_inicio, fecha_termino, motivo, placa, conductor, lugar_presentacion, creado_en")
+    .select("id, folio, fecha_inicio, fecha_termino, motivo, placa, conductor, lugar_presentacion, creado_en, acc_usuarios_area(correo_pemex, nombre)")
     .eq("estatus", "pendiente")
     .order("creado_en", { ascending: true });
 
@@ -732,7 +734,7 @@ async function renderPendientes() {
             <td>${s.lugar_presentacion || "—"}</td>
             <td>
               <div class="row-actions">
-                <button style="background:var(--dark);color:#fff;" data-autorizar="${s.id}" data-folio="${s.folio}">Autorizar</button>
+                <button style="background:var(--dark);color:#fff;" data-autorizar="${s.id}" data-folio="${s.folio}" data-correo="${s.acc_usuarios_area?.correo_pemex || ''}" data-nombre="${s.acc_usuarios_area?.nombre || ''}">Autorizar</button>
                 <button style="background:#fbeceb;color:var(--red);" data-rechazar="${s.id}">Rechazar</button>
               </div>
             </td>
@@ -748,7 +750,7 @@ async function renderPendientes() {
       try {
         const { data: qr, error } = await sb.rpc("acc_autorizar_solicitud", { p_solicitud_id: btn.dataset.autorizar });
         if (error) throw error;
-        await mostrarModalQR(btn.dataset.folio, qr);
+        await mostrarModalQR(btn.dataset.folio, qr, btn.dataset.correo, btn.dataset.nombre);
         await renderPendientes();
         await cargarKpis();
       } catch (err) {
@@ -803,14 +805,42 @@ function dibujarQREnCanvas(canvas, texto) {
   }
 }
 
-async function mostrarModalQR(folio, qrTexto) {
+async function mostrarModalQR(folio, qrTexto, correoUsuario, nombreUsuario) {
   document.getElementById("qr-modal-folio").textContent = folio;
   const canvas = document.getElementById("qr-canvas");
   dibujarQREnCanvas(canvas, qrTexto);
   document.getElementById("qr-modal").classList.add("show");
+
+  const btnCorreo = document.getElementById("btn-enviar-correo");
+  if (correoUsuario) {
+    const asunto = `SACISC · Solicitud de acceso autorizada — ${folio}`;
+    const cuerpo =
+`Hola ${nombreUsuario || ""},
+
+Tu solicitud de acceso con folio ${folio} ya fue autorizada.
+
+Para ver y descargar tu código QR, entra a SACISC, pestaña "Mis solicitudes", y presiona "Ver QR".
+
+Presenta ese código en la caseta vehicular el día de tu visita.
+
+Saludos,
+SACISC · Control de Accesos`;
+    btnCorreo.href = `mailto:${correoUsuario}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(cuerpo)}`;
+    btnCorreo.style.display = "block";
+  } else {
+    btnCorreo.style.display = "none";
+  }
 }
 document.getElementById("btn-cerrar-qr-modal").addEventListener("click", () => {
   document.getElementById("qr-modal").classList.remove("show");
+});
+document.getElementById("btn-descargar-qr").addEventListener("click", () => {
+  const folio = document.getElementById("qr-modal-folio").textContent;
+  const canvas = document.getElementById("qr-canvas");
+  const link = document.createElement("a");
+  link.download = `QR-${folio}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
 });
 
 /* ---------------------------------------------------------------------
@@ -847,7 +877,7 @@ async function cargarHistorial() {
   const estatus = document.getElementById("filtro-estatus").value;
   const texto = document.getElementById("filtro-texto").value.trim();
   let query = sb.from("acc_solicitudes_vehicular")
-    .select("folio, fecha_inicio, fecha_termino, motivo, placa, estatus, creado_en")
+    .select("folio, fecha_inicio, fecha_termino, motivo, placa, estatus, qr_codigo, creado_en, acc_usuarios_area(correo_pemex, nombre)")
     .order("creado_en", { ascending: false })
     .limit(100);
   if (estatus) query = query.eq("estatus", estatus);
@@ -860,7 +890,7 @@ async function cargarHistorial() {
 
   box.innerHTML = `
     <table class="solicitudes">
-      <thead><tr><th>Folio</th><th>Vigencia</th><th>Motivo</th><th>Placa</th><th>Estatus</th></tr></thead>
+      <thead><tr><th>Folio</th><th>Vigencia</th><th>Motivo</th><th>Placa</th><th>Estatus</th><th>QR</th></tr></thead>
       <tbody>
         ${data.map(s => `
           <tr>
@@ -869,11 +899,20 @@ async function cargarHistorial() {
             <td>${s.motivo || "—"}</td>
             <td>${s.placa || "—"}</td>
             <td><span class="badge ${s.estatus}">${etiquetaEstatus(s.estatus)}</span></td>
+            <td>${s.estatus === "autorizado" && s.qr_codigo
+              ? `<button style="background:var(--tint);color:var(--dark);padding:6px 12px;border:none;border-radius:7px;font-weight:700;font-size:12px;cursor:pointer;" data-ver-qr="${s.qr_codigo}" data-ver-folio="${s.folio}" data-ver-correo="${s.acc_usuarios_area?.correo_pemex || ''}" data-ver-nombre="${s.acc_usuarios_area?.nombre || ''}">Ver QR</button>`
+              : "—"}</td>
           </tr>
         `).join("")}
       </tbody>
     </table>
   `;
+
+  box.querySelectorAll("[data-ver-qr]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      mostrarModalQR(btn.dataset.verFolio, btn.dataset.verQr, btn.dataset.verCorreo, btn.dataset.verNombre);
+    });
+  });
 }
 
 function formatFecha(f) { if (!f) return "—"; const [y,m,d] = f.split("-"); return `${d}/${m}/${y}`; }
