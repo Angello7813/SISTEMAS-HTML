@@ -342,11 +342,16 @@ async function renderPendientes() {
   box.querySelectorAll("[data-autorizar]").forEach(btn => {
     btn.addEventListener("click", async () => {
       btn.disabled = true; btn.textContent = "Autorizando…";
-      const { data: qr, error } = await sb.rpc("acc_autorizar_solicitud", { p_solicitud_id: btn.dataset.autorizar });
-      if (error) { alert("No se pudo autorizar: " + error.message); btn.disabled = false; btn.textContent = "Autorizar"; return; }
-      mostrarModalQR(btn.dataset.folio, qr);
-      await renderPendientes();
-      await cargarKpis();
+      try {
+        const { data: qr, error } = await sb.rpc("acc_autorizar_solicitud", { p_solicitud_id: btn.dataset.autorizar });
+        if (error) throw error;
+        mostrarModalQR(btn.dataset.folio, qr);
+        await renderPendientes();
+        await cargarKpis();
+      } catch (err) {
+        alert("No se pudo autorizar: " + (err.message || err));
+        btn.disabled = false; btn.textContent = "Autorizar";
+      }
     });
   });
 
@@ -355,10 +360,15 @@ async function renderPendientes() {
       const motivo = prompt("Motivo del rechazo (se lo notificará al área usuaria):");
       if (motivo === null) return;
       btn.disabled = true;
-      const { error } = await sb.rpc("acc_rechazar_solicitud", { p_solicitud_id: btn.dataset.rechazar, p_motivo: motivo });
-      if (error) { alert("No se pudo rechazar: " + error.message); btn.disabled = false; return; }
-      await renderPendientes();
-      await cargarKpis();
+      try {
+        const { error } = await sb.rpc("acc_rechazar_solicitud", { p_solicitud_id: btn.dataset.rechazar, p_motivo: motivo });
+        if (error) throw error;
+        await renderPendientes();
+        await cargarKpis();
+      } catch (err) {
+        alert("No se pudo rechazar: " + (err.message || err));
+        btn.disabled = false;
+      }
     });
   });
 }
