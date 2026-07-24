@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SACISC · Dashboard de Oficina Central</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+  :root{
+    --dark: #1e5b4f; --dark2: #164a3f; --green: #2d9e7e; --tint: #e8f5f1; --tint2: #d3ede4;
+    --ink: #1c2b28; --gray: #5b6b68; --line: #d7e2df; --white: #ffffff;
+    --amber: #b8790f; --red: #b3413a;
+    --green-dark:#002f2a; --green-mid:#1e5b4f; --green-light:#2d9e7e;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:#f4f7f6; color:var(--ink); font-family:'Barlow',sans-serif; font-size:14px; line-height:1.45;}
+  h1,h2,h3{font-family:'Barlow Condensed',sans-serif; font-weight:700;}
+
+  /* ---------- Login ---------- */
+  #login-screen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(160deg, var(--dark) 0%, var(--dark2) 100%); padding:20px;
+  }
+  .login-card{
+    background:var(--white); border-radius:14px; padding:36px 32px; width:100%; max-width:380px;
+    box-shadow:0 20px 50px rgba(0,0,0,.25);
+  }
+  .login-card .brand-title{color:var(--dark); font-size:26px; margin:0 0 2px; font-family:'Barlow Condensed'; font-weight:700;}
+  .login-card .brand-sub{color:var(--gray); font-size:12px; margin-bottom:22px; display:block;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; color:var(--dark); margin-bottom:5px;}
+  .field input, .field select{
+    width:100%; padding:10px 12px; border:1.4px solid var(--line); border-radius:8px;
+    font-family:'Barlow'; font-size:14px; color:var(--ink); background:#fff;
+  }
+  .field input:focus{outline:none; border-color:var(--green); box-shadow:0 0 0 3px rgba(45,158,126,.15);}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--dark); color:#fff; border:none; border-radius:9px;
+    padding:11px 20px; font-family:'Barlow'; font-weight:600; font-size:13.5px; cursor:pointer;
+  }
+  .btn:hover{background:var(--dark2);}
+  .btn.full{width:100%;}
+  .btn.secondary{background:var(--tint); color:var(--dark);}
+  .btn.danger{background:#fbeceb; color:var(--red);}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .msg{font-size:12.5px; margin-top:10px; padding:9px 12px; border-radius:8px;}
+  .msg.error{background:#fbeceb; color:var(--red);}
+  .msg.ok{background:var(--tint); color:var(--dark);}
+
+  /* ---------- App shell ---------- */
+  #app{display:none;}
+  .wrap{max-width:1200px; margin:0 auto; padding:24px 20px 60px;}
+  .tabs{display:flex; gap:8px; margin-bottom:22px;}
+  .tab-btn{
+    background:#fff; border:1.4px solid var(--line); color:var(--gray);
+    padding:10px 20px; border-radius:20px; font-weight:600; font-size:13.5px; cursor:pointer; font-family:'Barlow';
+  }
+  .tab-btn.active{background:var(--dark); border-color:var(--dark); color:#fff;}
+
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px;}
+  .kpi-card{background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px 20px;}
+  .kpi-card .kpi-label{font-size:11.5px; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:.4px;}
+  .kpi-card .kpi-value{font-family:'Barlow Condensed'; font-size:32px; font-weight:700; color:var(--dark); margin-top:4px;}
+  @media(max-width:900px){ .kpi-row{grid-template-columns:1fr 1fr;} }
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:12px; padding:22px 24px; margin-bottom:20px; box-shadow:0 1px 3px rgba(28,43,40,.05);}
+  .card h2{font-size:19px; color:var(--dark); margin:0 0 4px;}
+  .card .card-sub{font-size:12.5px; color:var(--gray); margin:0 0 18px;}
+
+  table.solicitudes{width:100%; border-collapse:collapse; font-size:12.8px;}
+  table.solicitudes th{text-align:left; background:var(--tint); color:var(--dark); font-size:11px; text-transform:uppercase; letter-spacing:.4px; padding:9px 10px; border-bottom:1px solid var(--line);}
+  table.solicitudes td{padding:10px; border-bottom:1px solid var(--line); vertical-align:top;}
+  .badge{display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;}
+  .badge.pendiente{background:#fdf2e2; color:var(--amber);}
+  .badge.autorizado{background:var(--tint); color:var(--dark);}
+  .badge.rechazado{background:#fbeceb; color:var(--red);}
+  .badge.expirado{background:#ececec; color:var(--gray);}
+  .badge.cerrado{background:#e3e9e8; color:var(--gray);}
+  .empty-state{text-align:center; padding:40px 20px; color:var(--gray); font-size:13px;}
+  .folio-chip{display:inline-block; background:var(--dark); color:#fff; font-weight:700; font-size:12px; padding:4px 10px; border-radius:7px;}
+  .row-actions{display:flex; gap:6px;}
+  .row-actions button{padding:6px 12px; font-size:12px; border-radius:7px; border:none; cursor:pointer; font-weight:700;}
+  .filter-bar{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
+  .filter-bar select, .filter-bar input{padding:8px 10px; border:1.4px solid var(--line); border-radius:8px; font-size:13px;}
+
+  /* ---------- Modal QR ---------- */
+  .modal-overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100; align-items:center; justify-content:center;}
+  .modal-overlay.show{display:flex;}
+  .modal-box{background:#fff; border-radius:14px; padding:28px; max-width:340px; text-align:center;}
+  .modal-box h3{color:var(--dark); margin:0 0 6px;}
+  .modal-box p{font-size:12.5px; color:var(--gray); margin:0 0 16px;}
+  .modal-box canvas{margin:0 auto;}
+
+  header{background:#fff;border-bottom:3px solid var(--green-light);padding:14px 40px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+  .header-logo{display:flex;align-items:center;gap:16px;}
+  .header-logo img{height:52px;}
+  .header-title{display:flex;flex-direction:column;justify-content:center;border-left:2px solid rgba(45,158,126,0.4);padding-left:14px;margin-right:4px;}
+  .header-title .main{font-family:'Barlow Condensed',sans-serif;font-size:1.25rem;font-weight:700;color:var(--green-dark);letter-spacing:0.04em;text-transform:uppercase;}
+  .header-title .sub{font-size:0.78rem;font-weight:400;color:var(--gray);letter-spacing:0.02em;}
+  .header-right{display:flex;align-items:center;gap:12px;}
+  .header-badge{background:#eaf6f1;color:var(--green-mid);border:1px solid rgba(45,158,126,0.4);border-radius:20px;padding:6px 16px;font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;}
+  .btn-header{display:flex;align-items:center;gap:6px;background:#f0f7f5;border:1px solid rgba(30,91,79,0.3);color:var(--green-mid);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;}
+  footer{background:var(--green-dark);color:rgba(255,255,255,0.7);padding:28px 40px;margin-top:auto;}
+  .footer-inner{max-width:1500px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:24px;}
+  .footer-org p{font-size:0.8rem;line-height:1.9;margin:0;}
+  .footer-org p:first-child{color:#fff;font-weight:600;font-size:0.85rem;}
+  .footer-credits{text-align:right;}
+  .footer-credits p{font-size:0.78rem;line-height:1.9;margin:0;}
+  .footer-credits p:first-child{color:#fff;font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="brand-title">SACISC</div>
+    <span class="brand-sub">Dashboard de Oficina Central · Control de Accesos</span>
+    <div class="field">
+      <label>Correo institucional PEMEX</label>
+      <input type="email" id="login-email" placeholder="nombre.apellido@pemex.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn full" id="btn-login">Iniciar sesión</button>
+    <div id="login-msg"></div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <!-- header y footer reales se insertan por script para mantener el mismo patrón de los demás módulos -->
+  <div id="header-placeholder"></div>
+
+  <div class="wrap">
+    <div class="kpi-row" id="kpi-row"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="pendientes">Pendientes</button>
+      <button class="tab-btn" data-tab="historial">Historial</button>
+    </div>
+
+    <div id="tab-content"></div>
+  </div>
+
+  <div id="footer-placeholder"></div>
+</div>
+
+<!-- ================= MODAL QR ================= -->
+<div class="modal-overlay" id="qr-modal">
+  <div class="modal-box">
+    <h3 id="qr-modal-folio">Folio</h3>
+    <p>Comparte este código con el área solicitante para el ingreso.</p>
+    <canvas id="qr-canvas"></canvas>
+    <div style="margin-top:16px;">
+      <button class="btn secondary full" id="btn-cerrar-qr-modal">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://epqyabsdgsthbtuluarq.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_RcSictggIciEBwzLcxqt_w_DX3HUon0";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentPerfil = null;
+
+document.getElementById("btn-login").addEventListener("click", async () => {
+  const email = document.getElementById("login-email").value.trim();
+  const pass = document.getElementById("login-pass").value;
+  const msg = document.getElementById("login-msg");
+  msg.innerHTML = "";
+  if (!email || !pass) { msg.innerHTML = '<div class="msg error">Ingresa tu correo y contraseña.</div>'; return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { msg.innerHTML = `<div class="msg error">No fue posible iniciar sesión: ${error.message}</div>`; return; }
+  await afterLogin(data.user);
+});
+
+async function afterLogin(user) {
+  currentUser = user;
+  const { data: perfil, error } = await sb
+    .from("acc_perfiles_centrales")
+    .select("id, nombre, rol, activo")
+    .eq("correo_pemex", user.email)
+    .single();
+
+  if (error || !perfil || !perfil.activo) {
+    document.getElementById("login-msg").innerHTML =
+      '<div class="msg error">Tu cuenta no está habilitada como perfil de oficina central. Contacta al administrador.</div>';
+    await sb.auth.signOut();
+    return;
+  }
+  currentPerfil = perfil;
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  renderHeader();
+  renderFooter();
+  await cargarKpis();
+  cambiarTab("pendientes");
+}
+
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if (data.session) await afterLogin(data.session.user);
+})();
+
+function renderHeader() {
+  document.getElementById("header-placeholder").innerHTML = `
+  <header>
+    <div class="header-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 64" style="height:48px;width:auto;flex-shrink:0;">
+        <defs>
+          <linearGradient id="sac_g1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1e5b4f"/><stop offset="100%" stop-color="#2d9e7e"/>
+          </linearGradient>
+          <linearGradient id="sac_g2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#2d9e7e"/><stop offset="100%" stop-color="#4ecba0"/>
+          </linearGradient>
+        </defs>
+        <polygon points="32,4 52,15 52,37 32,48 12,37 12,15" fill="url(#sac_g1)"/>
+        <polygon points="32,10 48,19.5 48,32.5 32,42 16,32.5 16,19.5" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+        <path d="M24 20 C24 20 40 20 40 26 C40 32 24 28 24 34 C24 40 40 40 40 40" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="12" y="51" width="40" height="2.5" rx="1.25" fill="url(#sac_g2)" opacity="0.8"/>
+        <text x="62" y="28" font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-size="22" font-weight="700" letter-spacing="3" fill="#1e5b4f">SACISC</text>
+        <rect x="62" y="32" width="155" height="1" rx="0.5" fill="#2d9e7e" opacity="0.4"/>
+        <text x="63" y="44" font-family="'Barlow Condensed','Arial Narrow',sans-serif" font-size="9.5" font-weight="400" letter-spacing="1.8" fill="#2d9e7e" opacity="0.9">CONTROL DE ACCESOS · OFICINA CENTRAL</text>
+      </svg>
+      <div class="header-title" style="border-left:none;padding-left:0;">
+        <div class="main">SACISC <span style="font-weight:400;opacity:0.7;font-size:0.82em;">· Dashboard Oficina Central</span></div>
+        <div class="sub">Sistema Administrativo de Control Integral de Servicios Corporativos</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="header-badge">${currentPerfil.nombre} · ${etiquetaRol(currentPerfil.rol)}</div>
+      <button class="btn-header" id="btn-logout">Cerrar sesión</button>
+    </div>
+  </header>`;
+  document.getElementById("btn-logout").addEventListener("click", async () => { await sb.auth.signOut(); location.reload(); });
+}
+
+function renderFooter() {
+  document.getElementById("footer-placeholder").innerHTML = `
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-org">
+        <p>Unidad Regional de Servicios Corporativos Sur</p>
+        <p>Superintendencia de Servicios Corporativos Sur Zona Coatzacoalcos</p>
+        <p>División DAS-SSAB-GSG</p>
+        <p>Dashboard de Oficina Central · Control de Accesos</p>
+      </div>
+      <div class="footer-credits">
+        <p>Creado por: <strong>Ing. Angel Pérez Chávez</strong> · F.383573</p>
+        <p>angel.perez@pemex.com</p>
+        <p>Ext. 27-301</p>
+      </div>
+    </div>
+  </footer>`;
+}
+
+function etiquetaRol(r) {
+  return { vigilancia: "Vigilancia", jefe_area: "Jefe de Área", admin_sistema: "Admin. del Sistema" }[r] || r;
+}
+
+/* ---------------------------------------------------------------------
+   TABS
+   --------------------------------------------------------------------- */
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".tab-btn");
+  if (!btn) return;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  cambiarTab(btn.dataset.tab);
+});
+
+function cambiarTab(tab) {
+  if (tab === "pendientes") renderPendientes();
+  else renderHistorial();
+}
+
+/* ---------------------------------------------------------------------
+   KPIs
+   --------------------------------------------------------------------- */
+async function cargarKpis() {
+  const { data, error } = await sb.from("acc_kpis_dashboard").select("*").single();
+  const box = document.getElementById("kpi-row");
+  if (error || !data) { box.innerHTML = ""; return; }
+  box.innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Solicitudes pendientes</div><div class="kpi-value">${data.vehicular_pendientes}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Autorizadas hoy</div><div class="kpi-value">${data.vehicular_autorizadas_hoy}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Vehículos dentro</div><div class="kpi-value">${data.vehiculos_dentro}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Personas dentro (peatonal)</div><div class="kpi-value">${data.personas_dentro}</div></div>
+  `;
+}
+
+/* ---------------------------------------------------------------------
+   PENDIENTES
+   --------------------------------------------------------------------- */
+async function renderPendientes() {
+  const el = document.getElementById("tab-content");
+  el.innerHTML = `<div class="card"><h2>Solicitudes pendientes de autorización</h2><p class="card-sub">Cualquiera de los 3 perfiles centrales puede autorizar o rechazar.</p><div id="pendientes-list"><div class="empty-state">Cargando…</div></div></div>`;
+
+  const { data, error } = await sb
+    .from("acc_solicitudes_vehicular")
+    .select("id, folio, fecha_inicio, fecha_termino, motivo, placa, conductor, lugar_presentacion, creado_en")
+    .eq("estatus", "pendiente")
+    .order("creado_en", { ascending: true });
+
+  const box = document.getElementById("pendientes-list");
+  if (error) { box.innerHTML = `<div class="empty-state">Error: ${error.message}</div>`; return; }
+  if (!data || data.length === 0) { box.innerHTML = `<div class="empty-state">No hay solicitudes pendientes.</div>`; return; }
+
+  box.innerHTML = `
+    <table class="solicitudes">
+      <thead><tr><th>Folio</th><th>Vigencia</th><th>Motivo</th><th>Placa / Conductor</th><th>Destino</th><th>Acciones</th></tr></thead>
+      <tbody>
+        ${data.map(s => `
+          <tr>
+            <td><span class="folio-chip">${s.folio}</span></td>
+            <td>${formatFecha(s.fecha_inicio)} – ${formatFecha(s.fecha_termino)}</td>
+            <td>${s.motivo || "—"}</td>
+            <td>${s.placa || "—"} / ${s.conductor || "—"}</td>
+            <td>${s.lugar_presentacion || "—"}</td>
+            <td>
+              <div class="row-actions">
+                <button style="background:var(--dark);color:#fff;" data-autorizar="${s.id}" data-folio="${s.folio}">Autorizar</button>
+                <button style="background:#fbeceb;color:var(--red);" data-rechazar="${s.id}">Rechazar</button>
+              </div>
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+
+  box.querySelectorAll("[data-autorizar]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; btn.textContent = "Autorizando…";
+      const { data: qr, error } = await sb.rpc("acc_autorizar_solicitud", { p_solicitud_id: btn.dataset.autorizar });
+      if (error) { alert("No se pudo autorizar: " + error.message); btn.disabled = false; btn.textContent = "Autorizar"; return; }
+      mostrarModalQR(btn.dataset.folio, qr);
+      await renderPendientes();
+      await cargarKpis();
+    });
+  });
+
+  box.querySelectorAll("[data-rechazar]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const motivo = prompt("Motivo del rechazo (se lo notificará al área usuaria):");
+      if (motivo === null) return;
+      btn.disabled = true;
+      const { error } = await sb.rpc("acc_rechazar_solicitud", { p_solicitud_id: btn.dataset.rechazar, p_motivo: motivo });
+      if (error) { alert("No se pudo rechazar: " + error.message); btn.disabled = false; return; }
+      await renderPendientes();
+      await cargarKpis();
+    });
+  });
+}
+
+function mostrarModalQR(folio, qrTexto) {
+  document.getElementById("qr-modal-folio").textContent = folio;
+  const canvas = document.getElementById("qr-canvas");
+  QRCode.toCanvas(canvas, qrTexto, { width: 220, margin: 1, color: { dark: "#1e5b4f", light: "#ffffff" } });
+  document.getElementById("qr-modal").classList.add("show");
+}
+document.getElementById("btn-cerrar-qr-modal").addEventListener("click", () => {
+  document.getElementById("qr-modal").classList.remove("show");
+});
+
+/* ---------------------------------------------------------------------
+   HISTORIAL
+   --------------------------------------------------------------------- */
+async function renderHistorial() {
+  const el = document.getElementById("tab-content");
+  el.innerHTML = `
+    <div class="card">
+      <h2>Historial de solicitudes</h2>
+      <p class="card-sub">Todas las solicitudes vehiculares, con su estatus actual.</p>
+      <div class="filter-bar">
+        <select id="filtro-estatus">
+          <option value="">Todos los estatus</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="autorizado">Autorizado</option>
+          <option value="rechazado">Rechazado</option>
+          <option value="expirado">Expirado</option>
+          <option value="cerrado">Cerrado</option>
+        </select>
+        <input type="text" id="filtro-texto" placeholder="Buscar por folio o placa…">
+      </div>
+      <div id="historial-list"><div class="empty-state">Cargando…</div></div>
+    </div>
+  `;
+  document.getElementById("filtro-estatus").addEventListener("change", cargarHistorial);
+  document.getElementById("filtro-texto").addEventListener("input", debounce(cargarHistorial, 300));
+  await cargarHistorial();
+}
+
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+async function cargarHistorial() {
+  const estatus = document.getElementById("filtro-estatus").value;
+  const texto = document.getElementById("filtro-texto").value.trim();
+  let query = sb.from("acc_solicitudes_vehicular")
+    .select("folio, fecha_inicio, fecha_termino, motivo, placa, estatus, creado_en")
+    .order("creado_en", { ascending: false })
+    .limit(100);
+  if (estatus) query = query.eq("estatus", estatus);
+  if (texto) query = query.or(`folio.ilike.%${texto}%,placa.ilike.%${texto}%`);
+
+  const { data, error } = await query;
+  const box = document.getElementById("historial-list");
+  if (error) { box.innerHTML = `<div class="empty-state">Error: ${error.message}</div>`; return; }
+  if (!data || data.length === 0) { box.innerHTML = `<div class="empty-state">Sin resultados.</div>`; return; }
+
+  box.innerHTML = `
+    <table class="solicitudes">
+      <thead><tr><th>Folio</th><th>Vigencia</th><th>Motivo</th><th>Placa</th><th>Estatus</th></tr></thead>
+      <tbody>
+        ${data.map(s => `
+          <tr>
+            <td><span class="folio-chip">${s.folio}</span></td>
+            <td>${formatFecha(s.fecha_inicio)} – ${formatFecha(s.fecha_termino)}</td>
+            <td>${s.motivo || "—"}</td>
+            <td>${s.placa || "—"}</td>
+            <td><span class="badge ${s.estatus}">${etiquetaEstatus(s.estatus)}</span></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function formatFecha(f) { if (!f) return "—"; const [y,m,d] = f.split("-"); return `${d}/${m}/${y}`; }
+function etiquetaEstatus(e) {
+  return { pendiente:"Pendiente", autorizado:"Autorizado", rechazado:"Rechazado", expirado:"Expirado", cerrado:"Cerrado" }[e] || e;
+}
+</script>
+</body>
+</html>
