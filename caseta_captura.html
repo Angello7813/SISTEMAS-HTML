@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1e5b4f">
+<title>SACISC · Caseta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+  :root{
+    --dark:#002f2a; --mid:#1e5b4f; --green:#2d9e7e; --tint:#e8f5f1; --tint2:#d3ede4;
+    --ink:#1c2b28; --gray:#6b7b78; --line:#d7e2df; --white:#fff;
+    --amber:#b8790f; --red:#b3413a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:#f4f7f6; color:var(--ink); font-family:'Barlow',sans-serif;
+    font-size:16px; -webkit-user-select:none; user-select:none; overscroll-behavior:none;
+  }
+  h1,h2,h3,.brand{font-family:'Barlow Condensed',sans-serif; font-weight:700;}
+  input, textarea, button{font-family:'Barlow',sans-serif;}
+  .screen{min-height:100vh; display:flex; flex-direction:column;}
+  .topbar{
+    background:var(--dark); color:#fff; padding:14px 16px; display:flex; align-items:center;
+    justify-content:space-between; position:sticky; top:0; z-index:30;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
+  }
+  .topbar .brand{font-size:19px; line-height:1;}
+  .topbar .sub{font-size:10.5px; color:#9fd6c3; letter-spacing:.4px;}
+  .topbar .caseta-tag{
+    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); border-radius:16px;
+    padding:5px 12px; font-size:11px; font-weight:600; color:#cdeee2;
+  }
+  .content{flex:1; padding:16px; padding-bottom:90px;}
+
+  /* ---------- Setup / Login ---------- */
+  .center-screen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(160deg,var(--dark) 0%, #123f37 100%); padding:24px;
+  }
+  .card{
+    background:#fff; border-radius:18px; padding:28px 24px; width:100%; max-width:400px;
+    box-shadow:0 20px 50px rgba(0,0,0,.3);
+  }
+  .card .brand{color:var(--dark); font-size:26px;}
+  .card .sub{color:var(--gray); font-size:12.5px; margin-bottom:22px; display:block;}
+  .setup-btn{
+    display:block; width:100%; text-align:left; background:var(--tint); border:1.5px solid var(--green);
+    border-radius:12px; padding:16px; margin-bottom:12px; font-size:16px; font-weight:700;
+    color:var(--dark); font-family:'Barlow Condensed'; letter-spacing:.3px;
+  }
+  .setup-btn small{display:block; font-family:'Barlow'; font-weight:400; font-size:12px; color:var(--gray); margin-top:2px;}
+
+  .pin-display{
+    display:flex; justify-content:center; gap:14px; margin:20px 0 26px;
+  }
+  .pin-dot{width:16px; height:16px; border-radius:50%; border:2px solid var(--green); background:#fff;}
+  .pin-dot.filled{background:var(--green);}
+  .pin-pad{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+  .pin-key{
+    background:var(--tint); border:none; border-radius:14px; padding:20px 0; font-size:24px;
+    font-weight:700; color:var(--dark); font-family:'Barlow Condensed';
+  }
+  .pin-key:active{background:var(--tint2);}
+  .pin-key.action{background:none; color:var(--gray); font-size:13px; font-family:'Barlow';}
+  .login-msg{text-align:center; font-size:13px; color:var(--red); margin-top:10px; min-height:18px;}
+
+  /* ---------- App shell ---------- */
+  #app{display:none;}
+  .tabs{display:flex; gap:8px; margin-bottom:16px;}
+  .tab-btn{
+    flex:1; background:#fff; border:1.5px solid var(--line); color:var(--gray); padding:13px 0;
+    border-radius:12px; font-weight:700; font-size:15px; font-family:'Barlow Condensed';
+    letter-spacing:.3px;
+  }
+  .tab-btn.active{background:var(--dark); border-color:var(--dark); color:#fff;}
+
+  .section-card{
+    background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:14px;
+    box-shadow:0 1px 3px rgba(28,43,40,.05);
+  }
+  .section-card h2{font-size:17px; color:var(--dark); margin:0 0 12px;}
+  label{display:block; font-size:12.5px; font-weight:700; color:var(--dark); margin:12px 0 5px;
+    font-family:'Barlow Condensed'; letter-spacing:.2px; text-transform:uppercase;}
+  label:first-child{margin-top:0;}
+  input[type=text], input[type=search]{
+    width:100%; padding:13px 14px; border:1.6px solid var(--line); border-radius:10px;
+    font-size:16px; color:var(--ink); background:#fbfdfc;
+  }
+  input:focus{outline:none; border-color:var(--green);}
+
+  .switch-row{display:flex; align-items:center; justify-content:space-between; margin:14px 0;}
+  .switch-row span{font-size:14px; font-weight:600; color:var(--ink);}
+  .switch{position:relative; width:48px; height:28px;}
+  .switch input{opacity:0; width:0; height:0;}
+  .slider{position:absolute; inset:0; background:#d7e2df; border-radius:28px; transition:.2s;}
+  .slider::before{content:"";position:absolute; width:22px; height:22px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s;}
+  input:checked + .slider{background:var(--green);}
+  input:checked + .slider::before{transform:translateX(20px);}
+
+  .photo-btn{
+    display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
+    background:var(--tint); border:1.6px dashed var(--green); border-radius:12px;
+    padding:22px 12px; font-size:14.5px; font-weight:700; color:var(--dark); margin-top:6px;
+    font-family:'Barlow Condensed';
+  }
+  .photo-btn.has-photo{border-style:solid; background:#fff;}
+  .photo-preview{width:100%; border-radius:10px; margin-top:8px; max-height:180px; object-fit:cover; display:none;}
+  .photo-preview.show{display:block;}
+
+  .persona-block{border-top:1.5px dashed var(--line); padding-top:14px; margin-top:14px; position:relative;}
+  .persona-block:first-of-type{border-top:none; margin-top:0; padding-top:0;}
+  .persona-block .remove-persona{
+    position:absolute; right:0; top:14px; background:#fbeceb; color:var(--red); border:none;
+    border-radius:8px; width:30px; height:30px; font-size:15px;
+  }
+  .add-persona-link{
+    background:none; border:none; color:var(--green); font-weight:700; font-size:14px; margin-top:6px;
+    font-family:'Barlow Condensed'; padding:8px 0;
+  }
+
+  .big-btn{
+    display:block; width:100%; background:var(--dark); color:#fff; border:none; border-radius:14px;
+    padding:17px 0; font-size:16.5px; font-weight:700; font-family:'Barlow Condensed'; letter-spacing:.4px;
+    margin-top:16px;
+  }
+  .big-btn:disabled{opacity:.5;}
+  .big-btn.secondary{background:var(--tint); color:var(--dark);}
+  .big-btn.qr{background:var(--green);}
+
+  .result-msg{padding:12px 14px; border-radius:10px; font-size:13.5px; margin-top:12px; font-weight:600;}
+  .result-msg.ok{background:var(--tint); color:var(--dark);}
+  .result-msg.error{background:#fbeceb; color:var(--red);}
+
+  .search-result{
+    background:#fbfdfc; border:1.4px solid var(--line); border-radius:12px; padding:14px; margin-top:10px;
+  }
+  .search-result .sr-name{font-family:'Barlow Condensed'; font-weight:700; font-size:15.5px; color:var(--dark);}
+  .search-result .sr-meta{font-size:12.5px; color:var(--gray); margin-top:2px;}
+  .search-result .sr-photos{display:flex; gap:8px; margin-top:8px;}
+  .search-result .sr-photos img{width:60px; height:60px; border-radius:8px; object-fit:cover; border:1px solid var(--line);}
+  .search-result button{margin-top:10px;}
+
+  /* ---------- QR scanner ---------- */
+  #qr-overlay{
+    display:none; position:fixed; inset:0; background:#000; z-index:100; flex-direction:column;
+  }
+  #qr-overlay.show{display:flex;}
+  #qr-video{flex:1; object-fit:cover; width:100%;}
+  .qr-frame{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:70vw; max-width:280px; aspect-ratio:1; border:3px solid var(--green); border-radius:16px;
+  }
+  .qr-close{
+    position:absolute; top:20px; right:20px; background:rgba(255,255,255,.15); color:#fff;
+    border:none; border-radius:50%; width:42px; height:42px; font-size:20px; z-index:101;
+  }
+  .qr-hint{
+    position:absolute; bottom:40px; left:0; right:0; text-align:center; color:#fff; font-size:14px;
+  }
+
+  /* ---------- Bottom bar ---------- */
+  .bottom-bar{
+    position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--line);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom)); display:flex; justify-content:space-between;
+    align-items:center; z-index:20;
+  }
+  .bottom-bar .guard-info{font-size:12.5px; color:var(--gray);}
+  .bottom-bar .guard-info strong{color:var(--ink); font-family:'Barlow Condensed'; font-size:14px;}
+  .bottom-bar button{
+    background:#fbeceb; color:var(--red); border:none; border-radius:10px; padding:9px 16px;
+    font-weight:700; font-size:13px; font-family:'Barlow Condensed';
+  }
+
+  .offline-banner{
+    display:none; background:var(--amber); color:#fff; text-align:center; font-size:12.5px;
+    font-weight:700; padding:8px; position:sticky; top:58px; z-index:29;
+  }
+  .offline-banner.show{display:block;}
+
+  .shift-warning{
+    display:none; position:fixed; top:70px; left:16px; right:16px; background:var(--amber); color:#fff;
+    border-radius:12px; padding:12px 16px; font-size:13.5px; font-weight:600; z-index:50;
+    box-shadow:0 6px 20px rgba(0,0,0,.2);
+  }
+  .shift-warning.show{display:block;}
+</style>
+</head>
+<body>
+
+<!-- ================= SETUP (primera vez, elegir caseta) ================= -->
+<div id="setup-screen" class="center-screen">
+  <div class="card">
+    <div class="brand">SACISC</div>
+    <span class="sub">Configuración inicial de este celular</span>
+    <p style="font-size:13.5px;color:var(--gray);margin-bottom:16px;">Selecciona la caseta a la que pertenece este dispositivo. Solo se configura una vez.</p>
+    <button class="setup-btn" data-caseta="peatonal">Caseta Peatonal<small>Contratistas y proveedores a pie</small></button>
+    <button class="setup-btn" data-caseta="vehicular_ligero">Caseta Vehicular Ligero<small>Autos, camionetas</small></button>
+    <button class="setup-btn" data-caseta="vehicular_pesado">Caseta Vehicular Pesado<small>Camiones, unidades de carga</small></button>
+  </div>
+</div>
+
+<!-- ================= LOGIN (PIN) ================= -->
+<div id="login-screen" class="center-screen" style="display:none;">
+  <div class="card">
+    <div class="brand">SACISC</div>
+    <span class="sub" id="login-caseta-label">Caseta</span>
+    <div class="pin-display" id="pin-display">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-pad" id="pin-pad">
+      <button class="pin-key" data-k="1">1</button>
+      <button class="pin-key" data-k="2">2</button>
+      <button class="pin-key" data-k="3">3</button>
+      <button class="pin-key" data-k="4">4</button>
+      <button class="pin-key" data-k="5">5</button>
+      <button class="pin-key" data-k="6">6</button>
+      <button class="pin-key" data-k="7">7</button>
+      <button class="pin-key" data-k="8">8</button>
+      <button class="pin-key" data-k="9">9</button>
+      <button class="pin-key action" id="btn-change-caseta">Cambiar caseta</button>
+      <button class="pin-key" data-k="0">0</button>
+      <button class="pin-key action" id="btn-pin-del">Borrar</button>
+    </div>
+    <div class="login-msg" id="login-msg"></div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <div class="topbar">
+    <div>
+      <div class="brand">SACISC</div>
+      <div class="sub">Caseta de control</div>
+    </div>
+    <div class="caseta-tag" id="caseta-tag">—</div>
+  </div>
+  <div class="offline-banner" id="offline-banner">Sin conexión — los registros se guardan y se sincronizan al recuperar señal</div>
+  <div class="shift-warning" id="shift-warning">Tu turno está por cerrar. Entrega la caseta al siguiente guardia.</div>
+
+  <div class="content">
+    <div class="tabs" id="main-tabs"></div>
+    <div id="tab-content"></div>
+  </div>
+
+  <div class="bottom-bar">
+    <div class="guard-info">
+      <strong id="guard-name-label">—</strong><br>
+      <span id="pending-queue-label"></span>
+    </div>
+    <button id="btn-cerrar-turno">Cerrar turno</button>
+  </div>
+</div>
+
+<!-- ================= QR SCANNER OVERLAY ================= -->
+<div id="qr-overlay">
+  <button class="qr-close" id="qr-close-btn">×</button>
+  <video id="qr-video" autoplay playsinline muted></video>
+  <div class="qr-frame"></div>
+  <div class="qr-hint">Coloca el código QR dentro del recuadro</div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIGURACIÓN
+   ===================================================================== */
+const SUPABASE_URL = "https://epqyabsdgsthbtuluarq.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_RcSictggIciEBwzLcxqt_w_DX3HUon0";
+const FOTOS_BUCKET = "acc-fotos-peatonal";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const HORARIOS_CIERRE = ["07:50", "15:50", "23:50"];
+const QUEUE_KEY = "acc_offline_queue_v1";
+
+let CASETA = localStorage.getItem("acc_caseta") || null;
+let GUARDIA = JSON.parse(sessionStorage.getItem("acc_guardia") || "null");
+let pinBuffer = "";
+let qrStream = null;
+let qrScanLoopActive = false;
+
+/* ---------------------------------------------------------------------
+   SETUP DE CASETA (una sola vez por dispositivo)
+   --------------------------------------------------------------------- */
+document.querySelectorAll(".setup-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    localStorage.setItem("acc_caseta", btn.dataset.caseta);
+    CASETA = btn.dataset.caseta;
+    location.reload();
+  });
+});
+
+document.getElementById("btn-change-caseta").addEventListener("click", () => {
+  if (confirm("¿Cambiar la caseta configurada en este celular?")) {
+    localStorage.removeItem("acc_caseta");
+    location.reload();
+  }
+});
+
+function nombreCaseta(c) {
+  return { peatonal: "Caseta Peatonal", vehicular_ligero: "Caseta Vehicular Ligero", vehicular_pesado: "Caseta Vehicular Pesado" }[c] || c;
+}
+
+/* ---------------------------------------------------------------------
+   LOGIN POR PIN
+   --------------------------------------------------------------------- */
+function renderPinDots() {
+  document.querySelectorAll(".pin-dot").forEach((d, i) => d.classList.toggle("filled", i < pinBuffer.length));
+}
+
+document.getElementById("pin-pad").addEventListener("click", async (e) => {
+  const btn = e.target.closest(".pin-key[data-k]");
+  if (!btn) return;
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += btn.dataset.k;
+  renderPinDots();
+  if (pinBuffer.length === 4) await intentarLogin();
+});
+
+document.getElementById("btn-pin-del").addEventListener("click", () => {
+  pinBuffer = pinBuffer.slice(0, -1);
+  renderPinDots();
+});
+
+async function intentarLogin() {
+  const msg = document.getElementById("login-msg");
+  msg.textContent = "Verificando…";
+  const { data, error } = await sb.rpc("acc_login_guardia", { p_pin: pinBuffer, p_caseta: CASETA });
+  pinBuffer = "";
+  renderPinDots();
+  if (error || !data || data.length === 0) {
+    msg.textContent = "PIN incorrecto o no autorizado para esta caseta.";
+    return;
+  }
+  GUARDIA = data[0];
+  sessionStorage.setItem("acc_guardia", JSON.stringify(GUARDIA));
+  msg.textContent = "";
+  iniciarApp();
+}
+
+document.getElementById("btn-cerrar-turno").addEventListener("click", () => {
+  if (confirm("¿Cerrar tu turno y salir?")) cerrarSesion();
+});
+
+function cerrarSesion() {
+  sessionStorage.removeItem("acc_guardia");
+  GUARDIA = null;
+  location.reload();
+}
+
+/* ---------------------------------------------------------------------
+   CIERRE FORZADO POR HORARIO (07:50 / 15:50 / 23:50)
+   --------------------------------------------------------------------- */
+function checkCierreForzado() {
+  const now = new Date();
+  const hhmm = String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0");
+  const warnBox = document.getElementById("shift-warning");
+  const proximos = HORARIOS_CIERRE.map(h => {
+    const [hh,mm] = h.split(":").map(Number);
+    const t = new Date(now); t.setHours(hh,mm,0,0);
+    return (t - now) / 60000;
+  });
+  const minRestante = Math.min(...proximos.map(m => m >= 0 ? m : m + 24*60));
+  if (warnBox) warnBox.classList.toggle("show", minRestante <= 10 && minRestante > 0);
+
+  if (HORARIOS_CIERRE.includes(hhmm) && GUARDIA) {
+    cerrarSesion();
+  }
+}
+setInterval(checkCierreForzado, 20000);
+
+/* ---------------------------------------------------------------------
+   INICIO DE LA APP
+   --------------------------------------------------------------------- */
+function iniciarApp() {
+  document.getElementById("setup-screen").style.display = "none";
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  document.getElementById("caseta-tag").textContent = nombreCaseta(CASETA);
+  document.getElementById("guard-name-label").textContent = GUARDIA.nombre + (GUARDIA.puesto === "cabo" ? " · Cabo" : "");
+  renderTabs();
+  actualizarOffline();
+  actualizarPendientes();
+}
+
+(function boot() {
+  if (!CASETA) {
+    document.getElementById("setup-screen").style.display = "flex";
+    return;
+  }
+  document.getElementById("setup-screen").style.display = "none";
+  document.getElementById("login-caseta-label").textContent = nombreCaseta(CASETA);
+  if (GUARDIA) {
+    iniciarApp();
+  } else {
+    document.getElementById("login-screen").style.display = "flex";
+  }
+})();
+
+/* ---------------------------------------------------------------------
+   TABS SEGÚN TIPO DE CASETA
+   --------------------------------------------------------------------- */
+function renderTabs() {
+  const tabsEl = document.getElementById("main-tabs");
+  const isPeatonal = CASETA === "peatonal";
+  tabsEl.innerHTML = isPeatonal
+    ? `<button class="tab-btn active" data-tab="entrada">Entrada</button>
+       <button class="tab-btn" data-tab="salida">Salida</button>`
+    : `<button class="tab-btn active" data-tab="entrada">Escanear QR</button>
+       <button class="tab-btn" data-tab="salida">Salida</button>`;
+  tabsEl.querySelectorAll(".tab-btn").forEach(b => {
+    b.addEventListener("click", () => {
+      tabsEl.querySelectorAll(".tab-btn").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      renderTabContent(b.dataset.tab);
+    });
+  });
+  renderTabContent("entrada");
+}
+
+function renderTabContent(tab) {
+  const el = document.getElementById("tab-content");
+  if (CASETA === "peatonal") {
+    el.innerHTML = tab === "entrada" ? tplPeatonalEntrada() : tplPeatonalSalida();
+    if (tab === "entrada") initPeatonalEntradaLogic();
+    else initPeatonalSalidaLogic();
+  } else {
+    el.innerHTML = tab === "entrada" ? tplVehicularEntrada() : tplVehicularSalida();
+    if (tab === "entrada") initVehicularEntradaLogic();
+    else initVehicularSalidaLogic();
+  }
+}
+
+/* =====================================================================
+   COMPRESIÓN DE FOTOS (canvas) — antes de subir a Storage
+   ===================================================================== */
+function comprimirImagen(file, maxWidth = 900, calidad = 0.7) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => { img.src = e.target.result; };
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => resolve(blob), "image/jpeg", calidad);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function subirFotoComprimida(carpeta, nombreArchivo, file) {
+  const blob = await comprimirImagen(file);
+  const ruta = `${carpeta}/${nombreArchivo}-${Date.now()}.jpg`;
+  const { error } = await sb.storage.from(FOTOS_BUCKET).upload(ruta, blob, { contentType: "image/jpeg" });
+  if (error) throw error;
+  const { data } = sb.storage.from(FOTOS_BUCKET).getPublicUrl(ruta);
+  return data.publicUrl;
+}
+
+function setupPhotoInput(inputId, previewId, btnId) {
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  const btn = document.getElementById(btnId);
+  btn.addEventListener("click", () => input.click());
+  input.addEventListener("change", () => {
+    if (input.files[0]) {
+      preview.src = URL.createObjectURL(input.files[0]);
+      preview.classList.add("show");
+      btn.classList.add("has-photo");
+      btn.textContent = "Foto lista — toca para repetir";
+    }
+  });
+}
+
+/* =====================================================================
+   PEATONAL — ENTRADA
+   ===================================================================== */
+let personaCount = 0;
+
+function personaBlockTpl(idx) {
+  return `
+  <div class="persona-block" data-idx="${idx}">
+    ${idx > 0 ? `<button type="button" class="remove-persona" onclick="this.closest('.persona-block').remove()">×</button>` : ""}
+    <label>Nombre completo</label>
+    <input type="text" class="p-nombre" placeholder="Nombre del visitante">
+    <label>No. de gafete asignado</label>
+    <input type="text" class="p-gafete" placeholder="Ej. 12">
+    <label>Identificación (foto de frente)</label>
+    <input type="file" accept="image/*" capture="environment" class="p-foto-id" style="display:none;" id="foto-id-${idx}">
+    <button type="button" class="photo-btn" id="btn-foto-id-${idx}">📷 Tomar foto de identificación</button>
+    <img class="photo-preview" id="prev-id-${idx}">
+
+    <div class="switch-row">
+      <span>¿Trae equipo de cómputo?</span>
+      <label class="switch"><input type="checkbox" class="p-trae-equipo" id="trae-equipo-${idx}"><span class="slider"></span></label>
+    </div>
+    <div class="equipo-fotos" id="equipo-fotos-${idx}" style="display:none;">
+      <label>Equipo — foto de frente</label>
+      <input type="file" accept="image/*" capture="environment" class="p-foto-eq-frente" style="display:none;" id="foto-eqf-${idx}">
+      <button type="button" class="photo-btn" id="btn-foto-eqf-${idx}">📷 Foto del equipo (frente)</button>
+      <img class="photo-preview" id="prev-eqf-${idx}">
+
+      <label>Equipo — foto de reverso (número de serie)</label>
+      <input type="file" accept="image/*" capture="environment" class="p-foto-eq-reverso" style="display:none;" id="foto-eqr-${idx}">
+      <button type="button" class="photo-btn" id="btn-foto-eqr-${idx}">📷 Foto del equipo (reverso)</button>
+      <img class="photo-preview" id="prev-eqr-${idx}">
+    </div>
+  </div>`;
+}
+
+function tplPeatonalEntrada() {
+  personaCount = 1;
+  return `
+  <div class="section-card">
+    <h2>Datos de la visita</h2>
+    <label>Empresa / Proveedor</label>
+    <input type="text" id="v-empresa" placeholder="Nombre de la compañía">
+    <label>Motivo del ingreso</label>
+    <input type="text" id="v-motivo" placeholder="Ej. Mantenimiento, entrega, reunión">
+    <label>Área destino</label>
+    <input type="text" id="v-area" placeholder="Ej. Servicio a Pozos">
+  </div>
+  <div class="section-card" id="personas-container">
+    <h2>Persona(s) que ingresan</h2>
+    <div id="personas-list">${personaBlockTpl(0)}</div>
+    <button type="button" class="add-persona-link" id="btn-add-persona">+ Agregar otra persona (visita grupal)</button>
+  </div>
+  <button class="big-btn" id="btn-registrar-entrada">Registrar entrada</button>
+  <div id="entrada-result"></div>
+  `;
+}
+
+function initPeatonalEntradaLogic() {
+  setupPhotoInput("foto-id-0", "prev-id-0", "btn-foto-id-0");
+  bindEquipoToggle(0);
+
+  document.getElementById("btn-add-persona").addEventListener("click", () => {
+    const idx = personaCount++;
+    document.getElementById("personas-list").insertAdjacentHTML("beforeend", personaBlockTpl(idx));
+    setupPhotoInput(`foto-id-${idx}`, `prev-id-${idx}`, `btn-foto-id-${idx}`);
+    bindEquipoToggle(idx);
+  });
+
+  document.getElementById("btn-registrar-entrada").addEventListener("click", registrarEntradaPeatonal);
+}
+
+function bindEquipoToggle(idx) {
+  const chk = document.getElementById(`trae-equipo-${idx}`);
+  chk.addEventListener("change", () => {
+    document.getElementById(`equipo-fotos-${idx}`).style.display = chk.checked ? "block" : "none";
+    if (chk.checked) {
+      setupPhotoInput(`foto-eqf-${idx}`, `prev-eqf-${idx}`, `btn-foto-eqf-${idx}`);
+      setupPhotoInput(`foto-eqr-${idx}`, `prev-eqr-${idx}`, `btn-foto-eqr-${idx}`);
+    }
+  });
+}
+
+function generarFolioPeatonal() {
+  const t = Date.now().toString(36).toUpperCase();
+  return `SACISC-PEA-${new Date().getFullYear()}-${t}`;
+}
+
+async function registrarEntradaPeatonal() {
+  const btn = document.getElementById("btn-registrar-entrada");
+  const resultBox = document.getElementById("entrada-result");
+  btn.disabled = true; btn.textContent = "Guardando…";
+
+  try {
+    const empresa = document.getElementById("v-empresa").value.trim();
+    const motivo = document.getElementById("v-motivo").value.trim();
+    const area = document.getElementById("v-area").value.trim();
+    const bloques = Array.from(document.querySelectorAll(".persona-block"));
+
+    const personas = [];
+    for (const b of bloques) {
+      const idx = b.dataset.idx;
+      const nombre = b.querySelector(".p-nombre").value.trim();
+      if (!nombre) continue;
+      const gafete = b.querySelector(".p-gafete").value.trim();
+      const traeEquipo = document.getElementById(`trae-equipo-${idx}`).checked;
+
+      const fotoIdFile = document.getElementById(`foto-id-${idx}`).files[0];
+      let fotoIdUrl = null;
+      if (fotoIdFile) fotoIdUrl = await subirFotoComprimida("identificacion", `id-${idx}`, fotoIdFile);
+
+      let fotoEqfUrl = null, fotoEqrUrl = null;
+      if (traeEquipo) {
+        const f1 = document.getElementById(`foto-eqf-${idx}`).files[0];
+        const f2 = document.getElementById(`foto-eqr-${idx}`).files[0];
+        if (f1) fotoEqfUrl = await subirFotoComprimida("equipo-frente", `eqf-${idx}`, f1);
+        if (f2) fotoEqrUrl = await subirFotoComprimida("equipo-reverso", `eqr-${idx}`, f2);
+      }
+
+      personas.push({
+        nombre, gafete, trae_equipo: traeEquipo,
+        foto_identificacion_url: fotoIdUrl,
+        foto_equipo_frente_url: fotoEqfUrl,
+        foto_equipo_reverso_url: fotoEqrUrl
+      });
+    }
+
+    if (personas.length === 0) throw new Error("Agrega al menos una persona con nombre.");
+
+    const folio = generarFolioPeatonal();
+    const payload = {
+      p_folio: folio, p_caseta: CASETA, p_guardia_id: GUARDIA.id,
+      p_empresa: empresa, p_motivo: motivo, p_area_destino: area, p_personas: personas
+    };
+
+    if (!navigator.onLine) {
+      encolarOffline("acc_registrar_folio_peatonal", payload);
+      resultBox.innerHTML = `<div class="result-msg ok">Sin conexión: folio ${folio} guardado en este celular, se enviará al recuperar señal.</div>`;
+    } else {
+      const { error } = await sb.rpc("acc_registrar_folio_peatonal", payload);
+      if (error) throw error;
+      resultBox.innerHTML = `<div class="result-msg ok">Entrada registrada. Folio ${folio}. Gafete entregado a cambio de identificación.</div>`;
+    }
+
+    document.getElementById("tab-content").innerHTML = tplPeatonalEntrada();
+    initPeatonalEntradaLogic();
+    document.getElementById("entrada-result").innerHTML = resultBox.innerHTML;
+
+  } catch (err) {
+    resultBox.innerHTML = `<div class="result-msg error">No se pudo registrar: ${err.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Registrar entrada";
+    actualizarPendientes();
+  }
+}
+
+/* =====================================================================
+   PEATONAL — SALIDA
+   ===================================================================== */
+function tplPeatonalSalida() {
+  return `
+  <div class="section-card">
+    <h2>Buscar visitante</h2>
+    <label>Nombre o número de gafete</label>
+    <input type="search" id="s-query" placeholder="Escribe para buscar…">
+  </div>
+  <div id="salida-results"></div>
+  `;
+}
+
+function initPeatonalSalidaLogic() {
+  const input = document.getElementById("s-query");
+  input.addEventListener("input", debounce(buscarFoliosPeatonal, 350));
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+async function buscarFoliosPeatonal() {
+  const q = document.getElementById("s-query").value.trim();
+  const box = document.getElementById("salida-results");
+  if (q.length < 2) { box.innerHTML = ""; return; }
+  const { data, error } = await sb.rpc("acc_buscar_folio_peatonal_abierto", { p_caseta: CASETA, p_query: q });
+  if (error || !data || data.length === 0) {
+    box.innerHTML = `<div class="result-msg error">Sin resultados dentro de esta caseta.</div>`;
+    return;
+  }
+  box.innerHTML = data.map(p => `
+    <div class="search-result">
+      <div class="sr-name">${p.nombre_completo} ${p.tipo === 'maestro' ? '· Grupo' : ''}</div>
+      <div class="sr-meta">${p.empresa || ''} · Gafete ${p.gafete_numero || '—'} · Folio ${p.folio}</div>
+      <div class="sr-photos">
+        ${p.foto_identificacion_url ? `<img src="${p.foto_identificacion_url}">` : ''}
+        ${p.foto_equipo_frente_url ? `<img src="${p.foto_equipo_frente_url}">` : ''}
+        ${p.foto_equipo_reverso_url ? `<img src="${p.foto_equipo_reverso_url}">` : ''}
+      </div>
+      <button class="big-btn secondary" data-persona-id="${p.persona_id}">Confirmar salida y devolver identificación</button>
+    </div>
+  `).join("");
+
+  box.querySelectorAll("button[data-persona-id]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; btn.textContent = "Cerrando…";
+      try {
+        if (!navigator.onLine) {
+          encolarOffline("acc_cerrar_persona_folio", { p_persona_id: btn.dataset.personaId, p_guardia_id: GUARDIA.id });
+        } else {
+          await sb.rpc("acc_cerrar_persona_folio", { p_persona_id: btn.dataset.personaId, p_guardia_id: GUARDIA.id });
+        }
+        btn.closest(".search-result").innerHTML = `<div class="result-msg ok">Salida registrada. Verifica equipo y entrega identificación.</div>`;
+      } catch (err) {
+        btn.disabled = false; btn.textContent = "Confirmar salida y devolver identificación";
+      }
+      actualizarPendientes();
+    });
+  });
+}
+
+/* =====================================================================
+   VEHICULAR — ENTRADA (escaneo de QR)
+   ===================================================================== */
+function tplVehicularEntrada() {
+  return `
+  <div class="section-card">
+    <h2>Escaneo de solicitud</h2>
+    <p style="font-size:13px;color:var(--gray);">Escanea el código QR de la solicitud autorizada para autocompletar los datos.</p>
+    <button class="big-btn qr" id="btn-abrir-qr">📷 Escanear código QR</button>
+  </div>
+  <div id="qr-result"></div>
+  `;
+}
+
+function initVehicularEntradaLogic() {
+  document.getElementById("btn-abrir-qr").addEventListener("click", abrirEscanerQR);
+}
+
+async function abrirEscanerQR() {
+  const overlay = document.getElementById("qr-overlay");
+  const video = document.getElementById("qr-video");
+  overlay.classList.add("show");
+  try {
+    qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    video.srcObject = qrStream;
+    qrScanLoopActive = true;
+    requestAnimationFrame(loopEscaneoQR);
+  } catch (err) {
+    alert("No se pudo acceder a la cámara: " + err.message);
+    cerrarEscanerQR();
+  }
+}
+
+function cerrarEscanerQR() {
+  qrScanLoopActive = false;
+  document.getElementById("qr-overlay").classList.remove("show");
+  if (qrStream) qrStream.getTracks().forEach(t => t.stop());
+}
+document.getElementById("qr-close-btn").addEventListener("click", cerrarEscanerQR);
+
+function loopEscaneoQR() {
+  if (!qrScanLoopActive) return;
+  const video = document.getElementById("qr-video");
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imgData.data, imgData.width, imgData.height);
+    if (code && code.data) {
+      cerrarEscanerQR();
+      procesarQR(code.data);
+      return;
+    }
+  }
+  requestAnimationFrame(loopEscaneoQR);
+}
+
+async function procesarQR(qrTexto) {
+  const box = document.getElementById("qr-result");
+  box.innerHTML = `<div class="result-msg ok">Buscando solicitud…</div>`;
+  const { data, error } = await sb.rpc("acc_buscar_solicitud_qr", { p_qr: qrTexto });
+  if (error || !data || data.length === 0) {
+    box.innerHTML = `<div class="result-msg error">QR no reconocido, expirado o no autorizado.</div>`;
+    return;
+  }
+  const s = data[0];
+  box.innerHTML = `
+    <div class="section-card">
+      <h2>Solicitud encontrada</h2>
+      <div class="sr-name">${s.folio}</div>
+      <div class="sr-meta">${s.marca || ''} ${s.color || ''} · Placa ${s.placa || '—'}</div>
+      <div class="sr-meta">Conductor: ${s.conductor || '—'}</div>
+      <div class="sr-meta">Destino: ${s.lugar_presentacion || '—'} · ${s.motivo || ''}</div>
+      <button class="big-btn" id="btn-confirmar-entrada-veh">Confirmar entrada</button>
+    </div>`;
+  document.getElementById("btn-confirmar-entrada-veh").addEventListener("click", async () => {
+    const payload = { p_solicitud_id: s.id, p_caseta: CASETA, p_guardia_id: GUARDIA.id };
+    try {
+      if (!navigator.onLine) encolarOffline("acc_confirmar_entrada_vehicular", payload);
+      else await sb.rpc("acc_confirmar_entrada_vehicular", payload);
+      box.innerHTML = `<div class="result-msg ok">Entrada confirmada para folio ${s.folio}.</div>`;
+    } catch (err) {
+      box.innerHTML = `<div class="result-msg error">${err.message}</div>`;
+    }
+    actualizarPendientes();
+  });
+}
+
+/* =====================================================================
+   VEHICULAR — SALIDA
+   ===================================================================== */
+function tplVehicularSalida() {
+  return `
+  <div class="section-card">
+    <h2>Buscar por placa</h2>
+    <input type="search" id="v-placa-query" placeholder="Escribe la placa…">
+  </div>
+  <div id="veh-salida-results"></div>
+  `;
+}
+
+function initVehicularSalidaLogic() {
+  document.getElementById("v-placa-query").addEventListener("input", debounce(buscarAccesoVehicular, 350));
+}
+
+async function buscarAccesoVehicular() {
+  const q = document.getElementById("v-placa-query").value.trim();
+  const box = document.getElementById("veh-salida-results");
+  if (q.length < 2) { box.innerHTML = ""; return; }
+  const { data, error } = await sb.rpc("acc_buscar_acceso_vehicular_abierto", { p_caseta: CASETA, p_placa: q });
+  if (error || !data || data.length === 0) {
+    box.innerHTML = `<div class="result-msg error">Sin unidades dentro con esa placa.</div>`;
+    return;
+  }
+  box.innerHTML = data.map(a => `
+    <div class="search-result">
+      <div class="sr-name">${a.placa}</div>
+      <div class="sr-meta">${a.conductor || ''} · Folio ${a.folio}</div>
+      <button class="big-btn secondary" data-acceso-id="${a.acceso_id}">Confirmar salida</button>
+    </div>
+  `).join("");
+  box.querySelectorAll("button[data-acceso-id]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      const payload = { p_acceso_id: btn.dataset.accesoId, p_guardia_id: GUARDIA.id };
+      try {
+        if (!navigator.onLine) encolarOffline("acc_confirmar_salida_vehicular", payload);
+        else await sb.rpc("acc_confirmar_salida_vehicular", payload);
+        btn.closest(".search-result").innerHTML = `<div class="result-msg ok">Salida confirmada.</div>`;
+      } catch (err) { btn.disabled = false; }
+      actualizarPendientes();
+    });
+  });
+}
+
+/* =====================================================================
+   COLA OFFLINE
+   ===================================================================== */
+function encolarOffline(rpcName, payload) {
+  const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+  queue.push({ rpc: rpcName, payload, ts: Date.now() });
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+}
+
+async function flushQueue() {
+  if (!navigator.onLine) return;
+  const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+  if (queue.length === 0) return;
+  const restante = [];
+  for (const item of queue) {
+    try {
+      const { error } = await sb.rpc(item.rpc, item.payload);
+      if (error) restante.push(item);
+    } catch (e) {
+      restante.push(item);
+    }
+  }
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(restante));
+  actualizarPendientes();
+}
+
+function actualizarPendientes() {
+  const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+  const label = document.getElementById("pending-queue-label");
+  if (label) label.textContent = queue.length > 0 ? `${queue.length} pendiente(s) por sincronizar` : "Todo sincronizado";
+}
+
+function actualizarOffline() {
+  const banner = document.getElementById("offline-banner");
+  if (banner) banner.classList.toggle("show", !navigator.onLine);
+}
+
+window.addEventListener("online", () => { actualizarOffline(); flushQueue(); });
+window.addEventListener("offline", actualizarOffline);
+setInterval(flushQueue, 15000);
+</script>
+</body>
+</html>
