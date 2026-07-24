@@ -345,7 +345,7 @@ async function renderPendientes() {
       try {
         const { data: qr, error } = await sb.rpc("acc_autorizar_solicitud", { p_solicitud_id: btn.dataset.autorizar });
         if (error) throw error;
-        mostrarModalQR(btn.dataset.folio, qr);
+        await mostrarModalQR(btn.dataset.folio, qr);
         await renderPendientes();
         await cargarKpis();
       } catch (err) {
@@ -373,7 +373,29 @@ async function renderPendientes() {
   });
 }
 
-function mostrarModalQR(folio, qrTexto) {
+async function ensureQRCodeLib() {
+  if (typeof QRCode !== "undefined") return;
+  const cdns = [
+    "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js",
+    "https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"
+  ];
+  for (const url of cdns) {
+    try {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = url;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      if (typeof QRCode !== "undefined") return;
+    } catch (e) { /* intenta el siguiente CDN */ }
+  }
+  throw new Error("No se pudo cargar la librería de códigos QR (revisa tu conexión a internet).");
+}
+
+async function mostrarModalQR(folio, qrTexto) {
+  await ensureQRCodeLib();
   document.getElementById("qr-modal-folio").textContent = folio;
   const canvas = document.getElementById("qr-canvas");
   QRCode.toCanvas(canvas, qrTexto, { width: 220, margin: 1, color: { dark: "#1e5b4f", light: "#ffffff" } });
